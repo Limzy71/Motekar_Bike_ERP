@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Buat PR Baru - Motekar ERP</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-tint": "#3755c3", "surface-dim": "#d8dadc", "inverse-primary": "#b8c4ff", "surface": "#f7f9fb",
+                        "outline": "#757684", "surface-bright": "#f7f9fb", "tertiary": "#003c36", "tertiary-fixed-dim": "#6bd8cb",
+                        "on-primary-fixed": "#001453", "surface-container": "#eceef0", "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5", "outline-variant": "#c4c5d5", "on-primary-container": "#a8b8ff",
+                        "on-secondary": "#ffffff", "on-error-container": "#93000a", "error": "#ba1a1a", "on-error": "#ffffff",
+                        "inverse-on-surface": "#eff1f3", "on-primary-fixed-variant": "#173bab", "background": "#f7f9fb",
+                        "on-surface-variant": "#444653", "on-primary": "#ffffff", "on-secondary-fixed": "#0d1c2f",
+                        "primary-container": "#1e40af", "on-tertiary-fixed": "#00201d", "secondary-fixed-dim": "#b9c7e0",
+                        "on-tertiary": "#ffffff", "secondary-container": "#d5e3fd", "primary": "#00288e", "surface-container-high": "#e6e8ea",
+                        "secondary-fixed": "#d5e3fd", "on-tertiary-container": "#5fcdbf", "on-secondary-fixed-variant": "#3a485c",
+                        "on-background": "#191c1e", "primary-fixed": "#dde1ff", "secondary": "#515f74", "primary-fixed-dim": "#b8c4ff",
+                        "on-tertiary-fixed-variant": "#005049", "tertiary-container": "#00554e", "tertiary-fixed": "#89f5e7",
+                        "surface-container-low": "#f2f4f6", "on-secondary-container": "#57657b", "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e0e3e5", "inverse-surface": "#2d3133", "error-container": "#ffdad6"
+                    },
+                    fontFamily: {
+                        "data-mono": ["JetBrains Mono"], "title-sm": ["Inter"], "headline-md": ["Inter"],
+                        "display-lg": ["Inter"], "label-caps": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 60;
+            pointer-events: none;
+            transform: translateY(24px);
+            opacity: 0;
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast .material-symbols-outlined {
+            font-size: 1.2rem;
+        }
+        button {
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+            outline: none;
+        }
+    </style>
+</head>
+
+<body class="text-on-surface bg-surface h-screen w-screen overflow-hidden flex flex-col">
+
+    <header class="w-full max-w-5xl mx-auto px-6 pt-4 pb-2 shrink-0 flex items-center gap-4">
+        <button onclick="window.history.back()"
+            class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors text-on-surface-variant">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <span class="text-headline-md text-on-surface font-bold">Form Permintaan Pembelian (PR)</span>
+    </header>
+
+    <main class="flex-1 w-full max-w-5xl mx-auto px-6 flex flex-col pt-6 pb-6 items-center overflow-hidden">
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-3xl p-8 w-full shadow-sm max-h-full overflow-y-auto">
+
+            <div class="mb-6 border-b border-outline-variant pb-4">
+                <h2 class="text-2xl font-bold text-on-surface">Buat PR Baru</h2>
+                <p class="text-sm text-on-surface-variant mt-1">Lengkapi form di bawah ini untuk mengajukan pengadaan suku cadang.</p>
+            </div>
+
+            <form id="form-buat-pr" class="space-y-6">
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block uppercase tracking-wide">Nomor PR</label>
+                        <input id="input-nomor-pr" name="nomor_pr" readonly type="text"
+                            class="w-full text-sm border-outline-variant bg-surface-container rounded-lg p-3 outline-none text-primary font-bold font-data-mono cursor-not-allowed">
+                        <p class="text-[10px] text-on-surface-variant mt-1">Dibuat otomatis oleh sistem.</p>
+                    </div>
+
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block uppercase tracking-wide">Vendor / Pemasok</label>
+                        <input name="vendor" required type="text" placeholder="Contoh: PT Shimano Indonesia"
+                            class="w-full text-sm border-outline-variant bg-surface rounded-lg p-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+
+                    <div class="col-span-2">
+                        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block uppercase tracking-wide">Nama Item / Barang</label>
+                        <input name="item_barang" required type="text" placeholder="Contoh: Groupset Deore 12-Speed"
+                            class="w-full text-sm border-outline-variant bg-surface rounded-lg p-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block uppercase tracking-wide">Jumlah</label>
+                        <input name="jumlah" required type="number" min="1" placeholder="Masukkan angka..."
+                            class="w-full text-sm border-outline-variant bg-surface rounded-lg p-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+
+                    <div class="col-span-2 md:col-span-1">
+                        <label class="text-xs font-bold text-on-surface-variant mb-1.5 block uppercase tracking-wide">Satuan</label>
+                        <select name="satuan" required
+                            class="w-full text-sm border-outline-variant bg-surface rounded-lg p-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer">
+                            <option value="pcs">Pcs (Pieces)</option>
+                            <option value="set">Set</option>
+                            <option value="box">Box</option>
+                            <option value="unit">Unit</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-outline-variant flex gap-4 justify-end">
+                    <button type="button" onclick="window.location.href='pengadaan.html'"
+                        class="px-6 py-2.5 rounded-lg font-bold text-sm text-on-surface-variant hover:bg-surface-container transition-colors">Batal</button>
+                    <button type="submit" id="btn-submit"
+                        class="bg-primary hover:bg-blue-800 text-white px-8 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]" id="btn-submit-icon">save</span> 
+                        <span id="btn-submit-text">Simpan & Ajukan</span>
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
+        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
+            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
+            <span class="text-sm font-medium" id="toast-message"></span>
+        </div>
+    </div>
+
+    <script type="module" src="/src/pages/buat_pr.ts"></script>
+</body>
+
+</html>

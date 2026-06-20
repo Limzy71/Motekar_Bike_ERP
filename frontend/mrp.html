@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>MRP & BOM - Motekar ERP</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-tint": "#3755c3", "surface-dim": "#d8dadc", "inverse-primary": "#b8c4ff", "surface": "#f7f9fb",
+                        "outline": "#757684", "surface-bright": "#f7f9fb", "tertiary": "#003c36", "tertiary-fixed-dim": "#6bd8cb",
+                        "on-primary-fixed": "#001453", "surface-container": "#eceef0", "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5", "outline-variant": "#c4c5d5", "on-primary-container": "#a8b8ff",
+                        "on-secondary": "#ffffff", "on-error-container": "#93000a", "error": "#ba1a1a", "on-error": "#ffffff",
+                        "inverse-on-surface": "#eff1f3", "on-primary-fixed-variant": "#173bab", "background": "#f7f9fb",
+                        "on-surface-variant": "#444653", "on-primary": "#ffffff", "on-secondary-fixed": "#0d1c2f",
+                        "primary-container": "#1e40af", "on-tertiary-fixed": "#00201d", "secondary-fixed-dim": "#b9c7e0",
+                        "on-tertiary": "#ffffff", "secondary-container": "#d5e3fd", "primary": "#00288e", "surface-container-high": "#e6e8ea",
+                        "secondary-fixed": "#d5e3fd", "on-tertiary-container": "#5fcdbf", "on-secondary-fixed-variant": "#3a485c",
+                        "on-background": "#191c1e", "primary-fixed": "#dde1ff", "secondary": "#515f74", "primary-fixed-dim": "#b8c4ff",
+                        "on-tertiary-fixed-variant": "#005049", "tertiary-container": "#00554e", "tertiary-fixed": "#89f5e7",
+                        "surface-container-low": "#f2f4f6", "on-secondary-container": "#57657b", "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e0e3e5", "inverse-surface": "#2d3133", "error-container": "#ffdad6"
+                    },
+                    spacing: { "sidebar-width": "260px" },
+                    fontFamily: {
+                        "data-mono": ["JetBrains Mono"], "title-sm": ["Inter"], "headline-md": ["Inter"],
+                        "display-lg": ["Inter"], "label-caps": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 60;
+            pointer-events: none;
+            transform: translateY(24px);
+            opacity: 0;
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        /* Tree Grid Styles */
+        .tree-row { transition: background-color 0.15s ease; }
+        .tree-row:hover { background-color: #f8fafc; }
+        .tree-toggle { cursor: pointer; user-select: none; transition: transform 0.2s ease; }
+        .tree-toggle.expanded { transform: rotate(90deg); }
+        .tree-children { display: none; }
+        .tree-children.expanded { display: block; }
+    </style>
+</head>
+
+<body class="text-on-surface">
+    <div class="flex h-screen overflow-hidden">
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
+            <div class="flex flex-col gap-6 p-6 overflow-hidden">
+                <div class="flex flex-col gap-1 min-w-[200px]" id="sidebar-logo">
+                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
+                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
+                </div>
+                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
+            </div>
+            <div class="p-6 border-t border-outline-variant">
+                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
+                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
+                    <span class="menu-text">Keluar Sistem</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
+            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
+                <div class="flex items-center gap-4">
+                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
+                        <span class="material-symbols-outlined text-[24px]">menu</span>
+                    </button>
+                    <span class="text-headline-md text-on-surface font-bold">MRP & Rekursi BOM</span>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+                        <div class="text-right">
+                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
+                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
+                            <span id="header-inisial">U</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+                
+                <div class="mb-8">
+                    <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[24px]">account_tree</span>
+                        Material Requirements Planning (MRP)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Engine Rekursif Multi-Level BOM untuk kalkulasi kebutuhan komponen rakitan.</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex gap-4 border-b border-slate-200 mb-6">
+                    <button id="tab-explode" class="pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors">Engine Eksekusi MRP</button>
+                    <button id="tab-master" class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Master Multi-Level BOM</button>
+                </div>
+
+                <!-- TAB: EKSEKUSI MRP -->
+                <div id="view-explode" class="block space-y-6">
+                    <!-- Form Peledakan BOM -->
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-6">
+                        <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber-500 text-[20px]">bolt</span> Parameter Peledakan
+                        </h3>
+                        <form id="form-explode" class="flex items-end gap-4">
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Target Rakitan (FG/SA)</label>
+                                <select id="input-explode-item" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                                    <option value="">Memuat data rakitan...</option>
+                                </select>
+                            </div>
+                            <div class="w-48">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Kuantitas Defisit (Target)</label>
+                                <input type="number" id="input-explode-qty" min="1" required placeholder="Contoh: 50" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                            </div>
+                            <button type="submit" id="btn-explode" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-all flex items-center gap-2 shrink-0 h-[42px]">
+                                <span class="material-symbols-outlined text-[18px] icon-bolt">offline_bolt</span>
+                                <span class="material-symbols-outlined text-[18px] hidden animate-spin icon-spin">sync</span>
+                                <span>⚡ Explode BOM</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Split View Rekomendasi (Hidden awalnya) -->
+                    <div id="container-recommendations" class="hidden">
+                        <div class="flex justify-between items-end mb-4 mt-8 border-t border-slate-200 pt-6">
+                            <div>
+                                <h3 class="text-lg font-black text-slate-900 tracking-tight">Hasil Kalkulasi Rekursif MRP</h3>
+                                <p class="text-xs text-slate-500">Kebutuhan komponen telah disesuaikan dengan stok yang ada (Soft Deduction).</p>
+                            </div>
+                            <button id="btn-bulk-execute" class="bg-primary hover:bg-primary/90 text-on-primary px-5 py-2.5 rounded-lg font-bold text-sm shadow-md transition-colors flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[18px] icon-bulk">rocket_launch</span>
+                                <span class="material-symbols-outlined text-[18px] hidden animate-spin icon-spin-bulk">sync</span>
+                                <span>Terbitkan WO & PO (Bulk Execute)</span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- KIRI: WO -->
+                            <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden flex flex-col h-full">
+                                <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-blue-500 text-[20px]">build</span>
+                                    <h4 class="font-bold text-slate-800 text-sm">Rekomendasi Work Order (Internal Assembly)</h4>
+                                </div>
+                                <div class="overflow-y-auto flex-1 max-h-[400px]">
+                                    <table class="w-full text-left table-auto">
+                                        <thead class="sticky top-0 bg-white border-b border-slate-200">
+                                            <tr>
+                                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">KODE ITEM</th>
+                                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">NAMA KOMPONEN (SA)</th>
+                                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-right">QTY DIBUTUHKAN</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-wo-reco" class="divide-y divide-slate-100 text-xs text-slate-600 font-medium">
+                                            <!-- Data disuntik via TS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- KANAN: PO -->
+                            <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden flex flex-col h-full">
+                                <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-amber-500 text-[20px]">shopping_cart</span>
+                                    <h4 class="font-bold text-slate-800 text-sm">Rekomendasi Purchase Order (Beli ke Supplier)</h4>
+                                </div>
+                                <div class="overflow-y-auto flex-1 max-h-[400px]">
+                                    <table class="w-full text-left table-auto">
+                                        <thead class="sticky top-0 bg-white border-b border-slate-200">
+                                            <tr>
+                                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">KODE ITEM</th>
+                                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">NAMA BAHAN MENTAH (RM)</th>
+                                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-right">QTY DIBUTUHKAN</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-po-reco" class="divide-y divide-slate-100 text-xs text-slate-600 font-medium">
+                                            <!-- Data disuntik via TS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: MASTER BOM (TREE GRID) -->
+                <div id="view-master" class="hidden">
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden flex flex-col">
+                        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
+                            <h3 class="font-bold text-slate-800 text-sm">Pohon Resep (Multi-Level BOM)</h3>
+                            <button id="btn-refresh-bom" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200/50">
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                            </button>
+                        </div>
+                        <div class="p-4 overflow-x-auto min-h-[300px]" id="tree-container">
+                            <div class="text-center py-8 text-xs text-slate-500">Memuat pohon struktur BOM...</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
+        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
+            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
+            <span class="text-sm font-medium" id="toast-message"></span>
+        </div>
+    </div>
+
+    <script type="module" src="/src/pages/mrp.ts"></script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Gudang & Inventori - Motekar ERP</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-tint": "#3755c3", "surface-dim": "#d8dadc", "inverse-primary": "#b8c4ff", "surface": "#f7f9fb",
+                        "outline": "#757684", "surface-bright": "#f7f9fb", "tertiary": "#003c36", "tertiary-fixed-dim": "#6bd8cb",
+                        "on-primary-fixed": "#001453", "surface-container": "#eceef0", "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5", "outline-variant": "#c4c5d5", "on-primary-container": "#a8b8ff",
+                        "on-secondary": "#ffffff", "on-error-container": "#93000a", "error": "#ba1a1a", "on-error": "#ffffff",
+                        "inverse-on-surface": "#eff1f3", "on-primary-fixed-variant": "#173bab", "background": "#f7f9fb",
+                        "on-surface-variant": "#444653", "on-primary": "#ffffff", "on-secondary-fixed": "#0d1c2f",
+                        "primary-container": "#1e40af", "on-tertiary-fixed": "#00201d", "secondary-fixed-dim": "#b9c7e0",
+                        "on-tertiary": "#ffffff", "secondary-container": "#d5e3fd", "primary": "#00288e", "surface-container-high": "#e6e8ea",
+                        "secondary-fixed": "#d5e3fd", "on-tertiary-container": "#5fcdbf", "on-secondary-fixed-variant": "#3a485c",
+                        "on-background": "#191c1e", "primary-fixed": "#dde1ff", "secondary": "#515f74", "primary-fixed-dim": "#b8c4ff",
+                        "on-tertiary-fixed-variant": "#005049", "tertiary-container": "#00554e", "tertiary-fixed": "#89f5e7",
+                        "surface-container-low": "#f2f4f6", "on-secondary-container": "#57657b", "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e0e3e5", "inverse-surface": "#2d3133", "error-container": "#ffdad6"
+                    },
+                    spacing: { "sidebar-width": "260px" },
+                    fontFamily: {
+                        "data-mono": ["JetBrains Mono"], "title-sm": ["Inter"], "headline-md": ["Inter"],
+                        "display-lg": ["Inter"], "label-caps": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-nav {
+            background-color: #e8eaf2;
+            border-left: 4px solid #00288e;
+        }
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 60;
+            pointer-events: none;
+            transform: translateY(24px);
+            opacity: 0;
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        button, .btn-action {
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+            outline: none;
+        }
+    </style>
+</head>
+
+<body class="text-on-surface">
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- ==================== SIDEBAR ==================== -->
+        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
+            <div class="flex flex-col gap-6 p-6 overflow-hidden">
+                <div class="flex flex-col gap-1 min-w-[200px]" id="sidebar-logo">
+                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
+                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
+                </div>
+                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4">
+                    <!-- Nav items akan di-render oleh rbac.ts -->
+                </nav>
+            </div>
+            <div class="p-6 border-t border-outline-variant">
+                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
+                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
+                    <span class="menu-text">Keluar Sistem</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ==================== MAIN CONTENT ==================== -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
+            <!-- HEADER -->
+            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
+                <div class="flex items-center gap-4">
+                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
+                        <span class="material-symbols-outlined text-[24px]">menu</span>
+                    </button>
+                    <span class="text-headline-md text-on-surface font-bold">Manajemen Inventori & Gudang</span>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" title="Lihat Profil Saya">
+                        <div class="text-right">
+                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
+                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
+                            <span id="header-inisial">U</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- SCROLLABLE CONTENT -->
+            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+
+                <!-- Page Header -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-900 tracking-tight">Master Stok Gudang</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Pantau dan kelola persediaan barang komponen dan unit jadi secara real-time.</p>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <!-- Kiri - Live Search Input -->
+                    <div class="relative w-full sm:w-64">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-outlined text-slate-400 text-[18px]">search</span>
+                        </div>
+                        <input type="text" id="search-input" placeholder="Cari kode/nama..." 
+                               class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:border-slate-400 focus:ring-0 outline-none transition-colors shadow-2xs">
+                    </div>
+
+                    <!-- Tengah - Category Pills -->
+                    <div class="flex items-center gap-2 bg-white border border-slate-200/80 p-1 rounded-xl shadow-2xs" id="category-pills">
+                        <button data-filter="Semua" class="filter-btn bg-slate-900 text-white font-medium shadow-2xs text-xs px-4 py-1.5 rounded-lg transition-all">Semua</button>
+                        <button data-filter="Komponen" class="filter-btn bg-slate-100 text-slate-600 hover:bg-slate-200/70 font-medium text-xs px-4 py-1.5 rounded-lg transition-all">Komponen</button>
+                        <button data-filter="Sepeda Jadi" class="filter-btn bg-slate-100 text-slate-600 hover:bg-slate-200/70 font-medium text-xs px-4 py-1.5 rounded-lg transition-all">Sepeda Jadi</button>
+                    </div>
+
+                    <!-- Kanan - CTA Group -->
+                    <div class="flex items-center gap-3">
+                        <button id="btn-opname" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs flex items-center gap-2 transition-all">
+                            <span class="material-symbols-outlined text-[16px]">inventory</span> Stock Opname
+                        </button>
+                        <button id="btn-open-modal-masuk" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs flex items-center gap-2 transition-all">
+                            <span class="material-symbols-outlined text-[16px]">add_box</span> Barang Masuk
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Master Stok -->
+                <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                    <table class="w-full border-collapse table-auto data-table">
+                        <colgroup>
+                            <col style="width: 15%">
+                            <col style="width: 30%">
+                            <col style="width: 15%">
+                            <col style="width: 10%">
+                            <col style="width: 10%">
+                            <col style="width: 10%">
+                            <col style="width: 10%">
+                        </colgroup>
+                        <thead>
+                            <tr class="border-b border-slate-200/80">
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">KODE BARANG</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">NAMA ITEM</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">KATEGORI</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">STOK</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">SATUAN</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">STATUS</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant" id="tbody-gudang">
+                            <tr>
+                                <td colspan="7" class="px-4 py-8 text-center text-xs font-medium text-slate-500">Memuat data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Backdrop Modal Form (Barang Masuk) -->
+    <div id="modal-inbound" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+        <div id="modal-inbound-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h3 class="text-lg font-bold text-slate-900">Catat Barang Masuk</h3>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-full transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto">
+                <form id="form-barang-masuk" class="space-y-5">
+                    
+                    <!-- Mode Switch -->
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2 block">Tipe Pemasukan</label>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                                <input type="radio" name="mode_barang" value="existing" checked class="text-slate-900 focus:ring-slate-900 border-slate-300">
+                                Barang Existing
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                                <input type="radio" name="mode_barang" value="baru" class="text-slate-900 focus:ring-slate-900 border-slate-300">
+                                Barang Baru
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Kode Barang</label>
+                            <input type="text" name="kode_barang" id="input-kode" required placeholder="Contoh: CMP-001"
+                                class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all uppercase">
+                        </div>
+
+                        <div class="col-span-2">
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Nama Barang</label>
+                            <input type="text" name="nama_barang" id="input-nama" required placeholder="Contoh: Rantai Shimano"
+                                class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all">
+                        </div>
+
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Kategori</label>
+                            <select name="kategori" id="input-kategori" required
+                                class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all cursor-pointer">
+                                <option value="Komponen">Komponen</option>
+                                <option value="Sepeda Jadi">Sepeda Jadi</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Satuan</label>
+                            <select name="satuan" id="input-satuan" required
+                                class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all cursor-pointer">
+                                <option value="pcs">Pcs</option>
+                                <option value="set">Set</option>
+                                <option value="unit">Unit</option>
+                            </select>
+                        </div>
+
+                        <div class="col-span-2">
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Jumlah Masuk</label>
+                            <input type="number" name="jumlah_masuk" required min="1" placeholder="Masukkan angka..."
+                                class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                <button type="button" id="btn-cancel-modal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors">Batal</button>
+                <button type="submit" form="form-barang-masuk" id="btn-submit-masuk" class="px-5 py-2 text-sm font-medium bg-slate-900 hover:bg-slate-800 text-white rounded-lg shadow-xs transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] hidden" id="spinner-masuk">sync</span>
+                    Simpan Mutasi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Opname (Placeholder for now) -->
+    <div id="modal-opname" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+        <!-- Will be implemented when opname button clicked -->
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
+        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
+            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
+            <span class="text-sm font-medium" id="toast-message"></span>
+        </div>
+    </div>
+
+    <script type="module" src="/src/pages/gudang.ts"></script>
+</body>
+
+</html>

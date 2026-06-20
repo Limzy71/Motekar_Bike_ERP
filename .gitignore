@@ -1,0 +1,9 @@
+# Abaikan semua node_modules di folder manapun
+**/node_modules/
+
+# Abaikan file config rahasia
+**/.env
+
+# Abaikan isi folder uploads, tapi pertahankan foldernya
+uploads/*
+!uploads/.gitkeep
