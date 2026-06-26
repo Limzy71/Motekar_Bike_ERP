@@ -25,9 +25,12 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Ambil data WO saat ini
+    // Ambil data WO saat ini (dari arsitektur Header-Detail)
     const [woData]: any = await connection.query(
-      'SELECT id, kode_sepeda, jumlah_produksi, status, catatan_rework FROM operasi_wo WHERE id = ?',
+      `SELECT w.id, w.jumlah_produksi, w.status, i.kode_barang as kode_sepeda, i.nama_barang
+       FROM operasi_wo_header w
+       JOIN inventory_stok i ON w.id_inventory_fg = i.id
+       WHERE w.id = ?`,
       [woId]
     );
 
@@ -40,8 +43,8 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
     const wo = woData[0];
 
     // Pastikan WO berada di tahap yang valid (Selesai)
-    if (wo.status !== 'Selesai') {
-      res.status(400).json({ success: false, message: `Work Order berstatus ${wo.status}, bukan di tahap menunggu inspeksi.` });
+    if (wo.status !== 'COMPLETED') {
+      res.status(400).json({ success: false, message: `Work Order berstatus ${wo.status}, hanya WO berstatus COMPLETED yang bisa diinspeksi.` });
       connection.release();
       return;
     }
@@ -52,8 +55,8 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
       // SKENARIO A: LOLOS QC
       // 1. Ubah status menjadi 'Closed'
       await connection.query(
-        'UPDATE operasi_wo SET status = ? WHERE id = ?',
-        ['Closed', woId]
+        "UPDATE operasi_wo_header SET status = 'COMPLETED' WHERE id = ?",
+        [woId]
       );
 
       // 2. Tambah stok gudang
@@ -71,7 +74,7 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
       const totalNilaiHPP = hppPerUnit * wo.jumlah_produksi;
 
       // Ambil nomor WO untuk referensi dokumen
-      const [woRef]: any = await connection.query('SELECT nomor_wo FROM operasi_wo WHERE id = ?', [woId]);
+      const [woRef]: any = await connection.query('SELECT nomor_wo FROM operasi_wo_header WHERE id = ?', [woId]);
       const refDoc = woRef.length > 0 ? woRef[0].nomor_wo : `WO-${woId}`;
 
       if (totalNilaiHPP > 0) {
@@ -94,8 +97,8 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
 
       // 1. Ubah status mundur ke 'Perakitan Frame' dan update catatan
       await connection.query(
-        'UPDATE operasi_wo SET status = ?, catatan_rework = ? WHERE id = ?',
-        ['Perakitan Frame', newNotes, woId]
+        "UPDATE operasi_wo_header SET status = 'ON_PROGRESS' WHERE id = ?",
+        [woId]
       );
 
       await connection.commit();

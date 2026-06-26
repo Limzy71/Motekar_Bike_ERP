@@ -4,11 +4,12 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>Operasi Inti - Motekar ERP</title>
+    <title>Operasi Inti - Factory Cockpit</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script id="tailwind-config">
         tailwind.config = {
@@ -41,64 +42,37 @@
         }
     </script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
-        }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .active-nav {
-            background-color: #e8eaf2;
-            border-left: 4px solid #00288e;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
         .toast {
-            position: fixed;
-            bottom: 1.5rem;
-            right: 1.5rem;
-            z-index: 60;
-            pointer-events: none;
-            transform: translateY(24px);
-            opacity: 0;
-            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 60; pointer-events: none;
+            transform: translateY(24px); opacity: 0; transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
         }
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-        button, .btn-action {
-            -webkit-tap-highlight-color: transparent;
-            cursor: pointer;
-            outline: none;
-        }
+        .toast.show { transform: translateY(0); opacity: 1; }
         
-        /* Smooth Scroll for Kanban Columns */
-        .kanban-col-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-        .kanban-col-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .kanban-col-scroll::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 20px;
-        }
+        /* Custom scrollbar for kanban board */
+        .kanban-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .kanban-scroll::-webkit-scrollbar-track { background: transparent; }
+        .kanban-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .kanban-scroll:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
+        
+        /* Right Drawer Slide Animation */
+        #right-drawer { transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #right-drawer.open { transform: translateX(0); }
     </style>
 </head>
 
-<body class="text-on-surface">
-    <div class="flex h-screen overflow-hidden">
-
-        <!-- ==================== SIDEBAR ==================== -->
+<body class="text-on-surface overflow-hidden">
+    <div class="flex h-screen overflow-hidden relative">
+        
+        <!-- SIDEBAR -->
         <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex flex-col gap-6 p-6 overflow-hidden">
-                <div class="flex flex-col gap-1 min-w-[200px]" id="sidebar-logo">
+            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+                <div class="flex flex-col gap-1" id="sidebar-logo">
                     <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
                     <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
                 </div>
-                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4">
-                    <!-- Nav items akan di-render oleh rbac.ts -->
-                </nav>
+                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
             </div>
             <div class="p-6 border-t border-outline-variant">
                 <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
@@ -108,133 +82,295 @@
             </div>
         </aside>
 
-        <!-- ==================== MAIN CONTENT ==================== -->
+        <!-- MAIN CONTENT -->
         <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <!-- HEADER -->
             <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
                 <div class="flex items-center gap-4">
                     <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
                         <span class="material-symbols-outlined text-[24px]">menu</span>
                     </button>
-                    <span class="text-headline-md text-on-surface font-bold">Operasi Inti</span>
+                    <span class="text-headline-md text-on-surface font-bold">Factory Cockpit (MES)</span>
                 </div>
                 <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" title="Lihat Profil Saya">
+                    <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
                         <div class="text-right">
-                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
+                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
+                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
-                            <span id="header-inisial">U</span>
+                        <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
+                            <span id="header-inisial">--</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </header>
 
-            <!-- SCROLLABLE CONTENT (PAPAN KANBAN) -->
-            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30 flex flex-col">
-
-                <!-- Page Header & Action Bar -->
-                <div class="flex flex-wrap items-center justify-between gap-4 mb-6 shrink-0">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-900 tracking-tight">Papan Kanban Work Order</h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Pantau status perakitan sepeda dari antrean hingga selesai.</p>
+            <!-- ZONA 1: KPI & Command Center -->
+            <div class="bg-white border-b border-slate-200 px-6 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full md:w-auto flex-1 max-w-3xl">
+                    <!-- KPI 1 -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 border-l-4 border-l-slate-500 relative overflow-hidden">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total WO Aktif</p>
+                                <p class="text-3xl font-black text-slate-800 font-data-mono leading-tight" id="kpi-wo-aktif">0</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500">
+                                <span class="material-symbols-outlined text-[20px]">precision_manufacturing</span>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="flex items-center gap-3">
-                        <button id="btn-open-modal-wo" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs flex items-center gap-2 transition-all">
-                            <span class="material-symbols-outlined text-[16px]">add_task</span> Buat Work Order
+                    <!-- KPI 2 -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 border-l-4 border-l-amber-500 relative overflow-hidden">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">Menunggu Material</p>
+                                <p class="text-3xl font-black text-amber-700 font-data-mono leading-tight" id="kpi-wo-draft">0</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                                <span class="material-symbols-outlined text-[20px]">hourglass_empty</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- KPI 3 -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 border-l-4 border-l-emerald-500 relative overflow-hidden">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Produksi Selesai</p>
+                                <p class="text-3xl font-black text-emerald-700 font-data-mono leading-tight" id="kpi-wo-selesai">0</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                <span class="material-symbols-outlined text-[20px]">task_alt</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button id="btn-new-wo" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition-all w-full md:w-auto h-fit">
+                    <span class="material-symbols-outlined text-[20px]">add</span>
+                    Buat Work Order
+                </button>
+            </div>
+
+            <!-- ZONA 2: DATA TABLE -->
+            <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+                <div class="flex items-center justify-between mb-4" id="table-header-info">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 tracking-tight">Daftar Work Order Aktif</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Pantau status produksi secara real-time</p>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
+                    <table class="w-full text-left border-collapse data-table">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nomor WO</th>
+                                <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tanggal</th>
+                                <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Produk</th>
+                                <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Target Produksi</th>
+                                <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                                <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wo-table-body" class="divide-y divide-slate-100 text-xs text-slate-700">
+                            <!-- Injected -->
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-slate-400 italic font-medium">Memuat data Work Order...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="operasi-pagination-info">Menampilkan 0-0 dari 0 data</p>
+                    <div class="flex items-center gap-1.5">
+                        <button id="operasi-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                        </button>
+                        <div id="operasi-pagination-pages" class="flex items-center gap-1">
+                            <!-- Page buttons injected via TS -->
+                        </div>
+                        <button id="operasi-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
                         </button>
                     </div>
                 </div>
-
-                <!-- Kanban Board Grid -->
-                <div class="flex-1 flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory items-start">
-                    
-                    <!-- Kolom 1: Menunggu -->
-                    <div class="flex-1 min-w-[280px] w-[280px] flex flex-col bg-slate-100/50 border border-slate-200 rounded-xl max-h-full snap-start">
-                        <div class="px-4 py-3 border-b border-slate-200 bg-slate-100 rounded-t-xl shrink-0 flex items-center justify-between">
-                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide">Menunggu</h3>
-                            <span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full" id="count-menunggu">0</span>
-                        </div>
-                        <div class="p-3 flex-1 overflow-y-auto kanban-col-scroll flex flex-col gap-3" id="col-menunggu">
-                            <!-- Cards will be injected here -->
+            </div>
+            
+            <!-- ZONA 3: RIGHT DRAWER (DEEP DIVE INSPECTOR) -->
+            <!-- We place it inside main so it slides over the kanban but under the header -->
+            <div id="right-drawer-backdrop" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30 hidden"></div>
+            <div id="right-drawer" class="fixed top-0 right-0 bottom-0 w-[450px] bg-white shadow-2xl z-40 flex flex-col border-l border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800" id="drawer-wo-id">WO-123456</h2>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5" id="drawer-wo-status">STATUS</p>
+                    </div>
+                    <button id="btn-close-drawer" class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-6 bg-white kanban-scroll">
+                    <!-- Produk Info -->
+                    <div class="mb-8">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Target Produksi</p>
+                        <div class="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                                <span class="material-symbols-outlined text-[28px]">pedal_bike</span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-800" id="drawer-product-name">Sepeda MTB X-100</h3>
+                                <p class="text-sm font-data-mono text-slate-500" id="drawer-product-qty">Qty: 0 Unit</p>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Kolom 2: Perakitan Frame -->
-                    <div class="flex-1 min-w-[280px] w-[280px] flex flex-col bg-slate-100/50 border border-slate-200 rounded-xl max-h-full snap-start">
-                        <div class="px-4 py-3 border-b border-blue-200 bg-blue-50 rounded-t-xl shrink-0 flex items-center justify-between">
-                            <h3 class="text-xs font-bold text-blue-700 uppercase tracking-wide">Perakitan Frame</h3>
-                            <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full" id="count-perakitan-frame">0</span>
+                    <!-- BOM Checklist -->
+                    <div>
+                        <div class="flex justify-between items-end mb-3">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alokasi Material (BOM)</p>
+                            <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full" id="drawer-alloc-status">Soft Reserve</span>
                         </div>
-                        <div class="p-3 flex-1 overflow-y-auto kanban-col-scroll flex flex-col gap-3" id="col-perakitan-frame">
-                            <!-- Cards will be injected here -->
-                        </div>
-                    </div>
-
-                    <!-- Kolom 3: Setup Drivetrain -->
-                    <div class="flex-1 min-w-[280px] w-[280px] flex flex-col bg-slate-100/50 border border-slate-200 rounded-xl max-h-full snap-start">
-                        <div class="px-4 py-3 border-b border-amber-200 bg-amber-50 rounded-t-xl shrink-0 flex items-center justify-between">
-                            <h3 class="text-xs font-bold text-amber-700 uppercase tracking-wide">Setup Drivetrain</h3>
-                            <span class="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full" id="count-setup-drivetrain">0</span>
-                        </div>
-                        <div class="p-3 flex-1 overflow-y-auto kanban-col-scroll flex flex-col gap-3" id="col-setup-drivetrain">
-                            <!-- Cards will be injected here -->
+                        <div class="space-y-2" id="drawer-bom-list">
+                            <!-- Injected Material Rows -->
                         </div>
                     </div>
-
-                    <!-- Kolom 4: Selesai -->
-                    <div class="flex-1 min-w-[280px] w-[280px] flex flex-col bg-slate-100/50 border border-slate-200 rounded-xl max-h-full snap-start">
-                        <div class="px-4 py-3 border-b border-emerald-200 bg-emerald-50 rounded-t-xl shrink-0 flex items-center justify-between">
-                            <h3 class="text-xs font-bold text-emerald-700 uppercase tracking-wide">Selesai</h3>
-                            <span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full" id="count-selesai">0</span>
-                        </div>
-                        <div class="p-3 flex-1 overflow-y-auto kanban-col-scroll flex flex-col gap-3" id="col-selesai">
-                            <!-- Cards will be injected here -->
-                        </div>
-                    </div>
-
                 </div>
 
+                <!-- Execution Bay (Bottom Action Bar) -->
+                <div class="p-4 border-t border-slate-200 bg-slate-50 flex gap-3 shrink-0" id="drawer-execution-bay">
+                    <!-- Buttons injected based on status -->
+                </div>
             </div>
+
         </main>
     </div>
 
-    <!-- Backdrop Modal Form (Buat Work Order) -->
-    <div id="modal-wo" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
-        <div id="modal-wo-content" class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-                <h3 class="text-lg font-bold text-slate-900">Buat Work Order Baru</h3>
-                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-full transition-colors">
+    <!-- MODAL CREATE WO (Live Deficit Radar) -->
+    <div id="modal-create-wo" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">add_box</span> Terbitkan Work Order
+                </h3>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex flex-col gap-6">
+                <!-- Form Input -->
+                <div class="w-full flex flex-col sm:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Barang Jadi (FG)</label>
+                        <select id="select-fg" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                            <option value="">-- Pilih Sepeda --</option>
+                        </select>
+                    </div>
+                    <div class="w-full sm:w-1/3">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Target Produksi (Unit)</label>
+                        <input type="number" id="input-qty" min="1" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-data-mono focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="0">
+                    </div>
+                </div>
+
+                <!-- Live Deficit Radar -->
+                <div class="w-full bg-white border border-slate-200 rounded-xl flex flex-col overflow-hidden">
+                    <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px] text-primary">radar</span> Live Deficit Radar
+                        </h4>
+                    </div>
+                    <div id="radar-content" class="flex-1 overflow-y-auto kanban-scroll">
+                        <div class="text-center text-slate-500 text-xs py-8">Pilih produk dan masukkan qty untuk memulai pemindaian stok.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">Batal</button>
+                <button id="btn-submit-wo" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="material-symbols-outlined text-[18px]">publish</span> Terbitkan (DRAFT)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL QC DIGITAL -->
+    <div id="modal-qc" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+                <h3 class="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">fact_check</span> Quality Assurance Gateway
+                </h3>
+                <button id="btn-close-qc" class="text-slate-400 hover:text-slate-800 transition-colors bg-white p-1 rounded-full shadow-sm border border-slate-200">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
             
-            <div class="p-6">
-                <form id="form-wo" class="space-y-4">
-                    <div>
-                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Kode Sepeda Jadi</label>
-                        <select name="kode_sepeda" id="input-kode-sepeda" required
-                            class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all cursor-pointer">
-                            <option value="">Pilih Sepeda...</option>
-                            <!-- Options dipopulate dari API -->
-                        </select>
+            <div class="p-6 overflow-y-auto kanban-scroll space-y-6">
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex gap-3 text-indigo-800">
+                    <span class="material-symbols-outlined shrink-0 text-indigo-500">info</span>
+                    <p class="text-xs font-medium leading-relaxed">Pastikan seluruh parameter lulus pengujian. Jika terdapat satu kegagalan, Work Order akan diretur untuk proses rework (Sub-Assembly).</p>
+                </div>
+
+                <div class="space-y-4" id="qc-parameters">
+                    <!-- Param 1 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
+                        <p class="text-sm font-bold text-slate-800 mb-3">1. Uji Kelurusan Fisik & Frame</p>
+                        <div class="flex gap-6">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="radio" name="qc_frame" value="pass" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Lolos</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="radio" name="qc_frame" value="fail" class="w-4 h-4 text-rose-600 focus:ring-rose-500 border-slate-300">
+                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Gagal</span>
+                            </label>
+                        </div>
                     </div>
 
-                    <div>
-                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Jumlah Produksi</label>
-                        <input type="number" name="jumlah_produksi" required min="1" placeholder="Masukkan jumlah unit..."
-                            class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all">
+                    <!-- Param 2 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
+                        <p class="text-sm font-bold text-slate-800 mb-3">2. Uji Pengereman (Braking System)</p>
+                        <div class="flex gap-6">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="radio" name="qc_brake" value="pass" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Lolos</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="radio" name="qc_brake" value="fail" class="w-4 h-4 text-rose-600 focus:ring-rose-500 border-slate-300">
+                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Gagal</span>
+                            </label>
+                        </div>
                     </div>
-                </form>
+
+                    <!-- Param 3 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
+                        <p class="text-sm font-bold text-slate-800 mb-3">3. Uji Transmisi/Gigi (Drivetrain)</p>
+                        <div class="flex gap-6">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="radio" name="qc_drive" value="pass" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Lolos</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="radio" name="qc_drive" value="fail" class="w-4 h-4 text-rose-600 focus:ring-rose-500 border-slate-300">
+                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Gagal</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Catatan -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Catatan Defect / Rework (Opsional)</label>
+                        <textarea id="qc-notes" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400" placeholder="Ketik catatan jika ada cacat atau butuh perbaikan..."></textarea>
+                    </div>
+                </div>
             </div>
-            
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
-                <button type="button" id="btn-cancel-modal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors">Batal</button>
-                <button type="submit" form="form-wo" id="btn-submit-wo" class="px-5 py-2 text-sm font-medium bg-slate-900 hover:bg-slate-800 text-white rounded-lg shadow-xs transition-all flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[16px] hidden" id="spinner-wo">sync</span>
-                    Simpan WO
+
+            <div class="p-6 border-t border-slate-100 flex justify-end bg-slate-50 rounded-b-2xl">
+                <button id="btn-submit-qc" class="w-full py-3.5 bg-slate-200 text-slate-500 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2" disabled>
+                    <span class="material-symbols-outlined text-[20px]">rule</span> Silakan Lengkapi Form QC
                 </button>
             </div>
         </div>
@@ -250,5 +386,4 @@
 
     <script type="module" src="/src/pages/operasi.ts"></script>
 </body>
-
 </html>

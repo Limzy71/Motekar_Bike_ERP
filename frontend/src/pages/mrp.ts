@@ -17,6 +17,11 @@ interface BOMNode {
     kode_item_parent: string;
     nama_resep: string;
     nama_barang: string;
+    tipe_item: string;
+    biaya_rakit: number;
+    biaya_antar: number;
+    material_cost: number;
+    total_modal: number;
     children: BOMDetail[];
 }
 
@@ -55,6 +60,11 @@ let masterBOM: BOMNode[] = [];
 // ============================================================
 // UI STATE & TAB NAVIGATION
 // ============================================================
+
+function formatRp(v: number | string): string {
+    const n = typeof v === 'string' ? parseFloat(v) : v;
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+}
 
 function initTabs(): void {
     const tabExplode = document.getElementById('tab-explode');
@@ -144,6 +154,17 @@ function renderTreeGrid(container: HTMLElement): void {
                     <div class="flex-1">
                         <p class="text-sm font-bold text-slate-800">${node.nama_barang} <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-data-mono">${node.kode_item_parent}</span></p>
                         <p class="text-[11px] text-slate-500 mt-0.5">Resep: ${node.nama_resep}</p>
+                        
+                        <!-- Cost Breakdown Mini Table -->
+                        <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] bg-white p-3 rounded-lg border border-slate-200 w-full max-w-3xl relative shadow-sm" onclick="event.stopPropagation()">
+                            <button onclick="openCostModal('${node.kode_item_parent}', '${node.nama_barang}', ${node.biaya_rakit}, ${node.biaya_antar})" class="absolute -right-2 -top-2 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 p-1.5 rounded-full shadow-sm hover:shadow transition-all" title="Edit Biaya">
+                                <span class="material-symbols-outlined text-[14px]">edit</span>
+                            </button>
+                            <div><span class="block text-slate-400 uppercase tracking-widest font-bold mb-1">Material Cost</span><span class="font-data-mono font-bold text-slate-700 text-sm">${formatRp(node.material_cost)}</span></div>
+                            <div><span class="block text-slate-400 uppercase tracking-widest font-bold mb-1">Labor Cost</span><span class="font-data-mono font-bold text-amber-600 text-sm">${formatRp(node.biaya_rakit)}</span></div>
+                            <div><span class="block text-slate-400 uppercase tracking-widest font-bold mb-1">Shipping Cost</span><span class="font-data-mono font-bold text-blue-600 text-sm">${node.tipe_item === 'FG' ? formatRp(node.biaya_antar) : '- (Hanya FG)'}</span></div>
+                            <div><span class="block text-slate-400 uppercase tracking-widest font-bold mb-1">Total Modal</span><span class="font-data-mono font-black text-emerald-700 text-sm">${formatRp(node.total_modal)}</span></div>
+                        </div>
                     </div>
                 </div>
                 <!-- Children Container -->
@@ -201,6 +222,72 @@ function renderTreeGrid(container: HTMLElement): void {
             }
         }
     };
+}
+
+// ============================================================
+// LOGIKA COST MODAL
+// ============================================================
+
+function initCostModal() {
+    const modal = document.getElementById('modal-cost');
+    const content = document.getElementById('modal-cost-content');
+    const form = document.getElementById('form-cost') as HTMLFormElement;
+    
+    const closeModal = () => {
+        if (!modal || !content) return;
+        modal.classList.add('opacity-0');
+        content.classList.add('scale-95');
+        setTimeout(() => { modal.classList.add('hidden'); form?.reset(); }, 300);
+    };
+
+    document.getElementById('btn-close-cost')?.addEventListener('click', closeModal);
+    document.getElementById('btn-cancel-cost')?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    (window as any).openCostModal = (kode: string, nama: string, rakit: number, antar: number) => {
+        if (!modal || !content) return;
+        const title = document.getElementById('modal-cost-title');
+        if (title) title.textContent = `Edit Biaya: ${nama} [${kode}]`;
+        
+        (document.getElementById('input-cost-kode') as HTMLInputElement).value = kode;
+        (document.getElementById('input-cost-rakit') as HTMLInputElement).value = rakit.toString();
+        (document.getElementById('input-cost-antar') as HTMLInputElement).value = antar.toString();
+
+        modal.classList.remove('hidden');
+        setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+    };
+
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btnSubmit = document.getElementById('btn-submit-cost') as HTMLButtonElement;
+        const spinner = document.getElementById('spinner-cost');
+        
+        const kode = (document.getElementById('input-cost-kode') as HTMLInputElement).value;
+        const fd = new FormData(form);
+        const payload = Object.fromEntries(fd.entries());
+
+        if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.classList.add('opacity-80', 'cursor-wait'); }
+        if (spinner) spinner.classList.remove('hidden');
+
+        try {
+            const response = await apiFetch<{success:boolean, message:string}>(`mrp/costs/${kode}`, {
+                method: 'PATCH',
+                body: JSON.stringify(payload)
+            });
+            if (response.success) {
+                showToast(response.message);
+                closeModal();
+                loadMasterBOM(); // Refresh tree
+            } else {
+                showToast(response.message, true);
+            }
+        } catch (err) {
+            showToast('Gagal menyimpan biaya.', true);
+        } finally {
+            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-80', 'cursor-wait'); }
+            if (spinner) spinner.classList.add('hidden');
+        }
+    });
 }
 
 // ============================================================
@@ -343,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initTabs();
     initMRPLogic();
+    initCostModal();
     loadDropdownItems();
 
     // Setup Refresh

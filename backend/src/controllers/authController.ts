@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import pool from '../config/database.js';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import { logAudit } from '../helpers/auditHelper.js';
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { username, password } = req.body;
@@ -25,9 +26,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     let isMatch = false;
 
-    // 1. Cek jika password di DB menggunakan Bcrypt PHP ($2y$ atau $2a$)
-    if (dbPassword.startsWith('$2y$') || dbPassword.startsWith('$2a$')) {
-      // PHP menggunakan prefix $2y$, Node.js menggunakan $2a$, kita ganti prefixnya agar kompatibel
+    // 1. Cek jika password di DB menggunakan Bcrypt ($2y$ PHP, $2a$ legacy, $2b$ Node.js modern)
+    if (dbPassword.startsWith('$2y$') || dbPassword.startsWith('$2a$') || dbPassword.startsWith('$2b$')) {
+      // PHP menggunakan prefix $2y$, Node.js bcrypt v5+ menggunakan $2b$
+      // bcrypt.compare() di Node.js secara native mendukung ketiga prefix
       const compatibleHash = dbPassword.replace(/^\$2y\$/, '$2a$');
       isMatch = await bcrypt.compare(password, compatibleHash);
     } 
@@ -39,6 +41,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     if (!isMatch) {
+      await logAudit(user.id, 'Percobaan login gagal (Password salah).', req.ip, 'Failed');
       res.status(401).json({ status: 'error', message: 'Password salah!' });
       return;
     }
@@ -48,6 +51,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Simpan token ke database agar bisa divalidasi oleh authMiddleware
     await pool.query('UPDATE users SET api_token = ? WHERE id = ?', [apiToken, user.id]);
+
+    await logAudit(user.id, 'Login sistem berhasil.', req.ip, 'Success');
 
     res.json({
       status: 'success',

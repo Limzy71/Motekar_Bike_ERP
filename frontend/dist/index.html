@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Motekar ERP</title>
+  
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+  <script id="tailwind-config">
+      tailwind.config = {
+          darkMode: "class",
+          theme: {
+              extend: {
+                  colors: {
+                      "surface-tint": "#3755c3", "surface-dim": "#d8dadc", "inverse-primary": "#b8c4ff", "surface": "#f7f9fb",
+                      "outline": "#757684", "surface-bright": "#f7f9fb", "tertiary": "#003c36", "tertiary-fixed-dim": "#6bd8cb",
+                      "on-primary-fixed": "#001453", "surface-container": "#eceef0", "on-surface": "#191c1e",
+                      "surface-container-highest": "#e0e3e5", "outline-variant": "#c4c5d5", "on-primary-container": "#a8b8ff",
+                      "on-secondary": "#ffffff", "on-error-container": "#93000a", "error": "#ba1a1a", "on-error": "#ffffff",
+                      "inverse-on-surface": "#eff1f3", "on-primary-fixed-variant": "#173bab", "background": "#f7f9fb",
+                      "on-surface-variant": "#444653", "on-primary": "#ffffff", "on-secondary-fixed": "#0d1c2f",
+                      "primary-container": "#1e40af", "on-tertiary-fixed": "#00201d", "secondary-fixed-dim": "#b9c7e0",
+                      "on-tertiary": "#ffffff", "secondary-container": "#d5e3fd", "primary": "#00288e", "surface-container-high": "#e6e8ea",
+                      "secondary-fixed": "#d5e3fd", "on-tertiary-container": "#5fcdbf", "on-secondary-fixed-variant": "#3a485c",
+                      "on-background": "#191c1e", "primary-fixed": "#dde1ff", "secondary": "#515f74", "primary-fixed-dim": "#b8c4ff",
+                      "on-tertiary-fixed-variant": "#005049", "tertiary-container": "#00554e", "tertiary-fixed": "#89f5e7",
+                      "surface-container-low": "#f2f4f6", "on-secondary-container": "#57657b", "surface-container-lowest": "#ffffff",
+                      "surface-variant": "#e0e3e5", "inverse-surface": "#2d3133", "error-container": "#ffdad6"
+                  },
+                  fontFamily: {
+                      "data-mono": ["JetBrains Mono"], "title-sm": ["Inter"], "headline-md": ["Inter"],
+                      "display-lg": ["Inter"], "label-caps": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"]
+                  }
+              }
+          }
+      }
+  </script>
+  <style>
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+  <script type="module" crossorigin src="/assets/index-CsOi3WjZ.js"></script>
+</head>
+
+<body class="bg-surface text-on-surface min-h-screen flex items-center justify-center relative overflow-hidden font-body-md selection:bg-primary/20 selection:text-primary">
+
+  <div class="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+    <div class="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]"></div>
+    <div class="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-tertiary/5 blur-[120px]"></div>
+  </div>
+
+  <div id="app" class="w-full max-w-[420px] px-6 relative z-10 animate-[fade-in-up_0.6s_ease-out]">
+    
+    <div class="flex flex-col items-center justify-center gap-1.5 mb-6 text-center">
+      <div class="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 mb-1 ring-4 ring-primary/10">
+        <span class="material-symbols-outlined text-white text-[28px]">pedal_bike</span>
+      </div>
+      <h1 class="text-2xl font-black text-primary tracking-tight">Motekar Bike</h1>
+      <p class="text-on-surface-variant text-xs font-semibold uppercase tracking-[0.2em]">Sistem ERP Terpadu</p>
+    </div>
+
+    <div class="bg-surface-container-lowest px-8 py-6 rounded-3xl shadow-xl shadow-black/5 border border-outline-variant/50 relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-tertiary to-primary"></div>
+
+      <div class="mb-5">
+        <h2 class="text-lg font-bold text-on-surface tracking-tight">Selamat Datang</h2>
+        <p class="text-on-surface-variant text-xs mt-1">Silakan masuk untuk melanjutkan akses ke sistem.</p>
+      </div>
+
+      <form id="form-login" class="flex flex-col gap-4">
+        
+        <div class="group relative">
+          <label class="block text-[11px] font-bold text-on-surface-variant mb-1 uppercase tracking-wider ml-1">Username</label>
+          <div class="relative flex items-center">
+            <span class="material-symbols-outlined absolute left-4 text-on-surface-variant/60 group-focus-within:text-primary transition-colors text-[20px]">person</span>
+            <input type="text" name="username" id="username-input" required autocomplete="username" placeholder="Masukkan username"
+              class="w-full bg-surface-container border border-outline-variant/60 rounded-xl py-3 pl-12 pr-4 text-sm font-medium text-on-surface outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-on-surface-variant/40">
+          </div>
+        </div>
+
+        <div class="group relative">
+          <label class="block text-[11px] font-bold text-on-surface-variant mb-1 uppercase tracking-wider ml-1">Kata Sandi</label>
+          <div class="relative flex items-center">
+            <span class="material-symbols-outlined absolute left-4 text-on-surface-variant/60 group-focus-within:text-primary transition-colors text-[20px]">lock</span>
+            <input type="password" name="password" id="password-input" required autocomplete="current-password" placeholder="Masukkan kata sandi"
+              class="w-full bg-surface-container border border-outline-variant/60 rounded-xl py-3 pl-12 pr-12 text-sm font-medium text-on-surface outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-on-surface-variant/40">
+            <button type="button" id="toggle-password" class="absolute right-2 p-1.5 rounded-lg text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-variant/50 transition-colors flex items-center justify-center focus:outline-none">
+              <span class="material-symbols-outlined text-[20px]" id="toggle-icon">visibility_off</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="pesan-error" class="hidden items-start gap-2.5 p-3 rounded-xl bg-error-container/50 border border-error/20 mt-1 animate-[fade-in_0.3s_ease-out]">
+          <span class="material-symbols-outlined text-error text-[18px] shrink-0 mt-0.5">error</span>
+          <p id="pesan-error-text" class="text-error text-xs font-semibold leading-relaxed"></p>
+        </div>
+
+        <button type="submit" id="btn-submit"
+          class="w-full relative overflow-hidden bg-primary text-on-primary font-bold py-3 rounded-xl transition-all shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm flex justify-center items-center gap-2 mt-1 group">
+          <span class="relative z-10 flex items-center gap-2" id="btn-text">
+            Masuk ke Sistem
+            <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+          </span>
+          <span id="btn-loader" class="hidden material-symbols-outlined animate-spin text-[20px] absolute z-10">sync</span>
+          <div class="absolute inset-0 bg-white/20 opacity-0 group-active:opacity-100 transition-opacity"></div>
+        </button>
+
+      </form>
+    </div>
+    
+    <div class="text-center mt-5">
+      <p class="text-on-surface-variant/70 text-xs font-medium">
+        &copy; <script>document.write(new Date().getFullYear())</script> Motekar Bike Assy. All rights reserved.
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>

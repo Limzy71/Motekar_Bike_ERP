@@ -9,10 +9,10 @@ const toggleIcon = document.getElementById('toggle-icon') as HTMLSpanElement;
 togglePasswordBtn.addEventListener('click', () => {
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        toggleIcon.textContent = 'visibility_off';
+        toggleIcon.textContent = 'visibility';
     } else {
         passwordInput.type = 'password';
-        toggleIcon.textContent = 'visibility';
+        toggleIcon.textContent = 'visibility_off';
     }
 });
 

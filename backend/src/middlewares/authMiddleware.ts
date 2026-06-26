@@ -84,11 +84,7 @@ export const authenticate = async (
 /**
  * Middleware factory untuk membatasi akses berdasarkan role tertentu.
  * Harus digunakan SETELAH middleware `authenticate`.
- *
- * Contoh penggunaan:
- *   router.delete('/admin/users', authenticate, requireRole('Admin', 'Owner'), deleteUser);
- *
- * @param allowedRoles - Daftar role yang diizinkan mengakses endpoint ini
+ *   router.delete('/admin/users', authenticate, requireRole('IT Support', 'Owner'), deleteUser);
  */
 export const requireRole = (...allowedRoles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {

@@ -9,47 +9,83 @@ import pool from '../config/database.js';
  */
 
 // ============================================================
-// HELPER: calculateHPP — Harga Pokok Produksi per Unit
+// HELPER: calculateHPPDetails — Rincian Harga Pokok Produksi (Recursive)
 // ============================================================
-export async function calculateHPP(connection: any, kodeSepeda: string): Promise<number> {
-  // 1. Cari resep BOM header untuk item ini
+export interface HPPDetail {
+  materialCost: number;
+  laborCost: number;
+  shippingCost: number;
+  total: number;
+}
+
+export async function calculateHPPDetails(connection: any, kodeSepeda: string, isTopLevel: boolean = true): Promise<HPPDetail> {
+  // 1. Ambil data item dari Master Inventory
+  const [itemData]: any = await connection.query(
+    'SELECT tipe_item, harga_standar, biaya_rakit, biaya_antar FROM inventory_stok WHERE kode_barang = ?',
+    [kodeSepeda]
+  );
+
+  if (itemData.length === 0) return { materialCost: 0, laborCost: 0, shippingCost: 0, total: 0 };
+  const item = itemData[0];
+
+  const hargaStandar = parseFloat(item.harga_standar) || 0;
+  const biayaRakit = parseFloat(item.biaya_rakit) || 0;
+  const biayaAntar = parseFloat(item.biaya_antar) || 0;
+
+  // 2. Jika Raw Material (RM), kembalikan Harga Dasar (Material Cost) saja
+  if (item.tipe_item === 'RM') {
+    return { materialCost: hargaStandar, laborCost: 0, shippingCost: 0, total: hargaStandar };
+  }
+
+  // 3. Jika SA / FG, cari resep BOM pembentuknya
   const [bomHeader]: any = await connection.query(
     'SELECT id_bom FROM manufaktur_bom_header WHERE kode_item_parent = ?',
     [kodeSepeda]
   );
 
-  if (bomHeader.length === 0) {
-    // Jika tidak ada BOM, fallback ke harga_standar item itu sendiri
-    const [itemData]: any = await connection.query(
-      'SELECT harga_standar FROM inventory_stok WHERE kode_barang = ?',
-      [kodeSepeda]
+  let materialCost = 0;
+
+  if (bomHeader.length > 0) {
+    const idBom = bomHeader[0].id_bom;
+    const [details]: any = await connection.query(
+      'SELECT kode_item_komponen, qty_kebutuhan FROM manufaktur_bom_detail WHERE id_bom = ?',
+      [idBom]
     );
-    if (itemData.length > 0 && parseFloat(itemData[0].harga_standar) > 0) {
-      return parseFloat(itemData[0].harga_standar);
+
+    // Rekursif (Bottom-Up Rollup) untuk setiap komponen pembentuk
+    for (const detail of details) {
+      const childHPP = await calculateHPPDetails(connection, detail.kode_item_komponen, false);
+      materialCost += childHPP.total * parseFloat(detail.qty_kebutuhan);
     }
-    return 0;
+  } else {
+    // Fallback jika SA/FG tidak punya resep BOM, asumsikan material cost = harga_standar master
+    materialCost = hargaStandar;
   }
 
-  const idBom = bomHeader[0].id_bom;
+  // 4. Hitung HPP Total
+  let totalHPP = materialCost + biayaRakit;
+  let finalShippingCost = 0;
 
-  // 2. Ambil semua komponen detail beserta harga_standar dari master gudang
-  const [details]: any = await connection.query(
-    `SELECT d.qty_kebutuhan, i.harga_standar
-     FROM manufaktur_bom_detail d
-     JOIN inventory_stok i ON d.kode_item_komponen = i.kode_barang
-     WHERE d.id_bom = ?`,
-    [idBom]
-  );
-
-  // 3. Akumulasi: SUM(qty_kebutuhan * harga_standar)
-  let totalHPP = 0;
-  for (const detail of details) {
-    const harga = parseFloat(detail.harga_standar);
-    const qty = parseInt(detail.qty_kebutuhan, 10);
-    totalHPP += qty * harga;
+  // 5. Modal Distribusi Akhir ditambahkan hanya pada level puncak (FG)
+  if (isTopLevel && item.tipe_item === 'FG') {
+    totalHPP += biayaAntar;
+    finalShippingCost = biayaAntar;
   }
 
-  return totalHPP;
+  return {
+    materialCost: materialCost,
+    laborCost: biayaRakit,
+    shippingCost: finalShippingCost,
+    total: totalHPP
+  };
+}
+
+// ============================================================
+// HELPER: calculateHPP — Wrapper untuk Kompatibilitas Modul Lain
+// ============================================================
+export async function calculateHPP(connection: any, kodeSepeda: string, isTopLevel: boolean = true): Promise<number> {
+  const detail = await calculateHPPDetails(connection, kodeSepeda, isTopLevel);
+  return detail.total;
 }
 
 // ============================================================

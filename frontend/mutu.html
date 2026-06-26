@@ -68,8 +68,8 @@
     <div class="flex h-screen overflow-hidden">
         <!-- SIDEBAR -->
         <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex flex-col gap-6 p-6 overflow-hidden">
-                <div class="flex flex-col gap-1 min-w-[200px]" id="sidebar-logo">
+            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+                <div class="flex flex-col gap-1" id="sidebar-logo">
                     <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
                     <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
                 </div>
@@ -93,7 +93,7 @@
                     <span class="text-headline-md text-on-surface font-bold">Kendali Mutu (QC Inspeksi)</span>
                 </div>
                 <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+                    <a href="/profil" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
                         <div class="text-right">
                             <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
                             <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
@@ -101,7 +101,7 @@
                         <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
                             <span id="header-inisial">U</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </header>
 
@@ -149,8 +149,16 @@
                     </div>
                 </div>
 
-                <!-- Data Table -->
-                <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden flex flex-col">
+                <!-- Tabs -->
+                <div class="flex gap-4 border-b border-slate-200 mb-6">
+                    <button id="tab-inspeksi" class="pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors">Inspeksi Produksi</button>
+                    <button id="tab-investigasi" class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Investigasi Klaim Garansi</button>
+                </div>
+
+                <!-- TAB 1: INSPEKSI -->
+                <div id="view-inspeksi" class="block">
+                    <!-- Data Table -->
+                    <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden flex flex-col">
                     <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
                         <h3 class="font-bold text-slate-800 text-sm">Antrean Inspeksi</h3>
                         <button id="btn-refresh" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200/50">
@@ -182,6 +190,37 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                    </div>
+                </div>
+
+                <!-- TAB 2: INVESTIGASI KLAIM -->
+                <div id="view-investigasi" class="hidden">
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden flex flex-col">
+                        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
+                            <h3 class="font-bold text-slate-800 text-sm">Antrean Investigasi Klaim</h3>
+                            <button id="btn-refresh-klaim" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200/50">
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                            </button>
+                        </div>
+                        <table class="w-full border-collapse table-auto">
+                            <thead>
+                                <tr class="border-b border-slate-200/80">
+                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">ID KLAIM</th>
+                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">PRODUK</th>
+                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">KELUHAN</th>
+                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">STATUS</th>
+                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">AKSI</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline-variant" id="tbody-investigasi">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-xs font-medium text-slate-500">Memuat data klaim...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
             </div>
@@ -309,6 +348,79 @@
                 <button type="submit" form="form-qc" id="btn-submit-qc" class="px-5 py-2 text-sm font-medium bg-slate-900 hover:bg-slate-800 text-white rounded-lg shadow-xs transition-all flex items-center gap-2">
                     <span class="material-symbols-outlined text-[16px] hidden animate-spin" id="spinner-qc">sync</span>
                     <span id="text-submit-qc">Submit Hasil QC</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Investigasi Klaim -->
+    <div id="modal-investigasi" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+        <div id="modal-investigasi-content" class="bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Form Investigasi Klaim Garansi</h3>
+                    <p class="text-xs text-slate-500">ID Klaim: <span id="modal-klaim-id" class="font-bold text-primary font-data-mono"></span></p>
+                </div>
+                <button id="btn-close-investigasi" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1 rounded-full transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex gap-6">
+                <!-- Kolom Kiri: Bukti Foto -->
+                <div class="w-1/2 flex flex-col gap-3">
+                    <h4 class="text-xs font-bold text-slate-700">Bukti Keluhan</h4>
+                    <div class="border border-slate-200 p-2 rounded-lg bg-slate-50 flex items-center justify-center min-h-[250px]">
+                        <img id="modal-klaim-foto" src="" alt="Bukti Foto" class="max-w-full max-h-[300px] object-contain rounded">
+                    </div>
+                    <div class="bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2">
+                        <p class="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">Keterangan Customer</p>
+                        <p id="modal-klaim-keluhan" class="text-xs text-amber-900 italic">...</p>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Form QC -->
+                <div class="w-1/2 flex flex-col">
+                    <form id="form-investigasi" class="flex flex-col h-full">
+                        <input type="hidden" id="input-investigasi-id" name="id_klaim">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Catatan Investigasi Teknis (QC)</label>
+                            <textarea id="input-investigasi-catatan" required rows="5" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary mb-4" placeholder="Hasil pemeriksaan teknis terkait klaim..."></textarea>
+                            
+                            <label class="block text-xs font-bold text-slate-700 mb-2">Keputusan Resolusi Klaim</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 p-3 border border-emerald-200 bg-emerald-50 rounded-lg cursor-pointer hover:bg-emerald-100 transition-colors">
+                                    <input type="radio" name="status_klaim" value="APPROVED_REPLACE" required class="text-emerald-600 focus:ring-emerald-500">
+                                    <div>
+                                        <p class="text-sm font-bold text-emerald-800">Setujui: Ganti Unit Baru (Replace)</p>
+                                        <p class="text-[10px] text-emerald-600">Terjadi cacat pabrik fatal yang tidak bisa diperbaiki.</p>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-2 p-3 border border-blue-200 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+                                    <input type="radio" name="status_klaim" value="APPROVED_REWORK" class="text-blue-600 focus:ring-blue-500">
+                                    <div>
+                                        <p class="text-sm font-bold text-blue-800">Setujui: Perbaikan (Rework)</p>
+                                        <p class="text-[10px] text-blue-600">Unit ditarik sementara untuk perbaikan ringan di pabrik.</p>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-2 p-3 border border-rose-200 bg-rose-50 rounded-lg cursor-pointer hover:bg-rose-100 transition-colors">
+                                    <input type="radio" name="status_klaim" value="REJECTED" class="text-rose-600 focus:ring-rose-500">
+                                    <div>
+                                        <p class="text-sm font-bold text-rose-800">Tolak Klaim (Rejected)</p>
+                                        <p class="text-[10px] text-rose-600">Kerusakan diakibatkan oleh kelalaian customer / pemakaian.</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                <button type="button" id="btn-cancel-investigasi" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors">Batal</button>
+                <button type="submit" form="form-investigasi" id="btn-submit-investigasi" class="px-5 py-2 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg shadow-xs transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] hidden animate-spin" id="spinner-investigasi">sync</span>
+                    <span>Simpan Keputusan</span>
                 </button>
             </div>
         </div>

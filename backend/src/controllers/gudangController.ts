@@ -12,7 +12,7 @@ import pool from '../config/database.js';
 export const getAllStok = async (req: Request, res: Response): Promise<void> => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, kode_barang, nama_barang, kategori, jumlah_stok, stok_committed, (jumlah_stok - stok_committed) as stok_available, satuan, last_updated FROM inventory_stok ORDER BY nama_barang ASC'
+      'SELECT id, kode_barang, nama_barang, kategori, jumlah_stok, stok_committed, (jumlah_stok - stok_committed) as stok_available, satuan, reorder_point, last_updated FROM inventory_stok ORDER BY jumlah_stok ASC, nama_barang ASC'
     );
     res.json({
       success: true,
@@ -110,3 +110,5 @@ export const opnameStok = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ success: false, message: `Error opname stok: ${error.message}` });
   }
 };
+
+

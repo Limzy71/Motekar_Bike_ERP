@@ -70,8 +70,8 @@
     <div class="flex h-screen overflow-hidden">
         <!-- SIDEBAR -->
         <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex flex-col gap-6 p-6 overflow-hidden">
-                <div class="flex flex-col gap-1 min-w-[200px]" id="sidebar-logo">
+            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+                <div class="flex flex-col gap-1" id="sidebar-logo">
                     <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
                     <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
                 </div>
@@ -95,7 +95,7 @@
                     <span class="text-headline-md text-on-surface font-bold">MRP & Rekursi BOM</span>
                 </div>
                 <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+                    <a href="/profil" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
                         <div class="text-right">
                             <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
                             <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
@@ -103,7 +103,7 @@
                         <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
                             <span id="header-inisial">U</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </header>
 
@@ -228,6 +228,37 @@
 
             </div>
         </main>
+    </div>
+
+    <!-- Edit Cost Modal -->
+    <div id="modal-cost" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity flex items-center justify-center p-4">
+        <div id="modal-cost-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden scale-95 transition-transform duration-300">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800" id="modal-cost-title">Edit Biaya Master</h3>
+                <button id="btn-close-cost" class="text-slate-400 hover:text-slate-600 transition-colors"><span class="material-symbols-outlined text-[20px]">close</span></button>
+            </div>
+            <div class="p-6">
+                <form id="form-cost" class="space-y-4">
+                    <input type="hidden" id="input-cost-kode" name="kode_barang">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Biaya Rakit (Labor Cost)</label>
+                        <input type="number" id="input-cost-rakit" name="biaya_rakit" min="0" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Biaya Antar (Shipping Cost)</label>
+                        <input type="number" id="input-cost-antar" name="biaya_antar" min="0" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                        <p class="text-[10px] text-slate-500 mt-1">*Hanya dijumlahkan ke Total HPP jika tipe barang adalah Finished Goods (FG).</p>
+                    </div>
+                    <div class="pt-4 flex justify-end gap-3">
+                        <button type="button" id="btn-cancel-cost" class="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Batal</button>
+                        <button type="submit" id="btn-submit-cost" class="px-4 py-2 text-sm font-bold text-white bg-primary hover:bg-primary/90 rounded-lg shadow-sm transition-colors flex items-center gap-2">
+                            <span>Simpan Biaya</span>
+                            <span class="material-symbols-outlined text-[16px] hidden animate-spin" id="spinner-cost">sync</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notification -->

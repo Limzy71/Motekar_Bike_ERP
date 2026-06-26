@@ -110,6 +110,21 @@ async function loadDashboard(): Promise<void> {
 // RENDER KPI
 // ============================================================
 
+async function loadITDashboard(): Promise<void> {
+  try {
+    const response = await apiFetch<any>('dashboard/it');
+    if (response?.success && response.data) {
+      const elUsers = document.getElementById('kpi-it-users');
+      if (elUsers) elUsers.innerText = String(response.data.active_users);
+
+      const elSessions = document.getElementById('kpi-it-sessions');
+      if (elSessions) elSessions.innerText = String(response.data.login_sessions_24h);
+    }
+  } catch (err) {
+    console.error('Fetch IT Dashboard Error:', err);
+  }
+}
+
 function renderKPI(kpi: DashboardKPI): void {
   const kpiElements: Record<string, number> = {
     'kpi-pr': kpi.total_pr || 0,
@@ -228,14 +243,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const user = initRBAC('dashboard');
   if (!user) return; // User belum login, sudah di-redirect
 
-  // 2. Load dashboard data
-  loadDashboard();
+  const dashOps = document.getElementById('dashboard-operasional');
+  const dashIT = document.getElementById('dashboard-it-support');
+
+  // 2. Load dashboard data based on role
+  if (user.divisi_role === 'IT Support') {
+    if (dashOps) dashOps.classList.add('hidden');
+    if (dashIT) dashIT.classList.remove('hidden');
+    loadITDashboard();
+  } else {
+    if (dashOps) dashOps.classList.remove('hidden');
+    if (dashIT) dashIT.classList.add('hidden');
+    loadDashboard();
+  }
 
   // 3. Tombol "Segarkan Data"
   const refreshBtn = document.getElementById('btn-refresh');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', () => {
-      loadDashboard();
+      if (user.divisi_role === 'IT Support') {
+        loadITDashboard();
+      } else {
+        loadDashboard();
+      }
     });
   }
 });

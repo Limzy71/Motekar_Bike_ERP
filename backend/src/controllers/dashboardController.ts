@@ -33,7 +33,7 @@ export const getDashboard = async (req: AuthenticatedRequest, res: Response): Pr
     };
 
     // === KPI 1: Total PR Aktif ===
-    const [prRows] = await pool.query('SELECT COUNT(*) as total FROM pengadaan_pr');
+    const [prRows] = await pool.query('SELECT COUNT(*) as total FROM pengadaan_pr_header');
     const prData = prRows as any[];
     if (prData.length > 0) {
       response.kpi.total_pr = Number(prData[0].total) || 0;

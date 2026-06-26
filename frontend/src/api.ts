@@ -77,7 +77,18 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
     // Handle 401: sesi expired atau token tidak valid
     if (response.status === 401) {
       localStorage.removeItem('userData');
-      alert('Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
+      if (typeof (window as any).Swal !== 'undefined') {
+        await (window as any).Swal.fire({
+          icon: 'warning',
+          title: 'Sesi Berakhir',
+          text: 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.',
+          confirmButtonColor: '#00288e',
+          confirmButtonText: 'Login Ulang',
+          allowOutsideClick: false
+        });
+      } else {
+        alert('Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
+      }
       window.location.href = '/';
       throw new Error('Unauthorized (401)');
     }
@@ -87,4 +98,21 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
     console.error('[apiFetch] Error:', error);
     throw error;
   }
+}
+export interface ReorderAlertItem {
+  id: number;
+  kode_barang: string;
+  nama_barang: string;
+  id_vendor?: number;
+  nama_vendor?: string;
+  jumlah_stok_sekarang: number;
+  reorder_point: number;
+  minimum_stock: number;
+  qty_saran_pesan?: number; 
+  satuan: string;
+}
+
+export async function getReorderAlerts(): Promise<ReorderAlertItem[]> {
+  const response = await apiFetch<{success: boolean, data: ReorderAlertItem[]}>('pengadaan/alerts');
+  return response.data;
 }

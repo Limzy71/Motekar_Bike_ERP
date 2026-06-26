@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "db:fresh": "tsx src/migrations/fresh.ts",
+    "db:dump": "tsx src/migrations/dump_schema.ts",
+    "db:seed": "tsx src/migrations/seed_master_data.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

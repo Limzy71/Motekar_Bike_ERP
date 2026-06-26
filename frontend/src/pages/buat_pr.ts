@@ -13,7 +13,7 @@ interface PRResponse {
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Inisialisasi proteksi login dan header profile
-  const user = initRBAC();
+  const user = initRBAC('nav-pengadaan');
   if (!user) return; // Belum login
 
   // 2. Kunci Format Penomoran: Pertahankan logika asli persis dari simpan_pr.php (frontend generator)

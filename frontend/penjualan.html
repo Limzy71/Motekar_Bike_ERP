@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>Penjualan & Penagihan - Motekar ERP</title>
+    <title>Sales Order (O2C) - Motekar ERP</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script id="tailwind-config">
         tailwind.config = {
@@ -41,30 +43,37 @@
     </script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        
+        /* Forcefully hide Google Maps injected error background */
+        input#input-alamat {
+            background-image: none !important;
+        }
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
         .toast {
-            position: fixed;
-            bottom: 1.5rem;
-            right: 1.5rem;
-            z-index: 60;
-            pointer-events: none;
-            transform: translateY(24px);
-            opacity: 0;
-            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 60; pointer-events: none;
+            transform: translateY(24px); opacity: 0; transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
         }
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        
+        /* Custom scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
+        
+        /* Right Drawer Slide Animation */
+        #right-drawer { transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #right-drawer.open { transform: translateX(0); }
     </style>
 </head>
 
-<body class="text-on-surface">
-    <div class="flex h-screen overflow-hidden">
+<body class="text-on-surface overflow-hidden">
+    <div class="flex h-screen overflow-hidden relative">
+        
         <!-- SIDEBAR -->
         <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex flex-col gap-6 p-6 overflow-hidden">
-                <div class="flex flex-col gap-1 min-w-[200px]" id="sidebar-logo">
+            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+                <div class="flex flex-col gap-1" id="sidebar-logo">
                     <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
                     <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
                 </div>
@@ -80,167 +89,312 @@
 
         <!-- MAIN CONTENT -->
         <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <!-- Header -->
             <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
                 <div class="flex items-center gap-4">
                     <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
                         <span class="material-symbols-outlined text-[24px]">menu</span>
                     </button>
-                    <span class="text-headline-md text-on-surface font-bold">Penjualan & Penagihan</span>
+                    <span class="text-headline-md text-on-surface font-bold">Penjualan (O2C)</span>
                 </div>
                 <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+                    <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
                         <div class="text-right">
-                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
+                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
+                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
-                            <span id="header-inisial">U</span>
+                        <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
+                            <span id="header-inisial">--</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </header>
 
-            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
-                <!-- Action Bar -->
-                <div class="flex justify-between items-end mb-6">
+            <!-- ZONA 1 & 2 Scrollable Container -->
+            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30 custom-scroll">
+                
+                <!-- Page Header -->
+                <div class="mb-6 flex justify-between items-center">
                     <div>
                         <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
                             <span class="material-symbols-outlined text-primary text-[24px]">point_of_sale</span>
-                            Modul Penjualan (O2C)
+                            Manajemen Penjualan
                         </h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Siklus Order-to-Cash dengan manajemen Soft Allocation (Stok Terkunci).</p>
+                        <p class="text-xs text-slate-500 mt-0.5 font-medium">Order-to-Cash (O2C) & Backorder / Defisit Management.</p>
                     </div>
-                    <button id="btn-create-so" class="bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">add</span>
-                        Buat Sales Order
-                    </button>
                 </div>
 
-                <!-- KPI Cards -->
+                <!-- KPI Cards Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <!-- Total SO Aktif (Draft + Confirmed) -->
-                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between hover:shadow-sm transition-shadow border-l-4 border-l-primary">
+                    <!-- Total SO Aktif -->
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between hover:shadow-sm transition-shadow border-l-4 border-l-blue-500">
                         <div>
                             <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total SO Aktif</p>
-                            <p class="text-3xl font-black text-slate-900 font-data-mono leading-tight" id="kpi-aktif">0</p>
+                            <p class="text-3xl font-black text-blue-700 font-data-mono leading-tight" id="kpi-total">0</p>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary">
-                            <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                            <span class="material-symbols-outlined text-[20px]">assignment</span>
                         </div>
                     </div>
                     
-                    <!-- Unit Terkunci (Confirmed) -->
+                    <!-- Menunggu Pembayaran -->
                     <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between hover:shadow-sm transition-shadow border-l-4 border-l-amber-500">
                         <div>
-                            <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">Unit Terkunci (Siap Kirim)</p>
-                            <p class="text-3xl font-black text-amber-700 font-data-mono leading-tight flex items-baseline gap-1">
-                                <span id="kpi-terkunci">0</span> <span class="text-sm font-semibold">Unit</span>
-                            </p>
+                            <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">Menunggu Pembayaran</p>
+                            <p class="text-3xl font-black text-amber-700 font-data-mono leading-tight" id="kpi-unpaid">0</p>
                         </div>
                         <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                            <span class="material-symbols-outlined text-[20px]">lock</span>
-                        </div>
-                    </div>
-
-                    <!-- Omset Terkirim (Shipped) -->
-                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between hover:shadow-sm transition-shadow border-l-4 border-l-emerald-500">
-                        <div>
-                            <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Total Omset Terkirim</p>
-                            <p class="text-2xl font-black text-emerald-700 font-data-mono leading-tight" id="kpi-omset">Rp 0</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
                             <span class="material-symbols-outlined text-[20px]">payments</span>
                         </div>
                     </div>
+
+                    <!-- Selesai -->
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between hover:shadow-sm transition-shadow border-l-4 border-l-emerald-500">
+                        <div>
+                            <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Selesai Dikirim</p>
+                            <p class="text-3xl font-black text-emerald-700 font-data-mono leading-tight" id="kpi-selesai">0</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <span class="material-symbols-outlined text-[20px]">local_shipping</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Data Table -->
-                <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden flex flex-col">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
-                        <h3 class="font-bold text-slate-800 text-sm">Daftar Sales Order (O2C)</h3>
-                        <button id="btn-refresh" class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200/50">
-                            <span class="material-symbols-outlined text-[18px]">refresh</span>
+                <div class="flex items-center justify-between mb-4 mt-8">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 tracking-tight">Daftar Sales Order</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Monitoring pergerakan pemesanan, ketersediaan stok, dan defisit.</p>
+                    </div>
+                    <div id="action-bay-top" class="flex items-center gap-3">
+                        <button id="btn-new-so" class="bg-primary hover:bg-primary-container text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-all">
+                            <span class="material-symbols-outlined text-[20px]">add_shopping_cart</span> Buat SO Baru
                         </button>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse table-auto">
-                            <thead>
-                                <tr class="border-b border-slate-200/80">
-                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">TANGGAL</th>
-                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">NO. SO & CUSTOMER</th>
-                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">PRODUK</th>
-                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">NILAI SO</th>
-                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">STATUS</th>
-                                    <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">AKSI</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-outline-variant" id="tbody-penjualan">
-                                <tr>
-                                    <td colspan="6" class="px-4 py-8 text-center text-xs font-medium text-slate-500">Memuat data...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                </div>
+
+                <!-- DATA TABLE -->
+                <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
+                    <table class="w-full border-collapse table-auto data-table">
+                        <colgroup>
+                            <col style="width: 15%">
+                            <col style="width: 12%">
+                            <col style="width: 20%">
+                            <col style="width: 15%">
+                            <col style="width: 10%">
+                            <col style="width: 15%">
+                            <col style="width: 13%">
+                        </colgroup>
+                        <thead>
+                            <tr class="border-b border-slate-200/80">
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">NOMOR SO</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">TANGGAL</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">CUSTOMER</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">ITEM</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">JUMLAH</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">TOTAL HARGA</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="so-table-body" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-slate-400 italic font-medium">Memuat data Sales Order...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="penjualan-pagination-info">Menampilkan 0-0 dari 0 data</p>
+                    <div class="flex items-center gap-1.5">
+                        <button id="penjualan-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                        </button>
+                        <div id="penjualan-pagination-pages" class="flex items-center gap-1">
+                            <!-- Page buttons injected via TS -->
+                        </div>
+                        <button id="penjualan-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ZONA 3: RIGHT DRAWER (DEEP DIVE INSPECTOR) -->
+            <div id="right-drawer-backdrop" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30 hidden"></div>
+            <div id="right-drawer" class="fixed top-0 right-0 bottom-0 w-[550px] bg-white shadow-2xl z-40 flex flex-col border-l border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 font-data-mono" id="drawer-so-id">SO-MTK-0000-0000</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="w-2 h-2 rounded-full" id="drawer-status-dot"></span>
+                            <p class="text-xs font-bold uppercase tracking-widest text-slate-500" id="drawer-so-status">STATUS</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Profit Badge (Role Owner/GM) -->
+                        <div id="drawer-profit-badge" class="hidden px-3 py-1 bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
+                            <span class="material-symbols-outlined text-[14px]">trending_up</span> Laba Kotor: <span id="drawer-profit-value" class="font-data-mono font-black text-emerald-800 ml-1">Rp 0</span>
+                        </div>
+                        <button id="btn-close-drawer" class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-6 bg-white custom-scroll">
+                    <!-- Customer Info -->
+                    <div class="mb-6">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Informasi Customer</p>
+                        <div class="flex flex-col gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                                    <span class="material-symbols-outlined text-[28px]">person</span>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800" id="drawer-customer-name">-</h3>
+                                    <p class="text-xs text-slate-500 mt-0.5" id="drawer-customer-address">-</p>
+                                </div>
+                            </div>
+                            <div class="text-xs text-slate-600 border-t border-slate-200 pt-3 mt-1 flex justify-between">
+                                <span>Target Kirim:</span>
+                                <span class="font-bold text-slate-800 font-data-mono" id="drawer-target-date">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Defisit Alert -->
+                    <div id="drawer-defisit-alert" class="hidden mb-6 bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-xl flex items-start gap-3">
+                        <span class="material-symbols-outlined text-[24px]">warning</span>
+                        <div>
+                            <p class="text-sm font-bold">Peringatan Defisit Stok!</p>
+                            <p class="text-xs mt-1">Stok fisik barang jadi (FG) tidak mencukupi untuk memenuhi pesanan ini secara penuh. Anda perlu menerbitkan Work Order untuk merakit kekurangan barang.</p>
+                        </div>
+                    </div>
+
+                    <!-- Material Details -->
+                    <div class="mb-6">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Rincian Pesanan</p>
+                        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase">Produk (FG)</th>
+                                        <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Jumlah</th>
+                                        <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="drawer-items-list" class="divide-y divide-slate-100 text-xs">
+                                    <!-- Injected -->
+                                </tbody>
+                                <tfoot class="bg-slate-50">
+                                    <tr>
+                                        <td colspan="2" class="py-2 px-3 text-right font-semibold text-slate-500 text-xs">Subtotal Barang:</td>
+                                        <td class="py-2 px-3 text-right font-bold text-slate-700 font-data-mono" id="drawer-subtotal">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" class="py-2 px-3 text-right font-semibold text-slate-500 text-xs">Biaya Pengiriman:</td>
+                                        <td class="py-2 px-3 text-right font-bold text-slate-700 font-data-mono" id="drawer-ongkir">Rp 0</td>
+                                    </tr>
+                                    <tr class="border-t border-slate-200">
+                                        <td colspan="2" class="py-3 px-3 text-right font-bold text-slate-800 text-xs">GRAND TOTAL:</td>
+                                        <td class="py-3 px-3 text-right font-black text-primary font-data-mono text-sm" id="drawer-total-nilai">Rp 0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mb-2" id="drawer-catatan-container">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Catatan Tambahan</p>
+                        <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 italic" id="drawer-catatan">-</p>
                     </div>
                 </div>
 
+                <!-- LOGISTICS & POD INSPECTION Bay -->
+                <div id="drawer-logistics-bay" class="px-6 py-4 border-t border-slate-200 bg-white space-y-4">
+                    
+                    <!-- Sub-Section A: Outbound 3PL (Dipindah ke Gudang) -->
+                    <!-- Removed for Segregation of Duties -->
+
+                    <!-- Sub-Section B: Proof of Delivery Retailer (Muncul saat status SHIPPED atau DELIVERED) -->
+                    <div id="bay-pod" class="bg-emerald-50 p-3 rounded-xl border border-emerald-150 hidden">
+                        <h4 class="text-xs font-bold text-emerald-950 mb-1">📸 BUKTI TERIMA RETAILER (POD)</h4>
+                        <p class="text-[10px] text-emerald-700 mb-2">Syarat mutlak pembukaan kunci pelunasan dana.</p>
+                        <input type="file" id="file-foto-retailer" accept="image/*" class="text-xs w-full bg-white p-1 rounded border">
+                    </div>
+
+                </div>
+
+                <!-- Execution Bay (Bottom Action Bar) -->
+                <div class="p-4 border-t border-slate-200 bg-slate-50 flex gap-3 shrink-0" id="drawer-execution-bay">
+                    <!-- Injected dynamically -->
+                </div>
             </div>
+
         </main>
     </div>
 
-    <!-- Backdrop Modal: Form SO -->
-    <div id="modal-so" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
-        <div id="modal-so-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50">
-                <div>
-                    <h3 class="text-lg font-bold text-slate-900">Buat Sales Order Baru</h3>
-                    <p class="text-xs text-slate-500">Buat penawaran harga (Draft). Tidak akan memotong stok.</p>
-                </div>
-                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1 rounded-full transition-colors">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
+    <!-- MODAL CREATE SO -->
+    <div id="modal-create-so" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
+                <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">add_shopping_cart</span> Buat Sales Order
+                </h3>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
             
-            <div class="p-6 overflow-y-auto">
-                <form id="form-so" class="space-y-4">
+            <div class="p-6 overflow-y-auto flex-1 custom-scroll">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Nama Customer</label>
-                        <input type="text" name="nama_customer" required placeholder="PT. Distributor Sepeda" 
-                            class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Nama Customer</label>
+                        <input type="text" id="input-customer" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="Nama Perusahaan / Perorangan">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Produk Sepeda</label>
-                        <select name="kode_sepeda" id="select-sepeda" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
-                            <option value="">Memuat data stok gudang...</option>
-                        </select>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Tanggal Target Kirim</label>
+                        <input type="date" id="input-target-date" onclick="this.showPicker()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer">
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Kuantitas (Unit)</label>
-                            <input type="number" name="qty" min="1" required placeholder="10" 
-                                class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Total Harga (Rp)</label>
-                            <input type="number" name="total_harga" min="0" required placeholder="15000000" 
-                                class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
-                        </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Alamat Pengiriman Pintar (Google Maps)</label>
+                        <input type="text" id="input-alamat" autocomplete="off" style="background-image: none !important;" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="Ketik nama tempat atau jalan...">
+                        <input type="hidden" id="input-latitude">
+                        <input type="hidden" id="input-longitude">
                     </div>
-                </form>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Catatan</label>
+                        <input type="text" id="input-catatan" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="Catatan tambahan (opsional)">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Biaya Pengiriman (Ongkir 3PL)</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Rp</span>
+                            <input type="text" id="input-biaya-pengiriman" value="0" readonly class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm font-data-mono focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all read-only:cursor-not-allowed read-only:bg-slate-100 read-only:text-slate-500">
+                        </div>
+                        <p id="teks-keterangan-ongkir" class="text-[10px] text-primary font-semibold mt-1.5 ml-1 hidden"></p>
+                    </div>
+                </div>
+
+                <div class="mb-4 flex items-center justify-between border-b border-slate-200 pb-2">
+                    <h4 class="font-bold text-slate-800 text-sm">Produk Sepeda Jadi (FG)</h4>
+                </div>
+
+                <div id="so-items-container" class="space-y-3">
+                    <!-- Template Row Injected via TS -->
+                </div>
             </div>
-            
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
-                <button type="button" id="btn-cancel-modal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors">Batal</button>
-                <button type="submit" form="form-so" id="btn-submit-so" class="px-5 py-2 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg shadow-xs transition-all flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[16px] hidden animate-spin" id="spinner-so">sync</span>
-                    <span id="text-submit-so">Simpan Draft SO</span>
+
+            <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0">
+                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">Batal</button>
+                <button id="btn-submit-so" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">send</span> Proses Pesanan
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
+<div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
         <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
             <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
             <span class="text-sm font-medium" id="toast-message"></span>
@@ -248,5 +402,7 @@
     </div>
 
     <script type="module" src="/src/pages/penjualan.ts"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBxqANMcQNlNG3wRVLBxWXxrXf9Hd4yAQY&libraries=places"></script>
 </body>
+
 </html>

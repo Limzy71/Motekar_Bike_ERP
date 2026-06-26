@@ -3,99 +3,443 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>Pemasaran - Motekar ERP</title>
-
+    <title>Pemasaran B2B - Motekar ERP</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-
-    <script id="tailwind-config">
+    <script>
         tailwind.config = {
-            darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "surface-tint": "#3755c3", "surface-dim": "#d8dadc", "inverse-primary": "#b8c4ff", "surface": "#f7f9fb",
-                        "outline": "#757684", "surface-bright": "#f7f9fb", "tertiary": "#003c36", "tertiary-fixed-dim": "#6bd8cb",
-                        "on-primary-fixed": "#001453", "surface-container": "#eceef0", "on-surface": "#191c1e",
-                        "surface-container-highest": "#e0e3e5", "outline-variant": "#c4c5d5", "on-primary-container": "#a8b8ff",
-                        "on-secondary": "#ffffff", "on-error-container": "#93000a", "error": "#ba1a1a", "on-error": "#ffffff",
-                        "inverse-on-surface": "#eff1f3", "on-primary-fixed-variant": "#173bab", "background": "#f7f9fb",
-                        "on-surface-variant": "#444653", "on-primary": "#ffffff", "on-secondary-fixed": "#0d1c2f",
-                        "primary-container": "#1e40af", "on-tertiary-fixed": "#00201d", "secondary-fixed-dim": "#b9c7e0",
-                        "on-tertiary": "#ffffff", "secondary-container": "#d5e3fd", "primary": "#00288e", "surface-container-high": "#e6e8ea",
-                        "secondary-fixed": "#d5e3fd", "on-tertiary-container": "#5fcdbf", "on-secondary-fixed-variant": "#3a485c",
-                        "on-background": "#191c1e", "primary-fixed": "#dde1ff", "secondary": "#515f74", "primary-fixed-dim": "#b8c4ff",
-                        "on-tertiary-fixed-variant": "#005049", "tertiary-container": "#00554e", "tertiary-fixed": "#89f5e7",
-                        "surface-container-low": "#f2f4f6", "on-secondary-container": "#57657b", "surface-container-lowest": "#ffffff",
-                        "surface-variant": "#e0e3e5", "inverse-surface": "#2d3133", "error-container": "#ffdad6"
+                        "surface-tint":"#3755c3","surface":"#f7f9fb","outline":"#757684","surface-container":"#eceef0","on-surface":"#191c1e",
+                        "surface-container-highest":"#e0e3e5","outline-variant":"#c4c5d5","on-secondary":"#ffffff","error":"#ba1a1a","on-error":"#ffffff",
+                        "on-primary":"#ffffff","primary-container":"#1e40af","primary":"#00288e","surface-container-high":"#e6e8ea",
+                        "on-surface-variant":"#444653","inverse-surface":"#2d3133","inverse-on-surface":"#eff1f3","surface-container-lowest":"#ffffff",
+                        "surface-container-low":"#f2f4f6","error-container":"#ffdad6"
                     },
-                    spacing: { "sidebar-width": "260px" },
-                    fontFamily: {
-                        "data-mono": ["JetBrains Mono"], "title-sm": ["Inter"], "headline-md": ["Inter"],
-                        "display-lg": ["Inter"], "label-caps": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"]
-                    }
+                    spacing:{"sidebar-width":"260px"},
+                    fontFamily:{"data-mono":["JetBrains Mono"],"headline-md":["Inter"]}
                 }
             }
         }
     </script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        body{font-family:'Inter',sans-serif;background:#f7f9fb}
+        .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+        .toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:60;transform:translateY(24px);opacity:0;transition:transform .28s,opacity .28s}
+        .toast.show{transform:translateY(0);opacity:1}
+        .kanban-col{min-height:200px}
+        .lead-card{cursor:grab;transition:box-shadow .2s,transform .15s}
+        .lead-card:active{cursor:grabbing;box-shadow:0 8px 25px rgba(0,0,0,.15);transform:scale(1.02)}
+        .kanban-col.drag-over{background:#eff6ff;border-color:#3b82f6}
+        /* Custom scrollbar for Kanban */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-
 <body class="text-on-surface">
-    <div class="flex h-screen overflow-hidden">
-        <!-- SIDEBAR -->
-        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex flex-col gap-6 p-6 overflow-hidden">
-                <div class="flex flex-col gap-1 min-w-[200px]" id="sidebar-logo">
-                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
-                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
-                </div>
-                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
+<div class="flex h-screen overflow-hidden print:hidden">
+    <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20">
+        <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+            <div class="flex flex-col gap-1" id="sidebar-logo">
+                <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
+                <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
             </div>
-            <div class="p-6 border-t border-outline-variant">
-                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
-                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
-                    <span class="menu-text">Keluar Sistem</span>
+            <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
+        </div>
+        <div class="p-6 border-t border-outline-variant">
+            <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity">
+                <span class="material-symbols-outlined text-[18px]">logout</span><span>Keluar Sistem</span>
+            </button>
+        </div>
+    </aside>
+    <main class="flex-1 flex flex-col overflow-hidden bg-surface">
+        <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
+            <div class="flex items-center gap-4">
+                <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[24px]">menu</span></button>
+                <span class="text-headline-md text-on-surface font-bold">Pemasaran B2B</span>
+            </div>
+            <a href="/profil" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
+                <div class="text-right">
+                    <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama</p>
+                    <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Role</p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm"><span id="header-inisial">U</span></div>
+            </a>
+        </header>
+        <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+            <div class="mb-6 flex justify-between items-start">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[24px]">campaign</span> CRM & Campaign Management
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Kelola pipeline prospek B2B dan efektivitas kampanye pemasaran.</p>
+                </div>
+                <button id="btn-cetak-penawaran" class="bg-amber-100 hover:bg-amber-200 text-amber-700 px-4 py-2 rounded-lg font-bold text-sm shadow-sm border border-amber-200 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">print</span> Cetak Penawaran
                 </button>
             </div>
-        </aside>
-
-        <!-- MAIN CONTENT -->
-        <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
-                <div class="flex items-center gap-4">
-                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-[24px]">menu</span>
-                    </button>
-                    <span class="text-headline-md text-on-surface font-bold">Pemasaran</span>
-                </div>
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-                        <div class="text-right">
-                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
-                            <span id="header-inisial">U</span>
-                        </div>
+            <!-- KPI -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden min-h-[140px]">
+                    <!-- Konten Utama -->
+                    <div class="relative z-10">
+                        <div class="text-xs font-bold text-slate-400 tracking-wider mb-2">PIPELINE VALUE</div>
+                        <div class="text-3xl font-black text-slate-800" id="kpi-pipeline">Rp 0</div>
+                    </div>
+                    
+                    <!-- Watermark Teks Terkunci -->
+                    <div class="absolute right-2 bottom-1 text-5xl font-black text-slate-200 select-none pointer-events-none tracking-widest z-0">
+                        FUNNEL
                     </div>
                 </div>
-            </header>
-
-            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30 flex items-center justify-center">
-                <div class="bg-white border border-slate-200 shadow-sm rounded-xl p-8 max-w-md text-center opacity-70">
-                    <span class="material-symbols-outlined text-slate-300 text-6xl mb-4">group</span>
-                    <h2 class="text-lg font-bold text-slate-700">Pemasaran</h2>
-                    <p class="text-sm text-slate-500 mt-2">Antarmuka Sedang Dalam Tahap Desain & Pengodean.</p>
+                <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between border-l-4 border-l-emerald-500 relative overflow-hidden">
+                    <div><p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Win Rate</p><p class="text-2xl font-black text-emerald-700 font-data-mono" id="kpi-winrate">0%</p></div>
+                    <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600"><span class="material-symbols-outlined text-[20px]">emoji_events</span></div>
+                </div>
+                <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between border-l-4 border-l-amber-500 relative overflow-hidden">
+                    <div><p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">Campaign ROI</p><p class="text-2xl font-black text-amber-700 font-data-mono" id="kpi-roi">0%</p></div>
+                    <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600"><span class="material-symbols-outlined text-[20px]">monitoring</span></div>
                 </div>
             </div>
-        </main>
+            <!-- Tabs -->
+            <div class="flex gap-4 border-b border-slate-200 mb-6">
+                <button id="tab-pipeline" class="pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors">Pipeline Leads (Kanban)</button>
+                <button id="tab-campaigns" class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Manajemen Kampanye</button>
+                <button id="tab-klaim" class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Klaim Garansi (After-Sales)</button>
+            </div>
+            <!-- TAB 1: KANBAN -->
+            <div id="view-pipeline" class="block">
+                <div class="flex justify-end mb-4">
+                    <button id="btn-add-lead" class="bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg font-semibold text-sm shadow-sm flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">person_add</span>Tambah Lead</button>
+                </div>
+                <div class="grid grid-cols-5 gap-4" id="kanban-board">
+                    <div class="kanban-col rounded-xl border-2 border-dashed border-slate-200 p-3 bg-white/50 flex flex-col max-h-[calc(100vh-250px)]" data-status="New Lead">
+                        <div class="flex items-center gap-2 mb-3 px-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span><h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider">New Lead</h4><span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full count-badge">0</span></div>
+                        <div class="space-y-2 lead-container overflow-y-auto pr-1 flex-1 custom-scrollbar" data-status="New Lead"></div>
+                    </div>
+                    <div class="kanban-col rounded-xl border-2 border-dashed border-blue-200 p-3 bg-blue-50/30 flex flex-col max-h-[calc(100vh-250px)]" data-status="Follow Up">
+                        <div class="flex items-center gap-2 mb-3 px-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span><h4 class="text-xs font-bold text-blue-600 uppercase tracking-wider">Follow Up</h4><span class="text-[10px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full count-badge">0</span></div>
+                        <div class="space-y-2 lead-container overflow-y-auto pr-1 flex-1 custom-scrollbar" data-status="Follow Up"></div>
+                    </div>
+                    <div class="kanban-col rounded-xl border-2 border-dashed border-amber-200 p-3 bg-amber-50/30 flex flex-col max-h-[calc(100vh-250px)]" data-status="Negosiasi">
+                        <div class="flex items-center gap-2 mb-3 px-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><h4 class="text-xs font-bold text-amber-600 uppercase tracking-wider">Negosiasi</h4><span class="text-[10px] font-bold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full count-badge">0</span></div>
+                        <div class="space-y-2 lead-container overflow-y-auto pr-1 flex-1 custom-scrollbar" data-status="Negosiasi"></div>
+                    </div>
+                    <div class="kanban-col rounded-xl border-2 border-dashed border-emerald-200 p-3 bg-emerald-50/30 flex flex-col max-h-[calc(100vh-250px)]" data-status="Won_Deal">
+                        <div class="flex items-center gap-2 mb-3 px-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><h4 class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Won Deal</h4><span class="text-[10px] font-bold bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full count-badge">0</span></div>
+                        <div class="space-y-2 lead-container overflow-y-auto pr-1 flex-1 custom-scrollbar" data-status="Won_Deal"></div>
+                    </div>
+                    <div class="kanban-col rounded-xl border-2 border-dashed border-rose-200 p-3 bg-rose-50/30 flex flex-col max-h-[calc(100vh-250px)]" data-status="Lost">
+                        <div class="flex items-center gap-2 mb-3 px-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span><h4 class="text-xs font-bold text-rose-500 uppercase tracking-wider">Lost</h4><span class="text-[10px] font-bold bg-rose-100 text-rose-500 px-1.5 py-0.5 rounded-full count-badge">0</span></div>
+                        <div class="space-y-2 lead-container overflow-y-auto pr-1 flex-1 custom-scrollbar" data-status="Lost"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- TAB 2: CAMPAIGNS -->
+            <div id="view-campaigns" class="hidden">
+                <div class="flex justify-end mb-4">
+                    <button id="btn-add-campaign" class="bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg font-semibold text-sm shadow-sm flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">add</span>Buat Kampanye Baru</button>
+                </div>
+                <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
+                    <table class="w-full table-auto"><thead><tr class="border-b border-slate-200/80">
+                        <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">NAMA KAMPANYE</th>
+                        <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">JENIS</th>
+                        <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-right">BUDGET</th>
+                        <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">STATUS</th>
+                        <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">AKSI</th>
+                    </tr></thead><tbody class="divide-y divide-slate-100" id="tbody-campaigns"><tr><td colspan="4" class="px-4 py-8 text-center text-xs text-slate-500">Memuat...</td></tr></tbody></table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="pemasaran-pagination-info">Menampilkan 0-0 dari 0 data</p>
+                    <div class="flex items-center gap-1.5">
+                        <button id="pemasaran-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                        </button>
+                        <div id="pemasaran-pagination-pages" class="flex items-center gap-1">
+                            <!-- Page buttons injected via TS -->
+                        </div>
+                        <button id="pemasaran-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: KLAIM GARANSI -->
+            <div id="view-klaim" class="hidden">
+                <div class="flex justify-between mb-4">
+                    <button id="btn-add-klaim" class="bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg font-semibold text-sm shadow-sm flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">add_circle</span>Buat Tiket Klaim Baru
+                    </button>
+                </div>
+                <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                    <table class="w-full table-auto">
+                        <thead>
+                            <tr class="border-b border-slate-200/80 bg-slate-50/75 text-left">
+                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">ID KLAIM</th>
+                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">TANGGAL</th>
+                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">RETAILER</th>
+                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">PRODUK</th>
+                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">KELUHAN</th>
+                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100" id="tbody-klaim">
+                            <tr><td colspan="6" class="px-4 py-8 text-center text-xs text-slate-500">Memuat data klaim...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<!-- Modal Lead -->
+<div id="modal-lead" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
+    <div id="modal-lead-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+            <h3 class="text-lg font-bold text-slate-900" id="modal-lead-title">Tambah Lead Baru</h3>
+            <button id="btn-close-lead" class="text-slate-400 hover:text-slate-600 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
+        </div>
+        <div class="p-6 overflow-y-auto">
+            <form id="form-lead" class="space-y-4" autocomplete="off">
+                <input type="hidden" name="id_lead" id="input-lead-id">
+                <div><label class="block text-xs font-bold text-slate-700 mb-1">Nama Toko</label><input type="text" name="nama_toko" required placeholder="Toko Sepeda Jaya" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Kontak Person</label><input type="text" name="kontak_person" required placeholder="Budi" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">No. Telepon</label><input type="tel" id="input-no-telepon" name="no_telepon" required placeholder="08123456789" maxlength="13" pattern="^0[0-9]{8,14}$" title="Nomor telepon harus diawali angka 0 dan berisi 9-13 digit angka." class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Sumber Kampanye <span class="text-slate-400 font-normal">(Opsional)</span></label>
+                        <select name="id_campaign" id="select-campaign" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                            <option value="">-- Tidak Terikat Kampanye --</option>
+                        </select>
+                        <p class="text-[10px] text-slate-500 mt-1">Pilih jika Lead dari event/iklan.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Estimasi Nilai Deal (Rp)</label>
+                        <input type="text" id="input-estimasi" name="estimasi_nilai_deal_formatted" placeholder="50.000.000" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary font-data-mono">
+                        <input type="hidden" name="estimasi_nilai_deal" id="input-estimasi-hidden" value="0">
+                        <p class="text-[10px] text-slate-500 mt-1">Maksimal Rp 1 Miliar. Jangan diawali angka 0.</p>
+                    </div>
+                </div>
+            </form>
+            <!-- Activity Timeline (only visible when editing) -->
+            <div id="section-aktivitas" class="hidden mt-6 pt-6 border-t border-slate-200">
+                <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">history</span>Log Aktivitas</h4>
+                <div id="timeline-aktivitas" class="space-y-3 max-h-[200px] overflow-y-auto mb-4"><p class="text-xs text-slate-400 italic">Belum ada aktivitas.</p></div>
+                <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Tambah Catatan Baru</p>
+                    <div class="flex gap-2">
+                        <select id="input-jenis-interaksi" class="text-xs border-slate-300 rounded-lg w-28 shrink-0"><option value="Telepon">Telepon</option><option value="Meeting">Meeting</option><option value="Email">Email</option></select>
+                        <input type="text" id="input-catatan" placeholder="Catatan hasil interaksi..." class="flex-1 text-xs border-slate-300 rounded-lg">
+                        <button type="button" id="btn-add-aktivitas" class="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold shrink-0">+ Log</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+            <!-- Hapus Tombol (Hanya tampil saat Edit) -->
+            <button type="button" id="btn-delete-lead" class="hidden px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-1 transition-colors">
+                <span class="material-symbols-outlined text-[18px]">delete</span> Hapus
+            </button>
+            <div class="flex items-center gap-3 ml-auto">
+                <button type="button" id="btn-cancel-lead" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
+                <button type="submit" form="form-lead" id="btn-submit-lead" class="px-5 py-2 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg shadow-xs flex items-center gap-2">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Campaign -->
+<div id="modal-campaign" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
+    <div id="modal-campaign-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900" id="modal-campaign-title">Buat Kampanye Baru</h3>
+            <button id="btn-close-campaign" class="text-slate-400 hover:text-slate-600 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
+        </div>
+        <div class="p-6 overflow-y-auto max-h-[80vh]">
+            <form id="form-campaign" class="space-y-4">
+                <input type="hidden" name="id_campaign" id="input-campaign-id">
+                <div><label class="block text-xs font-bold text-slate-700 mb-1">Nama Kampanye</label><input type="text" name="nama_campaign" required placeholder="Pameran Inabicycle JCC 2026" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Jenis</label><select name="jenis" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"><option value="Pameran">Pameran</option><option value="Digital Ads">Digital Ads</option><option value="Kunjungan Langsung">Kunjungan Langsung</option></select></div>
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Budget (Rp)</label><input type="number" name="budget_alokasi" min="0" required placeholder="25000000" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Mulai</label><input type="date" name="tanggal_mulai" id="input-camp-mulai" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Selesai</label><input type="date" name="tanggal_selesai" id="input-camp-selesai" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                </div>
+                <div id="section-status-campaign" class="hidden">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Status Kampanye</label>
+                    <select name="status" id="input-camp-status" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                        <option value="Aktif">Aktif</option><option value="Selesai">Selesai</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+            <button type="button" id="btn-delete-campaign" class="hidden px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-1 transition-colors">
+                <span class="material-symbols-outlined text-[18px]">delete</span> Hapus
+            </button>
+            <div class="flex items-center gap-3 ml-auto">
+                <button type="button" id="btn-cancel-campaign" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
+                <button type="submit" form="form-campaign" class="px-5 py-2 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg shadow-xs flex items-center gap-2">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Klaim Garansi -->
+<div id="modal-klaim" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
+    <div id="modal-klaim-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900">Buat Tiket Klaim Garansi</h3>
+            <button id="btn-close-klaim" class="text-slate-400 hover:text-slate-600 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
+        </div>
+        <div class="p-6 overflow-y-auto max-h-[80vh]">
+            <form id="form-klaim" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Sales Order (Referensi)</label>
+                    <select id="input-klaim-so" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                        <option value="">-- Pilih SO --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nama Retailer</label>
+                    <input type="text" id="input-klaim-retailer" required readonly class="w-full text-sm border-slate-200 bg-slate-50 text-slate-500 rounded-lg outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Kode Barang Jadi (FG)</label>
+                    <select id="input-klaim-fg" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                        <option value="">-- Pilih Produk --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Deskripsi Keluhan / Cacat Produk</label>
+                    <textarea id="input-klaim-keluhan" required rows="3" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
+                </div>
+                <div class="p-3 border border-dashed border-slate-300 rounded-xl bg-slate-50">
+                    <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">photo_camera</span> Foto Bukti Kerusakan (Wajib)
+                    </label>
+                    <input type="file" id="input-klaim-foto" required accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                </div>
+            </form>
+        </div>
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+            <button type="button" id="btn-cancel-klaim" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
+            <button type="submit" form="form-klaim" id="btn-submit-klaim" class="px-5 py-2 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg shadow-xs flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px] hidden animate-spin" id="spinner-klaim">sync</span> Submit Klaim
+            </button>
+        </div>
+    </div>
+</div>
+<!-- Toast -->
+<div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
+    <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[320px]" id="toast">
+        <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
+        <span class="text-sm font-medium" id="toast-message"></span>
+    </div>
+</div>
+<!-- Lembar Print Penawaran -->
+<div id="lembar-penawaran" class="hidden print:block w-[210mm] min-h-[297mm] bg-white text-slate-900 p-12 mx-auto font-sans absolute top-0 left-0">
+    <!-- Kop Surat -->
+    <div class="flex justify-between items-end border-b-4 border-primary pb-6 mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-primary tracking-tighter">MOTEKAR BIKE ASSY</h1>
+            <p class="text-xs font-semibold text-slate-500 tracking-widest mt-1">SISTEM ERP TERPADU & MANUFAKTUR</p>
+        </div>
+        <div class="text-right text-[10px] text-slate-500 leading-relaxed">
+            <p>Kawasan Industri Terpadu No. 88, Jawa Barat</p>
+            <p>Telp: (021) 555-8899 | Email: sales@motekar.com</p>
+            <p>NPWP: 01.234.567.8-901.000</p>
+        </div>
     </div>
 
-    <script type="module" src="/src/pages/pemasaran.ts"></script>
+    <!-- Info Tujuan -->
+    <div class="flex justify-between mb-10 text-sm">
+        <div>
+            <p class="text-slate-500 mb-1">Kepada Yth.</p>
+            <p id="pdf-klien-nama" class="font-bold text-slate-900 text-lg">PT Karya Distribusi Nusantara</p>
+            <p class="text-slate-600">Gedung Sudirman Lantai 12</p>
+            <p class="text-slate-600">Jakarta Selatan</p>
+        </div>
+        <div class="text-right">
+            <table class="text-left text-sm">
+                <tr><td class="py-1 text-slate-500 w-24">Nomor</td><td id="pdf-no-surat" class="py-1 font-bold">PNW/MTK/2026/089</td></tr>
+                <tr><td class="py-1 text-slate-500">Tanggal</td><td class="py-1 font-bold">21 Juni 2026</td></tr>
+                <tr><td class="py-1 text-slate-500">Perihal</td><td class="py-1 font-bold">Penawaran Pengadaan Armada Sepeda</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Deskripsi Surat -->
+    <div class="mb-8 text-sm text-slate-700 leading-relaxed space-y-4">
+        <p>Dengan hormat,</p>
+        <p>Menindaklanjuti pertemuan kita pada tanggal 15 Juni 2026, bersama ini kami sampaikan penawaran pengadaan armada sepeda operasional <strong>"Motekar Urban Commuter Fleet"</strong> untuk keperluan distribusi staf di kawasan industri PT Karya Distribusi Nusantara.</p>
+    </div>
+
+    <!-- Tabel Rincian -->
+    <table class="w-full mb-8 text-sm border-collapse">
+        <thead>
+            <tr class="border-b-2 border-slate-800 text-slate-800 text-left">
+                <th class="py-3 px-2">No</th>
+                <th class="py-3 px-2">Deskripsi Item</th>
+                <th class="py-3 px-2 text-center">Qty</th>
+                <th class="py-3 px-2 text-right">Harga Satuan (Rp)</th>
+                <th class="py-3 px-2 text-right">Total (Rp)</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+            <tr>
+                <td class="py-4 px-2 font-medium">1</td>
+                <td class="py-4 px-2">
+                    <p id="pdf-item-deskripsi" class="font-bold text-slate-900">Motekar Urban Commuter E-Bike</p>
+                    <p class="text-xs text-slate-500 mt-1">Include: Baterai 500Wh, Rak Kargo Belakang, Livery Custom Perusahaan</p>
+                </td>
+                <td id="pdf-item-qty" class="py-4 px-2 text-center font-bold">10</td>
+                <td id="pdf-item-harga" class="py-4 px-2 text-right font-data-mono">14.500.000</td>
+                <td id="pdf-total-harga" class="py-4 px-2 text-right font-data-mono font-bold text-slate-900">145.000.000</td>
+            </tr>
+            <tr>
+                <td class="py-4 px-2 font-medium">2</td>
+                <td class="py-4 px-2">
+                    <p class="font-bold text-slate-900">Helm Sepeda & Rompi Safety</p>
+                    <p class="text-xs text-slate-500 mt-1">Paket perlengkapan keselamatan standar SNI</p>
+                </td>
+                <td class="py-4 px-2 text-center font-bold">10</td>
+                <td class="py-4 px-2 text-right font-data-mono">Free</td>
+                <td class="py-4 px-2 text-right font-data-mono font-bold text-slate-900">0</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr class="border-t-2 border-slate-800 font-bold text-slate-900">
+                <td colspan="4" class="py-4 px-2 text-right uppercase">Total Penawaran</td>
+                <td id="pdf-grand-total" class="py-4 px-2 text-right font-data-mono text-lg">145.000.000</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="mb-16 text-sm text-slate-700 leading-relaxed">
+        <p>Harga penawaran di atas sudah termasuk pajak (PPN 11%) dan biaya pengiriman ke area Jakarta Selatan. Penawaran ini berlaku selama 14 hari kerja sejak tanggal diterbitkan.</p>
+        <p class="mt-4">Demikian surat penawaran ini kami sampaikan. Kami menantikan kabar baik dari Bapak/Ibu. Atas perhatian dan kerja samanya, kami ucapkan terima kasih.</p>
+    </div>
+
+    <!-- Tanda Tangan -->
+    <div class="flex justify-end text-sm">
+        <div class="text-center w-64">
+            <p class="text-slate-500 mb-20">Hormat Kami,</p>
+            <p class="font-bold text-slate-900 underline underline-offset-4 decoration-2">Ir. Agus Hexagraha, M.Kom</p>
+            <p class="text-xs text-slate-500 mt-1">Owner / Chief Executive Division</p>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="/src/pages/pemasaran.ts"></script>
 </body>
 </html>

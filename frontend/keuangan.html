@@ -63,8 +63,8 @@
     <div class="flex h-screen overflow-hidden">
         <!-- SIDEBAR -->
         <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex flex-col gap-6 p-6 overflow-hidden">
-                <div class="flex flex-col gap-1 min-w-[200px]" id="sidebar-logo">
+            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+                <div class="flex flex-col gap-1" id="sidebar-logo">
                     <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
                     <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
                 </div>
@@ -88,7 +88,7 @@
                     <span class="text-headline-md text-on-surface font-bold">Keuangan & Akuntansi</span>
                 </div>
                 <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+                    <a href="/profil" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
                         <div class="text-right">
                             <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
                             <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
@@ -96,7 +96,7 @@
                         <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
                             <span id="header-inisial">U</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </header>
 
@@ -156,7 +156,7 @@
                 </div>
 
                 <!-- General Ledger Table -->
-                <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden flex flex-col">
+                <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden flex flex-col">
                     <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
                         <div>
                             <h3 class="font-bold text-slate-800 text-sm">Buku Besar (General Ledger)</h3>
@@ -184,6 +184,22 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+                
+                <!-- Pagination Controls -->
+                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="keuangan-pagination-info">Menampilkan 0-0 dari 0 data</p>
+                    <div class="flex items-center gap-1.5">
+                        <button id="keuangan-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                        </button>
+                        <div id="keuangan-pagination-pages" class="flex items-center gap-1">
+                            <!-- Page buttons injected via TS -->
+                        </div>
+                        <button id="keuangan-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                        </button>
                     </div>
                 </div>
 

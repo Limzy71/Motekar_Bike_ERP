@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Purchase Order (P2P) - Procurement Dashboard</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-tint": "#3755c3", "surface-dim": "#d8dadc", "inverse-primary": "#b8c4ff", "surface": "#f7f9fb",
+                        "outline": "#757684", "surface-bright": "#f7f9fb", "tertiary": "#003c36", "tertiary-fixed-dim": "#6bd8cb",
+                        "on-primary-fixed": "#001453", "surface-container": "#eceef0", "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5", "outline-variant": "#c4c5d5", "on-primary-container": "#a8b8ff",
+                        "on-secondary": "#ffffff", "on-error-container": "#93000a", "error": "#ba1a1a", "on-error": "#ffffff",
+                        "inverse-on-surface": "#eff1f3", "on-primary-fixed-variant": "#173bab", "background": "#f7f9fb",
+                        "on-surface-variant": "#444653", "on-primary": "#ffffff", "on-secondary-fixed": "#0d1c2f",
+                        "primary-container": "#1e40af", "on-tertiary-fixed": "#00201d", "secondary-fixed-dim": "#b9c7e0",
+                        "on-tertiary": "#ffffff", "secondary-container": "#d5e3fd", "primary": "#00288e", "surface-container-high": "#e6e8ea",
+                        "secondary-fixed": "#d5e3fd", "on-tertiary-container": "#5fcdbf", "on-secondary-fixed-variant": "#3a485c",
+                        "on-background": "#191c1e", "primary-fixed": "#dde1ff", "secondary": "#515f74", "primary-fixed-dim": "#b8c4ff",
+                        "on-tertiary-fixed-variant": "#005049", "tertiary-container": "#00554e", "tertiary-fixed": "#89f5e7",
+                        "surface-container-low": "#f2f4f6", "on-secondary-container": "#57657b", "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e0e3e5", "inverse-surface": "#2d3133", "error-container": "#ffdad6"
+                    },
+                    spacing: { "sidebar-width": "260px" },
+                    fontFamily: {
+                        "data-mono": ["JetBrains Mono"], "title-sm": ["Inter"], "headline-md": ["Inter"],
+                        "display-lg": ["Inter"], "label-caps": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .toast {
+            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 60; pointer-events: none;
+            transform: translateY(24px); opacity: 0; transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        
+        /* Custom scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
+        
+        /* Right Drawer Slide Animation */
+        #right-drawer { transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #right-drawer.open { transform: translateX(0); }
+    </style>
+</head>
+
+<body class="text-on-surface overflow-hidden">
+    <div class="flex h-screen overflow-hidden relative">
+        
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
+            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+                <div class="flex flex-col gap-1" id="sidebar-logo">
+                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
+                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
+                </div>
+                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
+            </div>
+            <div class="p-6 border-t border-outline-variant">
+                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
+                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
+                    <span class="menu-text">Keluar Sistem</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
+            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
+                <div class="flex items-center gap-4">
+                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
+                        <span class="material-symbols-outlined text-[24px]">menu</span>
+                    </button>
+                    <span class="text-headline-md text-on-surface font-bold">Purchase Order (P2P)</span>
+                </div>
+                <div class="flex items-center gap-6">
+                    <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
+                        <div class="text-right">
+                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
+                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
+                        </div>
+                        <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
+                            <span id="header-inisial">--</span>
+                        </div>
+                    </a>
+                </div>
+            </header>
+
+            <!-- ZONA 1 & 2 Scrollable Container -->
+            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30 custom-scroll">
+                
+                <!-- Page Header -->
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-[24px]">shopping_cart</span>
+                            Purchase Order (P2P)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5 font-medium">Manajemen dan pemantauan siklus pemesanan pembelian barang.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Top actions if needed later -->
+                    </div>
+                </div>
+
+                <!-- KPI Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <!-- Total PO Terbit -->
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between hover:shadow-sm transition-shadow border-l-4 border-l-slate-400">
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total PO Terbit</p>
+                            <p class="text-3xl font-black text-slate-900 font-data-mono leading-tight" id="kpi-total">0</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                            <span class="material-symbols-outlined text-[20px]">assignment</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Menunggu Persetujuan -->
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between hover:shadow-sm transition-shadow border-l-4 border-l-amber-500">
+                        <div>
+                            <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">Menunggu Persetujuan</p>
+                            <p class="text-3xl font-black text-amber-700 font-data-mono leading-tight" id="kpi-approval">0</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                            <span class="material-symbols-outlined text-[20px]">pending_actions</span>
+                        </div>
+                    </div>
+
+                    <!-- Barang Diterima (GRN) -->
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center justify-between hover:shadow-sm transition-shadow border-l-4 border-l-emerald-500">
+                        <div>
+                            <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Barang Diterima (GRN)</p>
+                            <p class="text-3xl font-black text-emerald-700 font-data-mono leading-tight" id="kpi-selesai">0</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <span class="material-symbols-outlined text-[20px]">verified</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between mb-4 mt-8">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 tracking-tight">Daftar Eksekusi Purchase Order</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Monitoring pergerakan status PO dan eksekusi penerimaan barang</p>
+                    </div>
+                    <div id="action-bay-top" class="flex items-center gap-3">
+                        <select id="filter-status-po" class="bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer">
+                            <option value="All">Semua Status</option>
+                            <option value="Diterbitkan">Diterbitkan</option>
+                            <option value="Dikirim ke Vendor">Dikirim ke Vendor</option>
+                            <option value="Barang Diterima">Barang Diterima</option>
+                        </select>
+                        <button id="btn-bulk-approve-po"
+                            class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition-all hidden">
+                            <span class="material-symbols-outlined text-[18px]">done_all</span> Setujui Semua (ISSUED)
+                        </button>
+                        <button id="btn-bulk-receive-po"
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition-all hidden">
+                            <span class="material-symbols-outlined text-[18px]">inventory_2</span> Terima Barang (GRN) Massal
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DATA TABLE -->
+                <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden relative">
+                    <table class="w-full border-collapse table-auto data-table relative">
+                        <colgroup>
+                            <col style="width: 15%">
+                            <col style="width: 12%">
+                            <col style="width: 20%">
+                            <col style="width: 15%">
+                            <col style="width: 10%">
+                            <col style="width: 15%">
+                            <col style="width: 13%">
+                        </colgroup>
+                        <thead>
+                            <tr class="border-b border-slate-200/80">
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">NOMOR PO</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">TANGGAL</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">VENDOR</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">ITEM BARANG</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">JUMLAH</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">TOTAL HARGA</th>
+                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="po-table-body" class="divide-y divide-slate-100">
+                            <!-- Rows injected via TS -->
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-slate-400 italic font-medium">Memuat data Purchase Order...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="po-pagination-info">Menampilkan 0-0 dari 0 data</p>
+                    <div class="flex items-center gap-1.5">
+                        <button id="po-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                        </button>
+                        <div id="po-pagination-pages" class="flex items-center gap-1">
+                            <!-- Page buttons injected via TS -->
+                        </div>
+                        <button id="po-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ZONA 3: RIGHT DRAWER (DEEP DIVE INSPECTOR) -->
+            <div id="right-drawer-backdrop" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30 hidden"></div>
+            <div id="right-drawer" class="fixed top-0 right-0 bottom-0 w-[550px] bg-white shadow-2xl z-40 flex flex-col border-l border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 font-data-mono" id="drawer-po-id">PO-MTK-0000-0000</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="w-2 h-2 rounded-full" id="drawer-status-dot"></span>
+                            <p class="text-xs font-bold uppercase tracking-widest text-slate-500" id="drawer-po-status">STATUS</p>
+                        </div>
+                    </div>
+                    <button id="btn-close-drawer" class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-6 bg-white custom-scroll">
+                    <!-- Vendor Info -->
+                    <div class="mb-6">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Informasi Vendor</p>
+                        <div class="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                                <span class="material-symbols-outlined text-[28px]">local_shipping</span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-800" id="drawer-vendor-name">PT. Vendor Makmur</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Material Details -->
+                    <div class="mb-6">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Rincian Pembelian</p>
+                        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase">Material</th>
+                                        <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Jumlah</th>
+                                        <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Harga</th>
+                                        <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="drawer-items-list" class="divide-y divide-slate-100 text-xs">
+                                    <!-- Injected -->
+                                </tbody>
+                                <tfoot class="bg-slate-50">
+                                    <tr>
+                                        <td colspan="3" class="py-3 px-3 text-right font-bold text-slate-600 text-xs">TOTAL HARGA:</td>
+                                        <td class="py-3 px-3 text-right font-black text-primary font-data-mono" id="drawer-total-nilai">Rp 0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mb-2" id="drawer-catatan-container">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Catatan</p>
+                        <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 italic" id="drawer-catatan">-</p>
+                    </div>
+                </div>
+
+                <!-- Execution Bay (Bottom Action Bar) -->
+                <div class="p-4 border-t border-slate-200 bg-slate-50 flex gap-3 shrink-0" id="drawer-execution-bay">
+                    <!-- Buttons injected conditionally based on status and RBAC -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL CREATE PO DIRECT -->
+    <div id="modal-create-po" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
+                <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">post_add</span> Buat Pesanan Pembelian Langsung
+                </h3>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1 custom-scroll">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Pilih Vendor</label>
+                        <select id="select-vendor" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                            <option value="">-- Pilih Vendor --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Catatan Khusus</label>
+                        <input type="text" id="input-catatan" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="Misal: Urgent untuk produksi minggu depan">
+                    </div>
+                </div>
+
+                <div class="mb-4 flex items-center justify-between border-b border-slate-200 pb-2">
+                    <h4 class="font-bold text-slate-800 text-sm">Item Material</h4>
+                </div>
+
+                <div id="po-items-container" class="space-y-3">
+                    <!-- Template Row -->
+                    <div class="flex items-end gap-3 po-item-row">
+                        <div class="flex-1">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Material</label>
+                            <select class="item-select w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none">
+                                <option value="">-- Pilih Material --</option>
+                            </select>
+                        </div>
+                        <div class="w-24">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Jumlah</label>
+                            <input type="number" min="1" value="1" class="item-qty w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-data-mono focus:ring-1 focus:ring-primary outline-none" placeholder="1">
+                        </div>
+                        <div class="w-32">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Harga Satuan</label>
+                            <input type="text" class="item-harga w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-data-mono outline-none cursor-not-allowed" placeholder="0" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0">
+                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">Batal</button>
+                <button id="btn-submit-po" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">save</span> Simpan (Draf)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
+        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
+            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
+            <span class="text-sm font-medium" id="toast-message"></span>
+        </div>
+    </div>
+
+    <script type="module" src="/src/pages/po.ts"></script>
+</body>
+</html>

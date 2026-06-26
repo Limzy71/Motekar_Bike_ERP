@@ -25,11 +25,12 @@ const ROLE_LABELS: Record<string, string> = {
   'Pengadaan': 'Pengadaan',
   'Kendali Mutu': 'Kendali Mutu',
   'Penjualan & Penagihan': 'Penjualan & Penagihan',
+  'Keuangan': 'Keuangan',
   'Operasi Inti': 'Operasi Inti',
   'Pemasaran': 'Pemasaran',
   'Gudang': 'Gudang',
   'Owner': 'Owner',
-  'Admin': 'Admin',
+  'IT Support': 'IT Support',
 };
 
 /** Konfigurasi menu sidebar */
@@ -42,12 +43,18 @@ interface MenuConfig {
 }
 
 const MENU_ITEMS: MenuConfig[] = [
-  { id: 'nav-pengadaan',  label: 'Pengadaan',              icon: 'shopping_cart',    href: '/pengadaan.html', allowedRoles: ['Owner', 'Admin', 'Pengadaan'] },
-  { id: 'nav-mutu',       label: 'Kendali Mutu',           icon: 'fact_check',       href: '/mutu.html',      allowedRoles: ['Owner', 'Admin', 'Kendali Mutu'] },
-  { id: 'nav-penjualan',  label: 'Penjualan & Penagihan',  icon: 'receipt_long',     href: '/penjualan.html', allowedRoles: ['Owner', 'Admin', 'Penjualan & Penagihan'] },
-  { id: 'nav-operasi',    label: 'Operasi Inti',           icon: 'settings_suggest', href: '/operasi.html',   allowedRoles: ['Owner', 'Admin', 'Operasi Inti'] },
-  { id: 'nav-pemasaran',  label: 'Pemasaran',              icon: 'group',            href: '/pemasaran.html', allowedRoles: ['Owner', 'Admin', 'Pemasaran'] },
-  { id: 'nav-inventori',  label: 'Gudang',                 icon: 'inventory_2',      href: '/gudang.html',    allowedRoles: ['Owner', 'Admin', 'Gudang'] },
+  { id: 'nav-pengadaan',  label: 'Pengadaan',              icon: 'shopping_cart',    href: '/pengadaan.html', allowedRoles: ['Owner', 'General Manager', 'Pengadaan'] },
+  { id: 'nav-po',         label: 'Purchase Order (PO)',    icon: 'request_quote',    href: '/po.html',        allowedRoles: ['Owner', 'General Manager', 'Pengadaan', 'Gudang'] },
+  { id: 'nav-mutu',       label: 'Kendali Mutu',           icon: 'fact_check',       href: '/mutu.html',      allowedRoles: ['Owner', 'General Manager', 'Kendali Mutu'] },
+  { id: 'nav-penjualan',  label: 'Penjualan & Penagihan',  icon: 'receipt_long',     href: '/penjualan.html', allowedRoles: ['Owner', 'General Manager', 'Penjualan & Penagihan'] },
+  { id: 'nav-keuangan',   label: 'Buku Besar Keuangan',    icon: 'account_balance',  href: '/keuangan.html',  allowedRoles: ['Owner', 'General Manager', 'Keuangan'] },
+  { id: 'nav-operasi',    label: 'Operasi Inti',           icon: 'settings_suggest', href: '/operasi.html',   allowedRoles: ['Owner', 'General Manager', 'Operasi Inti'] },
+  { id: 'nav-pemasaran',  label: 'Pemasaran',              icon: 'group',            href: '/pemasaran.html', allowedRoles: ['Owner', 'General Manager', 'Pemasaran'] },
+  { id: 'nav-inventori',  label: 'Gudang',                 icon: 'inventory_2',      href: '/gudang.html',    allowedRoles: ['Owner', 'General Manager', 'Gudang'] },
+  
+  // Menu Khusus IT Support & Owner & General Manager
+  { id: 'nav-users',      label: 'Manajemen Pengguna',     icon: 'manage_accounts',  href: '/users.html', allowedRoles: ['Owner', 'General Manager', 'IT Support'] },
+  { id: 'nav-profil',     label: 'Profil / Log Sistem',    icon: 'admin_panel_settings', href: '/profil.html',   allowedRoles: ['Owner', 'General Manager', 'IT Support'] },
 ];
 
 // ============================================================
@@ -153,6 +160,33 @@ export function renderSidebar(currentPage: string = 'dashboard'): void {
 // ============================================================
 
 /**
+ * Menghasilkan inisial profesional dari nama lengkap.
+ * Aturan:
+ * - Ganti _ dan - dengan spasi
+ * - ≥2 kata: huruf pertama kata-1 + huruf pertama kata-2
+ * - 1 kata: 2 huruf pertama
+ * - Selalu uppercase, max 2 karakter
+ */
+export function getProfessionalInitials(fullName: string): string {
+  if (!fullName || fullName.trim().length === 0) return '??';
+  
+  // Custom rule khusus untuk divisi IT agar tidak menjadi "I&"
+  if (fullName === 'IT & System Administrator' || fullName.toUpperCase().startsWith('IT ')) {
+    return 'IT';
+  }
+
+  const cleaned = fullName.replace(/[_-]/g, ' ').trim();
+  const words = cleaned.split(/\s+/).filter(w => w.length > 0);
+  let initials: string;
+  if (words.length >= 2) {
+    initials = words[0][0] + words[1][0];
+  } else {
+    initials = words[0].substring(0, 2);
+  }
+  return initials.toUpperCase().substring(0, 2);
+}
+
+/**
  * Render informasi profil user di header (nama, role, inisial).
  */
 export function renderHeaderProfile(): void {
@@ -160,18 +194,32 @@ export function renderHeaderProfile(): void {
   if (!user) return;
 
   const role = user.divisi_role;
-  const roleLabel = getRoleLabel(role);
+  
+  let displayRole = role;
+  if (role === 'Owner') {
+    displayRole = 'Pemilik Perusahaan';
+  } else if (role === 'General Manager') {
+    displayRole = 'Manajer Umum';
+  } else if (role === 'IT Support' || role === 'Admin') {
+    displayRole = 'Administrator Sistem';
+  } else {
+    displayRole = `Divisi ${role}`;
+  }
 
   const headerName = document.getElementById('header-nama');
   const headerRole = document.getElementById('header-role');
   const headerInitial = document.getElementById('header-inisial');
 
   if (headerName) headerName.innerText = user.nama || user.username || 'Pengguna';
-  if (headerRole) headerRole.innerText = `${roleLabel} Division`;
+  if (headerRole) headerRole.innerText = displayRole;
   if (headerInitial) {
-    headerInitial.innerText = user.nama
-      ? user.nama.charAt(0).toUpperCase()
-      : 'U';
+    headerInitial.innerText = getProfessionalInitials(user.nama || user.username || 'Pengguna');
+    
+    // Terapkan styling seragam (Gelap + Amber) untuk semua halaman
+    const parentContainer = headerInitial.parentElement;
+    if (parentContainer) {
+      parentContainer.className = "w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden";
+    }
   }
 }
 
@@ -259,6 +307,77 @@ export function showToast(message: string, isError: boolean = false): void {
 }
 
 // ============================================================
+// CUSTOM CONFIRM MODAL (GLOBAL)
+// ============================================================
+
+/**
+ * Menampilkan Custom Confirm Dialog secara global.
+ * @param title Judul modal
+ * @param message Pesan konfirmasi
+ * @param onConfirm Callback jika tombol Konfirmasi diklik
+ */
+export function showConfirm(title: string, message: string, onConfirm: () => void): void {
+  // Buat element container
+  const container = document.createElement('div');
+  container.id = 'custom-confirm-modal';
+  container.className = 'fixed inset-0 z-[100] flex items-center justify-center';
+  
+  container.innerHTML = `
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0" id="cc-backdrop"></div>
+    
+    <!-- Modal Dialog -->
+    <div class="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 flex flex-col items-center transform scale-95 opacity-0 transition-all duration-300" id="cc-dialog">
+      <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-4 text-rose-500">
+        <span class="material-symbols-outlined text-[28px]">warning</span>
+      </div>
+      <h3 class="text-lg font-bold text-slate-800 mb-2 text-center">${title}</h3>
+      <p class="text-sm text-slate-500 text-center mb-6">${message}</p>
+      
+      <div class="flex gap-3 w-full">
+        <button id="cc-btn-cancel" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors">
+          Batal
+        </button>
+        <button id="cc-btn-confirm" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors">
+          Ya, Lanjutkan
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(container);
+
+  const backdrop = container.querySelector('#cc-backdrop') as HTMLElement;
+  const dialog = container.querySelector('#cc-dialog') as HTMLElement;
+  const btnCancel = container.querySelector('#cc-btn-cancel') as HTMLButtonElement;
+  const btnConfirm = container.querySelector('#cc-btn-confirm') as HTMLButtonElement;
+
+  // Trigger anim in next frame
+  requestAnimationFrame(() => {
+    backdrop.classList.remove('opacity-0');
+    dialog.classList.remove('scale-95', 'opacity-0');
+  });
+
+  const closeDialog = () => {
+    backdrop.classList.add('opacity-0');
+    dialog.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+    }, 300);
+  };
+
+  btnCancel.addEventListener('click', closeDialog);
+  backdrop.addEventListener('click', closeDialog);
+  
+  btnConfirm.addEventListener('click', () => {
+    closeDialog();
+    onConfirm();
+  });
+}
+
+// ============================================================
 // INIT ALL (convenience function)
 // ============================================================
 
@@ -273,6 +392,29 @@ export function initRBAC(currentPage: string = 'dashboard'): UserData | null {
   const user = requireLogin();
   if (!user) return null;
 
+  // ============================================================
+  // HARD-GUARD: URL Address Bar Interceptor
+  // ============================================================
+  const currentPath = window.location.pathname;
+  
+  // IT Support Blinder Check
+  if (user.divisi_role === 'IT Support') {
+    // IT Support HANYA boleh mengakses /profil.html, /dashboard.html, /index.html (atau root /), dan /users.html
+    const allowedITPaths = ['/profil.html', '/dashboard.html', '/index.html', '/', '/users.html'];
+    
+    const isAllowed = allowedITPaths.some(p => currentPath === p || currentPath.endsWith(p));
+    
+    if (!isAllowed) {
+      console.warn('[SECURITY] IT Support mencoba mengakses halaman operasional:', currentPath);
+      // HARD-REDIRECT: Lempar kembali ke halaman Profil
+      window.location.href = '/profil.html';
+      return null;
+    }
+  }
+
+  // Jika Owner/Divisi lain iseng masuk halaman yang tak diizinkan dari MENU_ITEMS (Opsional)
+  // Untuk saat ini hanya fokus hard-guard IT Support.
+
   renderSidebar(currentPage);
   renderHeaderProfile();
   setupSidebarToggle();
@@ -280,3 +422,4 @@ export function initRBAC(currentPage: string = 'dashboard'): UserData | null {
 
   return user;
 }
+
