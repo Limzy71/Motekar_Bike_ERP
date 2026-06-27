@@ -82,53 +82,28 @@
             cursor: pointer;
             outline: none;
         }
+    
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important; /* Tailwind slate-900/40 */
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
 </head>
 
 <body class="text-on-surface">
     <div class="flex h-screen overflow-hidden">
 
-        <!-- ==================== SIDEBAR ==================== -->
-        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
-                <div class="flex flex-col gap-1" id="sidebar-logo">
-                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight break-words">Motekar Bike Assy</h1>
-                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
-                </div>
-                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4">
-                    <!-- Nav items akan di-render oleh rbac.ts -->
-                </nav>
-            </div>
-            <div class="p-6 border-t border-outline-variant">
-                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
-                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
-                    <span class="menu-text">Keluar Sistem</span>
-                </button>
-            </div>
-        </aside>
+        {{> sidebar }}
 
         <!-- ==================== MAIN CONTENT ==================== -->
         <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <!-- HEADER -->
-            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
-                <div class="flex items-center gap-4">
-                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-[24px]">menu</span>
-                    </button>
-                    <span class="text-headline-md text-on-surface font-bold">Manajemen Pengadaan</span>
-                </div>
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" title="Lihat Profil Saya">
-                        <div class="text-right">
-                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama Pengguna</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Jabatan / Role</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
-                            <span id="header-inisial">U</span>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            {{> navbar title="Manajemen Pengadaan" }}
 
             <!-- SCROLLABLE CONTENT -->
             <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30 custom-scroll">
@@ -199,13 +174,7 @@
         </main>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-slate-800 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
-            <span class="material-symbols-outlined text-emerald-400" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
-        </div>
-    </div>
+    {{> toast }}
 
     <script type="module" src="/src/pages/buat_pr.ts"></script>
 </body>

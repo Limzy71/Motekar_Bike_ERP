@@ -93,17 +93,20 @@ async function loadPOs() {
         renderTable();
         updateKPIs();
         
-        // Handle Bulk Receive Button Visibility
-        // Handle Bulk Receive & Bulk Approve Button Visibility
+        // Handle Bulk Actions Visibility
         const btnBulkReceive = document.getElementById('btn-bulk-receive-po');
         const btnBulkApprove = document.getElementById('btn-bulk-approve-po');
+        const btnBulkIssue = document.getElementById('btn-bulk-issue-po');
         const user = getUserData();
         if (user) {
             const role = user.divisi_role;
             const canReceive = role === 'Owner' || role === 'General Manager' || role === 'Pengadaan' || role === 'Gudang';
             const canApprove = role === 'Owner' || role === 'General Manager';
+            const canIssue = role === 'Owner' || role === 'General Manager' || role === 'Pengadaan';
+            
             const hasSentToVendor = allPOs.some(p => p.status === 'SENT_TO_VENDOR');
             const hasIssued = allPOs.some(p => p.status === 'ISSUED');
+            const hasDraft = allPOs.some(p => p.status === 'DRAFT');
             
             if (btnBulkReceive) {
                 if (canReceive && hasSentToVendor) btnBulkReceive.classList.remove('hidden');
@@ -113,6 +116,11 @@ async function loadPOs() {
             if (btnBulkApprove) {
                 if (canApprove && hasIssued) btnBulkApprove.classList.remove('hidden');
                 else btnBulkApprove.classList.add('hidden');
+            }
+
+            if (btnBulkIssue) {
+                if (canIssue && hasDraft) btnBulkIssue.classList.remove('hidden');
+                else btnBulkIssue.classList.add('hidden');
             }
         }
     } catch (error) {
@@ -166,7 +174,7 @@ function renderTable() {
     currentItems.forEach(po => {
         const dateStr = new Date(po.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50/50 transition-colors duration-150 text-xs font-medium text-slate-600 group cursor-pointer';
+        tr.className = 'hover:bg-slate-100 transition-colors duration-150 text-xs font-medium text-slate-600 group cursor-pointer';
         tr.onclick = () => openRightDrawer(po);
 
         let badgeClass = 'bg-slate-100 text-slate-600';
@@ -460,6 +468,37 @@ async function confirmBulkApprovePO() {
     if (result.isConfirmed) {
         try {
             const response = await apiFetch<{success: boolean, message: string}>('pengadaan/po/bulk-approve', { method: 'POST' });
+            if (response.success) {
+                // @ts-ignore
+                Swal.fire('Berhasil!', response.message, 'success');
+                loadPOs();
+            } else {
+                // @ts-ignore
+                Swal.fire('Gagal!', response.message, 'error');
+            }
+        } catch (error: any) {
+            // @ts-ignore
+            Swal.fire('Error!', error.message, 'error');
+        }
+    }
+}
+
+async function confirmBulkIssuePO() {
+    // @ts-ignore
+    const result = await Swal.fire({
+        title: 'Ajukan Semua PO (DRAFT)?',
+        text: 'Anda akan mengajukan semua PO yang berstatus Draf ke Executive untuk disetujui.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Ajukan Semua',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#f59e0b', // Amber 500
+        cancelButtonColor: '#94a3b8'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const response = await apiFetch<{success: boolean, message: string}>('pengadaan/po/bulk-issue', { method: 'POST' });
             if (response.success) {
                 // @ts-ignore
                 Swal.fire('Berhasil!', response.message, 'success');
@@ -806,6 +845,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btnBulkApprove.addEventListener('click', confirmBulkApprovePO);
     }
 
+    const btnBulkIssue = document.getElementById('btn-bulk-issue-po');
+    if (btnBulkIssue) {
+        btnBulkIssue.addEventListener('click', confirmBulkIssuePO);
+    }
+
     const filterStatusPo = document.getElementById('filter-status-po') as HTMLSelectElement;
     if (filterStatusPo) {
         filterStatusPo.addEventListener('change', (e) => {
@@ -817,4 +861,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadPOs();
     initCreateModal();
+
+    // Polling for Real-Time Experience (Every 30 seconds)
+    setInterval(() => {
+        loadPOs();
+    }, 30000);
 });

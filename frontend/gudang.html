@@ -71,53 +71,39 @@
             cursor: pointer;
             outline: none;
         }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+    
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important; /* Tailwind slate-900/40 */
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
+    <!-- Tab Persistence Anti-Flicker Script -->
+    <script>
+        (function() {
+            var lastTab = localStorage.getItem('gudangLastTab') || 'master';
+            var s = document.createElement('style');
+            s.id = 'anti-flicker';
+            s.innerHTML = '#section-master, #section-outbound, #section-receipt { display: none !important; } #section-' + lastTab + ' { display: block !important; }';
+            document.head.appendChild(s);
+        })();
+    </script>
 </head>
 
 <body class="text-on-surface">
     <div class="flex h-screen overflow-hidden">
 
-        <!-- ==================== SIDEBAR ==================== -->
-        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
-                <div class="flex flex-col gap-1" id="sidebar-logo">
-                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
-                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
-                </div>
-                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4">
-                    <!-- Nav items akan di-render oleh rbac.ts -->
-                </nav>
-            </div>
-            <div class="p-6 border-t border-outline-variant">
-                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
-                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
-                    <span class="menu-text">Keluar Sistem</span>
-                </button>
-            </div>
-        </aside>
+        {{> sidebar }}
 
         <!-- ==================== MAIN CONTENT ==================== -->
         <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <!-- HEADER -->
-            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
-                <div class="flex items-center gap-4">
-                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-[24px]">menu</span>
-                    </button>
-                    <span class="text-headline-md text-on-surface font-bold">Manajemen Inventori & Gudang</span>
-                </div>
-                <div class="flex items-center gap-6">
-                    <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all" title="Lihat Profil Saya">
-                        <div class="text-right">
-                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
-                        </div>
-                        <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
-                            <span id="header-inisial">--</span>
-                        </div>
-                    </a>
-                </div>
-            </header>
+            {{> navbar title="Manajemen Inventori & Gudang" }}
 
             <!-- SCROLLABLE CONTENT -->
             <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
@@ -131,7 +117,9 @@
                 <!-- Tabs -->
                 <div class="flex border-b border-slate-200 mb-6">
                     <button id="tab-master" class="px-6 py-3 border-b-2 border-primary text-primary font-bold text-sm transition-colors">Master Stok Gudang</button>
+                    <button id="tab-receipt" class="px-6 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium text-sm transition-colors flex items-center gap-2">Penerimaan Barang (GR) <span id="badge-receipt" class="bg-blue-100 text-blue-700 py-0.5 px-2 rounded-full text-[10px] font-bold hidden">0</span></button>
                     <button id="tab-outbound" class="px-6 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium text-sm transition-colors flex items-center gap-2">Logistik Outbound (3PL) <span id="badge-outbound" class="bg-blue-100 text-blue-700 py-0.5 px-2 rounded-full text-[10px] font-bold hidden">0</span></button>
+                    <button id="tab-exception" class="px-6 py-3 border-b-2 border-transparent text-rose-500 hover:text-rose-700 font-bold text-sm transition-colors flex items-center gap-2">Exception & Write-Off</button>
                 </div>
 
                 <!-- SECTION 1: MASTER STOK -->
@@ -233,6 +221,62 @@
                     </div>
                 </div> <!-- End Section Outbound -->
 
+                <!-- SECTION 3: GOODS RECEIPT -->
+                <div id="section-receipt" class="hidden">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-bold text-slate-800">Daftar Purchase Order Menunggu Penerimaan</p>
+                            <p class="text-xs text-slate-500">Pilih PO dari Vendor yang sudah tiba untuk melakukan validasi kualitas dan kuantitas barang.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                        <table class="w-full border-collapse table-auto data-table">
+                            <thead>
+                                <tr class="border-b border-slate-200/80 bg-slate-50/75">
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">NOMOR PO</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">TANGGAL PO</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">VENDOR</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">STATUS</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">AKSI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-receipt" class="divide-y divide-slate-100 text-xs">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-slate-500">Memuat data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div> <!-- End Section Receipt -->
+
+                <!-- SECTION EXCEPTION / WRITE-OFF -->
+                <div id="section-exception" class="hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-bold text-slate-800">Antrean Write-Off & Karantina</h3>
+                        <button id="btn-ajukan-writeoff" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow flex items-center gap-2 transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">warning</span> Ajukan Write-Off Kehilangan
+                        </button>
+                    </div>
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-4 py-3 font-bold text-slate-600">ID WRO</th>
+                                    <th class="px-4 py-3 font-bold text-slate-600">KODE BARANG</th>
+                                    <th class="px-4 py-3 font-bold text-slate-600 text-center">QTY HILANG</th>
+                                    <th class="px-4 py-3 font-bold text-slate-600">ALASAN</th>
+                                    <th class="px-4 py-3 font-bold text-slate-600 text-center">STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-writeoff" class="divide-y divide-slate-100">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- END SECTION EXCEPTION -->
+
             </div>
         </main>
     </div>
@@ -317,6 +361,81 @@
         </div>
     </div>
 
+    <!-- Modal Goods Receipt -->
+    <div id="modal-receipt" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+        <div id="modal-receipt-content" class="bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-emerald-50">
+                <h3 class="text-lg font-bold text-emerald-900 flex items-center gap-2">
+                    <span class="material-symbols-outlined">inventory</span> Form Penerimaan Barang
+                </h3>
+                <button id="btn-close-receipt" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto">
+                <form id="form-receipt" class="space-y-5">
+                    <input type="hidden" name="id_po_header" id="input-receipt-po-id">
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Nomor PO</label>
+                            <input type="text" id="input-receipt-po-no" disabled class="w-full text-sm border-slate-200 bg-slate-50 text-slate-500 rounded-lg px-3 py-2 outline-none font-bold">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Surat Jalan Vendor (Opsional)</label>
+                            <input type="text" name="surat_jalan_vendor" id="input-receipt-sj" placeholder="SJ-XXXXX" class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all uppercase">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Foto Fisik Barang (e-POD)</label>
+                            <input type="file" name="foto_barang" accept="image/*" required class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all border border-slate-200 rounded-lg p-1 bg-white">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Foto Surat Jalan (e-POD)</label>
+                            <input type="file" name="foto_surat_jalan" accept="image/*" required class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all border border-slate-200 rounded-lg p-1 bg-white">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Foto Packaging (e-POD)</label>
+                            <input type="file" name="foto_packaging" accept="image/*" required class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all border border-slate-200 rounded-lg p-1 bg-white">
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-lg overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="py-2 px-3 text-left font-bold text-slate-600">KODE</th>
+                                    <th class="py-2 px-3 text-left font-bold text-slate-600">NAMA BARANG</th>
+                                    <th class="py-2 px-3 text-center font-bold text-slate-600">QTY PO</th>
+                                    <th class="py-2 px-3 text-center font-bold text-slate-600">QTY TERIMA</th>
+                                    <th class="py-2 px-3 text-center font-bold text-slate-600">KONDISI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-receipt-items" class="divide-y divide-slate-100">
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Catatan Penerimaan</label>
+                        <textarea name="catatan" id="input-receipt-catatan" rows="2" placeholder="Tulis catatan jika ada..." class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all"></textarea>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                <button type="button" id="btn-cancel-receipt" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors">Batal</button>
+                <button type="submit" form="form-receipt" id="btn-submit-receipt" class="px-5 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] hidden" id="spinner-receipt">sync</span>
+                    Simpan & Update Stok
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Opname -->
     <div id="modal-opname" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
         <div id="modal-opname-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
@@ -364,13 +483,57 @@
 
 
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
-            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
+    <!-- MODAL WRITE-OFF -->
+    <div id="modal-writeoff" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+        <div id="modal-writeoff-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-rose-50">
+                <h3 class="text-lg font-bold text-rose-900 flex items-center gap-2">
+                    <span class="material-symbols-outlined">warning</span> Form Write-Off Kehilangan
+                </h3>
+                <button id="btn-close-writeoff" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="form-writeoff" class="space-y-4">
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Barang / Komponen</label>
+                        <select id="wo-kode-item" class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 transition-all">
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Qty Hilang / Rusak Fatal</label>
+                        <input type="number" id="wo-qty" required min="1" placeholder="Masukkan jumlah..." class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 transition-all">
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Alasan Kehilangan</label>
+                        <textarea id="wo-alasan" rows="2" required placeholder="Jelaskan kronologi..." class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 transition-all"></textarea>
+                    </div>
+
+                    <div class="p-3 border border-dashed border-rose-300 rounded-xl bg-rose-50/50">
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">upload_file</span> Berita Acara Kehilangan (Wajib)
+                        </label>
+                        <input type="file" id="wo-bukti" accept="image/*,application/pdf" required class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-rose-100 file:text-rose-700 hover:file:bg-rose-200 cursor-pointer border border-slate-200 p-1 bg-white rounded-lg" name="bukti_berita_acara">
+                        <p class="text-[10px] text-slate-400 mt-2 italic">*Format PDF atau Foto Berita Acara tertanda tangan.</p>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                <button type="button" id="btn-cancel-writeoff" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors">Batal</button>
+                <button type="submit" form="form-writeoff" id="btn-submit-writeoff" class="px-5 py-2 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-xs transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] hidden" id="spinner-writeoff">sync</span>
+                    Ajukan Write-Off
+                </button>
+            </div>
         </div>
     </div>
+
+    {{> toast }}
 
     <!-- MODAL DISPATCH 3PL -->
     <div id="modal-dispatch-3pl" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">

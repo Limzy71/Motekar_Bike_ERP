@@ -56,7 +56,28 @@
             transform: translateY(0);
             opacity: 1;
         }
+    
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important; /* Tailwind slate-900/40 */
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
+    <!-- Tab Persistence Anti-Flicker Script -->
+    <script>
+        (function() {
+            var lastTab = localStorage.getItem('keuanganLastTab') || 'dashboard';
+            var s = document.createElement('style');
+            s.id = 'anti-flicker';
+            s.innerHTML = '#section-dashboard, #section-ap { display: none !important; } #section-' + lastTab + ' { display: block !important; }';
+            document.head.appendChild(s);
+        })();
+    </script>
 </head>
 
 <body class="text-on-surface">
@@ -101,14 +122,22 @@
             </header>
 
             <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
-                <!-- Page Header -->
-                <div class="mb-8">
-                    <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                        <span class="material-symbols-outlined text-primary text-[24px]">account_balance</span>
-                        Executive Financial Dashboard
-                    </h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Laporan otomatis Buku Besar, Harga Pokok Produksi (HPP/COGS), dan analisis profitabilitas perusahaan.</p>
+                <!-- Tabs -->
+                <div class="flex border-b border-slate-200 mb-6">
+                    <button id="tab-dashboard" class="px-6 py-3 border-b-2 border-primary text-primary font-bold text-sm transition-colors">Dashboard & Buku Besar</button>
+                    <button id="tab-ap" class="px-6 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium text-sm transition-colors flex items-center gap-2">Accounts Payable (Hutang) <span id="badge-ap" class="bg-rose-100 text-rose-700 py-0.5 px-2 rounded-full text-[10px] font-bold hidden">0</span></button>
                 </div>
+
+                <!-- SECTION 1: DASHBOARD -->
+                <div id="section-dashboard">
+                    <!-- Page Header -->
+                    <div class="mb-8">
+                        <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-[24px]">account_balance</span>
+                            Executive Financial Dashboard
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Laporan otomatis Buku Besar, Harga Pokok Produksi (HPP/COGS), dan analisis profitabilitas perusahaan.</p>
+                    </div>
 
                 <!-- KPI Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
@@ -203,17 +232,164 @@
                     </div>
                 </div>
 
+                </div> <!-- End of section-dashboard -->
+
+                <!-- SECTION 2: ACCOUNTS PAYABLE -->
+                <div id="section-ap" class="hidden">
+                    <div class="mb-6">
+                        <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                            <span class="material-symbols-outlined text-rose-600 text-[24px]">receipt_long</span>
+                            Accounts Payable
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Manajemen hutang vendor (Three-Way Matching) dan pencatatan pembayaran.</p>
+                    </div>
+
+                    <!-- Sub-section: Un-invoiced Receipts -->
+                    <div class="mb-8">
+                        <h3 class="font-bold text-slate-800 text-sm mb-4">Antrean Tagihan (Un-Invoiced Receipts)</h3>
+                        <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                            <table class="w-full border-collapse table-auto">
+                                <thead>
+                                    <tr class="bg-slate-50/75 border-b border-slate-200/80">
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">TANGGAL GR</th>
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">PO & VENDOR</th>
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">QTY DITERIMA</th>
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">AKSI</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-pending-receipts" class="divide-y divide-slate-100 text-xs text-slate-600">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Sub-section: Invoices -->
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm mb-4">Daftar Hutang (Invoices)</h3>
+                        <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                            <table class="w-full border-collapse table-auto">
+                                <thead>
+                                    <tr class="bg-slate-50/75 border-b border-slate-200/80">
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">NO. TAGIHAN</th>
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">VENDOR</th>
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-right">TOTAL TAGIHAN</th>
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-right">SISA HUTANG</th>
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">STATUS</th>
+                                        <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">AKSI</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-invoices" class="divide-y divide-slate-100 text-xs text-slate-600">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div> <!-- End Section AP -->
             </div>
         </main>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
-            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
+    <!-- Modal Create Invoice -->
+    <div id="modal-invoice" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+        <div id="modal-invoice-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-rose-50">
+                <h3 class="text-lg font-bold text-rose-900">Buat Tagihan AP (3-Way Match)</h3>
+                <button id="btn-close-invoice" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
+            </div>
+            <div class="p-6">
+                <form id="form-invoice" class="space-y-4">
+                    <input type="hidden" name="id_po_header" id="inv-po-id">
+                    <input type="hidden" name="id_penerimaan" id="inv-receipt-id">
+                    
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs mb-4">
+                        <p class="text-slate-500 mb-1">Total Kalkulasi Sistem (PO x Qty Terima):</p>
+                        <p class="font-data-mono font-bold text-lg text-slate-800" id="inv-system-calc">Rp 0</p>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Nomor Tagihan Vendor</label>
+                        <input type="text" name="no_tagihan_vendor" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none uppercase focus:border-rose-400">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Tgl Tagihan</label>
+                            <input type="date" name="tanggal_tagihan" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Jatuh Tempo</label>
+                            <input type="date" name="jatuh_tempo" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Total Nominal di Tagihan</label>
+                        <input type="number" name="total_tagihan" id="inv-total-input" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none font-data-mono">
+                    </div>
+                </form>
+            </div>
+            <div class="px-6 py-4 bg-slate-50 flex items-center justify-end gap-3">
+                <button type="button" id="btn-cancel-invoice" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">Batal</button>
+                <button type="submit" form="form-invoice" id="btn-submit-invoice" class="px-5 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-lg flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] hidden" id="spinner-invoice">sync</span> Buat Tagihan
+                </button>
+            </div>
         </div>
     </div>
+
+    <!-- Modal Pay Invoice -->
+    <div id="modal-pay" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+        <div id="modal-pay-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-blue-50">
+                <h3 class="text-lg font-bold text-blue-900">Pembayaran Tagihan</h3>
+                <button id="btn-close-pay" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
+            </div>
+            <div class="p-6">
+                <form id="form-pay" class="space-y-4">
+                    <input type="hidden" name="id_tagihan" id="pay-inv-id">
+                    
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs mb-4 flex justify-between">
+                        <div>
+                            <p class="text-slate-500 mb-1">Tagihan:</p>
+                            <p class="font-bold text-slate-800" id="pay-inv-no">-</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-slate-500 mb-1">Sisa Hutang:</p>
+                            <p class="font-data-mono font-bold text-rose-600" id="pay-sisa">Rp 0</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Tgl Bayar</label>
+                        <input type="date" name="tanggal_bayar" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Nominal Bayar</label>
+                        <input type="number" name="nominal_bayar" id="pay-nominal" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none font-data-mono">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Metode Bayar</label>
+                            <select name="metode_bayar" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none">
+                                <option value="Transfer Bank">Transfer Bank</option>
+                                <option value="Giro">Giro</option>
+                                <option value="Cash">Cash</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Ref. Transaksi</label>
+                            <input type="text" name="referensi_transaksi" class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none uppercase">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="px-6 py-4 bg-slate-50 flex items-center justify-end gap-3">
+                <button type="button" id="btn-cancel-pay" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">Batal</button>
+                <button type="submit" form="form-pay" id="btn-submit-pay" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] hidden" id="spinner-pay">sync</span> Proses Pembayaran
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{> toast }}
 
     <script type="module" src="/src/pages/keuangan.ts"></script>
 </body>

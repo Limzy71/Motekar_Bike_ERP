@@ -6,6 +6,8 @@
 import { apiFetch, getUserData } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
 
+declare const Swal: any;
+
 interface PRItem {
   id_pr_header: number;
   kode_barang: string;
@@ -23,6 +25,24 @@ interface PurchaseRequisition {
   items: PRItem[];
 }
 
+interface RestockRequest {
+  id: number;
+  id_inventory_material: number;
+  nomor_wo: string;
+  jumlah_diminta: number;
+  status: string;
+  created_at: string;
+  kode_barang: string;
+  nama_barang: string;
+  satuan: string;
+}
+
+interface RestockResponse {
+  success: boolean;
+  data: RestockRequest[];
+  message?: string;
+}
+
 interface PRResponse {
   success: boolean;
   data: PurchaseRequisition[];
@@ -34,13 +54,29 @@ interface ActionResponse {
   message: string;
 }
 
+interface SRMVendor {
+  id: number;
+  kode_vendor: string;
+  nama_vendor: string;
+  kategori: string;
+  kontak: string;
+  alamat: string;
+  status_vendor: string;
+  alasan_blacklist: string | null;
+  skor_rating: number;
+}
+
 let deleteId: number | null = null;
 let allPRData: PurchaseRequisition[] = [];
+let masterVendorsSRM: SRMVendor[] = [];
 let confirmMode: 'delete_single' | 'delete_all' | 'approve_all' | null = null;
 
 let currentPage = 1;
 const itemsPerPage = 10;
 let currentFilterPR = 'All';
+
+let currentSRMPage = 1;
+const srmItemsPerPage = 10;
 
 const formatRupiah = (number: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
@@ -176,7 +212,7 @@ function renderTable() {
     }
 
     const tr = document.createElement('tr');
-    tr.className = 'hover:bg-slate-50/50 transition-colors duration-150 text-xs font-medium text-slate-600 group cursor-pointer';
+    tr.className = 'hover:bg-slate-100 transition-colors duration-150 text-xs font-medium text-slate-600 group cursor-pointer';
     tr.onclick = () => window.openRightDrawer(pr.id);
     tr.innerHTML = `
         <td class="px-4 py-3">
@@ -309,7 +345,7 @@ window.openRightDrawer = (id: number) => {
           totalNilai += subtotal;
           
           return `
-          <tr class="hover:bg-slate-50 transition-colors">
+          <tr class="hover:bg-slate-100 transition-colors">
               <td class="py-3 px-3">
                   <p class="font-bold text-slate-800">${item.nama_barang}</p>
                   <p class="text-[10px] text-slate-500 font-data-mono mt-0.5">${item.kode_barang}</p>
@@ -498,7 +534,7 @@ async function proceedConfirmAction() {
       if (response.success) {
         showToast(response.message);
         loadPengadaan();
-        loadDefisitRadar();
+        loadPengadaan();
       } else {
         showToast(response.message, true);
       }
@@ -509,7 +545,7 @@ async function proceedConfirmAction() {
       if (response.success) {
         showToast(response.message);
         loadPengadaan();
-        loadDefisitRadar();
+        loadPengadaan();
       } else {
         showToast(response.message, true);
       }
@@ -520,7 +556,7 @@ async function proceedConfirmAction() {
       if (response.success) {
         showToast(response.message);
         loadPengadaan();
-        loadDefisitRadar();
+        loadPengadaan();
       } else {
         showToast(response.message, true);
       }
@@ -534,89 +570,6 @@ async function proceedConfirmAction() {
 // DEFISIT RADAR
 // ============================================================
 
-async function loadDefisitRadar() {
-  const section = document.getElementById('defisit-radar-section');
-  const container = document.getElementById('defisit-cards-container');
-  const titleEl = document.getElementById('defisit-title');
-  
-  if (!section || !container || !titleEl) return;
-
-  try {
-    const response = await apiFetch<{success: boolean, data: any[]}>('pengadaan/alerts');
-    
-    if (response.success && response.data.length > 0) {
-      section.classList.remove('hidden');
-      titleEl.innerHTML = `Peringatan Defisit Operasi <span class="text-xs bg-rose-200/50 text-rose-700 px-2 py-0.5 rounded-md ml-2 border border-rose-200">(${response.data.length} Item)</span>`;
-      
-      container.innerHTML = '';
-      response.data.forEach(item => {
-        // qty_saran_pesan = ((reorder_point * 2) - stok_sekarang) * bom_ratio
-        const saranPesan = item.qty_saran_pesan || Math.max(1, (item.reorder_point * 2) - item.jumlah_stok_sekarang);
-        
-        container.innerHTML += `
-          <div class="bg-white border border-rose-100 rounded-xl p-3.5 shadow-[0_2px_8px_-3px_rgba(225,29,72,0.1)] relative">
-              <div class="absolute top-3.5 right-3.5 text-rose-500">
-                  <span class="material-symbols-outlined text-[18px]">warning</span>
-              </div>
-              <div class="mb-2">
-                  <span class="inline-block bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest font-data-mono">${item.kode_barang}</span>
-              </div>
-              <h3 class="font-bold text-slate-800 text-xs leading-snug mb-0.5 truncate pr-6" title="${item.nama_barang}">${item.nama_barang}</h3>
-              <p class="text-[9px] text-slate-500 mb-3 truncate" title="${item.nama_vendor}">Vendor: <span class="font-semibold text-slate-700">${item.nama_vendor}</span></p>
-              
-              <div class="flex items-center gap-2 mt-auto border-t border-slate-100 pt-2.5">
-                  <div class="flex-1">
-                      <p class="text-[9px] text-slate-400">Stok:</p>
-                      <p class="text-sm font-black text-rose-600 leading-none mt-0.5">${item.jumlah_stok_sekarang}</p>
-                  </div>
-                  <div class="w-px h-6 bg-slate-200"></div>
-                  <div class="flex-1 text-center">
-                      <p class="text-[9px] text-slate-400">ROP:</p>
-                      <p class="text-[11px] font-bold text-slate-600 leading-none mt-1">${item.reorder_point}</p>
-                  </div>
-                  <div class="w-px h-6 bg-slate-200"></div>
-                  <div class="flex-1 text-right">
-                      <p class="text-[9px] text-slate-400">Butuh:</p>
-                      <p class="text-sm font-black text-emerald-600 leading-none mt-0.5">${saranPesan} <span class="text-[9px] font-normal text-slate-500">${item.satuan}</span></p>
-                  </div>
-              </div>
-          </div>
-        `;
-      });
-    } else {
-      section.classList.add('hidden');
-    }
-  } catch (error) {
-    console.error('Failed to load deficit radar:', error);
-  }
-}
-
-async function proceedAutoGeneratePR() {
-  const btn = document.getElementById('btn-auto-generate-pr') as HTMLButtonElement;
-  if (!btn) return;
-
-  try {
-    btn.disabled = true;
-    btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> Generating...`;
-
-    const response = await apiFetch<ActionResponse>('pengadaan/pr/auto-generate', {
-      method: 'POST'
-    });
-
-    if (response.success) {
-      showToast(response.message);
-      loadDefisitRadar();
-      loadPengadaan();
-    } else {
-      showToast(response.message, true);
-    }
-  } catch (error: any) {
-    showToast('Gagal melakukan auto-generate PR.', true);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">auto_awesome</span> Auto-Generate PR`;
-  }
-}
 
 // ============================================================
 // BUAT PR MODAL & DROPDOWNS
@@ -807,8 +760,9 @@ async function submitBuatPr(e: Event) {
     if (response.success) {
       showToast('Purchase Request berhasil diajukan!');
       closeBuatPrModal();
-      loadPengadaan();
-      loadDefisitRadar();
+      renderTable();
+      await loadPengadaan();
+      await loadRestockRequests();
     } else {
       showToast(response.message || 'Gagal membuat PR', true);
     }
@@ -831,15 +785,537 @@ async function submitBuatPr(e: Event) {
 }
 
 // ============================================================
-// INIT
+// SRM & VENDOR MANAGEMENT
 // ============================================================
+
+async function loadVendorsSRM(): Promise<void> {
+    const tbody = document.getElementById('tbody-srm');
+    if (!tbody) return;
+
+    try {
+        const response = await apiFetch<{success: boolean, data: SRMVendor[]}>('vendor');
+        if (response.success) {
+            masterVendorsSRM = response.data;
+            renderVendorsSRM();
+        } else {
+            tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat data vendor.</td></tr>`;
+        }
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-600">Kesalahan jaringan.</td></tr>`;
+    }
+}
+
+function renderVendorsSRM(): void {
+    const tbody = document.getElementById('tbody-srm');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (masterVendorsSRM.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Tidak ada data vendor.</td></tr>`;
+        updateSRMPaginationUI(0, 0, 0, 0);
+        return;
+    }
+
+    const totalItems = masterVendorsSRM.length;
+    const totalPages = Math.ceil(totalItems / srmItemsPerPage);
+    if (currentSRMPage > totalPages) currentSRMPage = totalPages;
+
+    const startIndex = (currentSRMPage - 1) * srmItemsPerPage;
+    const endIndex = Math.min(startIndex + srmItemsPerPage, totalItems);
+    const currentItems = masterVendorsSRM.slice(startIndex, endIndex);
+
+    currentItems.forEach(v => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-100 transition-colors duration-150 text-xs font-medium text-slate-600 cursor-pointer group';
+        tr.onclick = () => openSRMStatusModal(v);
+        
+        let statusBadge = '';
+        if (v.status_vendor === 'AKTIF') statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">AKTIF</span>`;
+        else if (v.status_vendor === 'INAKTIF') statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-slate-50 text-slate-500 border-slate-200">INAKTIF</span>`;
+        else if (v.status_vendor === 'BLACKLIST') statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200" title="${v.alasan_blacklist || ''}">BLACKLIST</span>`;
+
+        tr.innerHTML = `
+            <td class="px-4 py-3 font-data-mono font-bold text-slate-700">${v.kode_vendor || '-'}</td>
+            <td class="px-4 py-3">
+                <p class="font-bold text-slate-800">${v.nama_vendor}</p>
+                <p class="text-[10px] text-slate-500">${v.kontak || '-'}</p>
+            </td>
+            <td class="px-4 py-3 text-slate-600">${v.kategori || '-'}</td>
+            <td class="px-4 py-3 text-center">
+                <span class="flex items-center justify-center gap-1 font-bold text-amber-500">
+                    <span class="material-symbols-outlined text-[14px]">star</span> ${v.skor_rating}
+                </span>
+            </td>
+            <td class="px-4 py-3 text-center">${statusBadge}</td>
+            <td class="px-4 py-3 text-center relative z-10">
+                <button class="btn-srm-status text-slate-400 group-hover:text-primary group-hover:bg-primary-container/30 px-2 py-1 rounded transition-colors" data-id="${v.id}" onclick="event.stopPropagation();">Kelola Status</button>
+            </td>
+        `;
+
+        const btnStatus = tr.querySelector('.btn-srm-status');
+        btnStatus?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openSRMStatusModal(v);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    updateSRMPaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+}
+
+function updateSRMPaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
+    const infoText = document.getElementById('srm-pagination-info');
+    const btnPrev = document.getElementById('srm-btn-prev') as HTMLButtonElement;
+    const btnNext = document.getElementById('srm-btn-next') as HTMLButtonElement;
+    const pagesContainer = document.getElementById('srm-pagination-pages');
+
+    if (infoText) {
+        if (total === 0) {
+            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
+        } else {
+            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
+        }
+    }
+
+    if (btnPrev) {
+        btnPrev.disabled = currentSRMPage <= 1;
+        btnPrev.onclick = () => {
+            if (currentSRMPage > 1) {
+                currentSRMPage--;
+                renderVendorsSRM();
+            }
+        };
+    }
+
+    if (btnNext) {
+        btnNext.disabled = currentSRMPage >= totalPages;
+        btnNext.onclick = () => {
+            if (currentSRMPage < totalPages) {
+                currentSRMPage++;
+                renderVendorsSRM();
+            }
+        };
+    }
+
+    if (pagesContainer) {
+        pagesContainer.innerHTML = '';
+        let startPage = Math.max(1, currentSRMPage - 1);
+        let endPage = Math.min(totalPages, startPage + 2);
+        
+        if (endPage - startPage < 2 && totalPages >= 3) {
+            if (startPage === 1) endPage = 3;
+            else if (endPage === totalPages) startPage = totalPages - 2;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const btn = document.createElement('button');
+            if (i === currentSRMPage) {
+                btn.className = 'w-7 h-7 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold shadow-sm';
+            } else {
+                btn.className = 'w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 text-xs font-bold transition-colors';
+            }
+            btn.textContent = i.toString();
+            btn.onclick = () => {
+                currentSRMPage = i;
+                renderVendorsSRM();
+            };
+            pagesContainer.appendChild(btn);
+        }
+    }
+}
+
+function openSRMStatusModal(v: SRMVendor): void {
+    const modal = document.getElementById('modal-srm-status');
+    const content = document.getElementById('modal-srm-status-content');
+    
+    (document.getElementById('srm-status-vendor-name') as HTMLElement).textContent = v.nama_vendor;
+    (document.getElementById('srm-status-vendor-id') as HTMLInputElement).value = v.id.toString();
+    
+    const inputStatus = document.getElementById('srm-input-status') as HTMLSelectElement;
+    inputStatus.value = v.status_vendor;
+    
+    const inputSkor = document.getElementById('srm-input-skor') as HTMLInputElement;
+    inputSkor.value = v.skor_rating.toString();
+
+    const containerAlasan = document.getElementById('srm-alasan-container');
+    const inputAlasan = document.getElementById('srm-input-alasan') as HTMLTextAreaElement;
+    
+    if (v.status_vendor === 'BLACKLIST') {
+        containerAlasan?.classList.remove('hidden');
+        inputAlasan.value = v.alasan_blacklist || '';
+        inputAlasan.required = true;
+    } else {
+        containerAlasan?.classList.add('hidden');
+        inputAlasan.value = '';
+        inputAlasan.required = false;
+    }
+
+    if (modal && content) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }, 10);
+    }
+}
+
+function setupSRMModals(): void {
+    // 1. Status Modal
+    const modalStatus = document.getElementById('modal-srm-status');
+    const contentStatus = document.getElementById('modal-srm-status-content');
+    const inputStatus = document.getElementById('srm-input-status') as HTMLSelectElement;
+    const containerAlasan = document.getElementById('srm-alasan-container');
+    const inputAlasan = document.getElementById('srm-input-alasan') as HTMLTextAreaElement;
+
+    inputStatus?.addEventListener('change', () => {
+        if (inputStatus.value === 'BLACKLIST') {
+            containerAlasan?.classList.remove('hidden');
+            inputAlasan.required = true;
+        } else {
+            containerAlasan?.classList.add('hidden');
+            inputAlasan.required = false;
+        }
+    });
+
+    const closeStatusModal = () => {
+        if (modalStatus && contentStatus) {
+            modalStatus.classList.add('opacity-0');
+            contentStatus.classList.add('scale-95');
+            setTimeout(() => {
+                modalStatus.classList.add('hidden');
+                modalStatus.classList.remove('flex');
+            }, 300);
+        }
+    };
+
+    document.getElementById('btn-close-srm-status')?.addEventListener('click', closeStatusModal);
+    document.getElementById('btn-cancel-srm-status')?.addEventListener('click', closeStatusModal);
+
+    document.getElementById('form-srm-status')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = (document.getElementById('srm-status-vendor-id') as HTMLInputElement).value;
+        const status = inputStatus.value;
+        const alasan = inputAlasan.value;
+        const skor = (document.getElementById('srm-input-skor') as HTMLInputElement).value;
+
+        try {
+            const response = await apiFetch<ActionResponse>(`vendor/${id}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status_vendor: status, alasan_blacklist: alasan, skor_rating: skor })
+            });
+
+            if (response.success) {
+                showToast(response.message);
+                closeStatusModal();
+                loadVendorsSRM();
+                loadDropdownData(); // Refresh dropdown
+            } else {
+                showToast(response.message, true);
+            }
+        } catch (err) {
+            showToast('Gagal mengubah status vendor', true);
+        }
+    });
+
+    // 2. Vendor Form Modal
+    const modalVendor = document.getElementById('modal-srm-vendor');
+    const contentVendor = document.getElementById('modal-srm-vendor-content');
+    
+    const closeVendorModal = () => {
+        if (modalVendor && contentVendor) {
+            modalVendor.classList.add('opacity-0');
+            contentVendor.classList.add('scale-95');
+            setTimeout(() => {
+                modalVendor.classList.add('hidden');
+                modalVendor.classList.remove('flex');
+                (document.getElementById('form-srm-vendor') as HTMLFormElement)?.reset();
+            }, 300);
+        }
+    };
+
+    let mapVendor: any = null;
+    let markerVendor: any = null;
+    let autocompleteVendor: any = null;
+
+    const initMap = () => {
+        if (typeof (window as any).google === 'undefined' || !(window as any).google.maps) return;
+        
+        const mapElement = document.getElementById('srm-map-vendor');
+        const inputElement = document.getElementById('srm-input-alamat') as HTMLTextAreaElement;
+        
+        if (mapElement && inputElement && !mapVendor) {
+            const defaultLoc = { lat: -6.2088, lng: 106.8456 }; // Jakarta
+            
+            mapVendor = new (window as any).google.maps.Map(mapElement, {
+                center: defaultLoc,
+                zoom: 13,
+                mapTypeControl: false,
+                streetViewControl: false,
+            });
+
+            markerVendor = new (window as any).google.maps.Marker({
+                map: mapVendor,
+                position: defaultLoc,
+                draggable: true
+            });
+
+            autocompleteVendor = new (window as any).google.maps.places.Autocomplete(inputElement, {
+                fields: ["formatted_address", "geometry", "name"]
+            });
+            
+            autocompleteVendor.bindTo("bounds", mapVendor);
+
+            autocompleteVendor.addListener("place_changed", () => {
+                const place = autocompleteVendor.getPlace();
+                if (!place.geometry || !place.geometry.location) return;
+
+                if (place.geometry.viewport) {
+                    mapVendor.fitBounds(place.geometry.viewport);
+                } else {
+                    mapVendor.setCenter(place.geometry.location);
+                    mapVendor.setZoom(17);
+                }
+                markerVendor.setPosition(place.geometry.location);
+                if (place.formatted_address) inputElement.value = place.formatted_address;
+            });
+
+            markerVendor.addListener("dragend", () => {
+                const pos = markerVendor.getPosition();
+                if (pos) {
+                    mapVendor.panTo(pos);
+                    const geocoder = new (window as any).google.maps.Geocoder();
+                    geocoder.geocode({ location: pos }, (results: any, status: any) => {
+                        if (status === "OK" && results && results[0]) {
+                            inputElement.value = results[0].formatted_address;
+                        }
+                    });
+                }
+            });
+        }
+    };
+
+    document.getElementById('btn-create-vendor')?.addEventListener('click', () => {
+        (document.getElementById('srm-vendor-modal-title') as HTMLElement).innerHTML = `<span class="material-symbols-outlined text-primary">domain_add</span> Tambah Vendor Baru`;
+        (document.getElementById('srm-input-id-vendor') as HTMLInputElement).value = '';
+        (document.getElementById('form-srm-vendor') as HTMLFormElement)?.reset();
+        
+        if (modalVendor && contentVendor) {
+            modalVendor.classList.remove('hidden');
+            modalVendor.classList.add('flex');
+            
+            // Trigger resize after modal becomes visible so map renders correctly
+            setTimeout(() => {
+                initMap();
+                if (mapVendor) {
+                    (window as any).google.maps.event.trigger(mapVendor, 'resize');
+                    if (markerVendor && markerVendor.getPosition()) {
+                        mapVendor.setCenter(markerVendor.getPosition());
+                    }
+                }
+                modalVendor.classList.remove('opacity-0');
+                contentVendor.classList.remove('scale-95');
+            }, 50);
+        }
+    });
+
+    document.getElementById('btn-close-srm-vendor')?.addEventListener('click', closeVendorModal);
+    document.getElementById('btn-cancel-srm-vendor')?.addEventListener('click', closeVendorModal);
+
+    document.getElementById('form-srm-vendor')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = (document.getElementById('srm-input-id-vendor') as HTMLInputElement).value;
+        const payload = {
+            kode_vendor: (document.getElementById('srm-input-kode') as HTMLInputElement).value,
+            nama_vendor: (document.getElementById('srm-input-nama') as HTMLInputElement).value,
+            kategori: (document.getElementById('srm-input-kategori') as HTMLInputElement).value,
+            kontak: (document.getElementById('srm-input-kontak') as HTMLInputElement).value,
+            alamat: (document.getElementById('srm-input-alamat') as HTMLTextAreaElement).value
+        };
+
+        try {
+            const url = id ? `vendor/${id}` : 'vendor';
+            const method = id ? 'PUT' : 'POST';
+            
+            const response = await apiFetch<ActionResponse>(url, {
+                method,
+                body: JSON.stringify(payload)
+            });
+
+            if (response.success) {
+                showToast(response.message);
+                closeVendorModal();
+                loadVendorsSRM();
+                loadDropdownData();
+            } else {
+                showToast(response.message, true);
+            }
+        } catch (err) {
+            showToast('Gagal menyimpan data vendor', true);
+        }
+    });
+}
+
+// ============================================================
+// TABS & INIT
+// ============================================================
+
+function setupTabs(): void {
+    const tabPr = document.getElementById('tab-pr');
+    const tabSrm = document.getElementById('tab-srm');
+    const viewPr = document.getElementById('view-pr');
+    const viewSrm = document.getElementById('view-srm');
+    
+    const activeClass = 'pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors';
+    const inactiveClass = 'pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors';
+
+    const switchTab = (tabName: 'pr' | 'srm') => {
+        if (tabName === 'pr') {
+            tabPr!.className = activeClass;
+            tabSrm!.className = inactiveClass;
+            viewPr?.classList.remove('hidden');
+            viewSrm?.classList.add('hidden');
+            localStorage.setItem('pengadaanLastTab', 'pr');
+        } else {
+            tabSrm!.className = activeClass;
+            tabPr!.className = inactiveClass;
+            viewSrm?.classList.remove('hidden');
+            viewPr?.classList.add('hidden');
+            localStorage.setItem('pengadaanLastTab', 'srm');
+            loadVendorsSRM();
+        }
+    };
+
+    tabPr?.addEventListener('click', () => switchTab('pr'));
+    tabSrm?.addEventListener('click', () => switchTab('srm'));
+
+    // Restore last active tab
+    const lastTab = localStorage.getItem('pengadaanLastTab');
+    if (lastTab === 'srm') {
+        switchTab('srm');
+    } else {
+        switchTab('pr');
+    }
+
+    // Remove anti-flicker style once tabs are properly initialized
+    const antiFlicker = document.getElementById('anti-flicker');
+    if (antiFlicker) antiFlicker.remove();
+}
+
+// ============================================================
+// MRP MATERIAL REQUESTS INBOX
+// ============================================================
+async function loadRestockRequests(): Promise<void> {
+    const listContainer = document.getElementById('mrp-requests-list');
+    const emptyState = document.getElementById('mrp-empty-state');
+    const container = document.getElementById('mrp-requests-container');
+    
+    if (!listContainer || !emptyState || !container) return;
+
+    try {
+        const res = await apiFetch<RestockResponse>('pengadaan/requests');
+        if (res.success && res.data.length > 0) {
+            emptyState.classList.add('hidden');
+            container.classList.remove('hidden');
+            const btnAutoGeneratePR = document.getElementById('btn-auto-generate-pr');
+            if (btnAutoGeneratePR) {
+                if (res.data.length > 0) {
+                    btnAutoGeneratePR.classList.remove('hidden');
+                } else {
+                    btnAutoGeneratePR.classList.add('hidden');
+                }
+            }
+
+            listContainer.innerHTML = res.data.map(req => {
+                const dateStr = req.created_at ? new Date(req.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                return `
+                <div class="bg-white rounded-lg p-3.5 shadow-sm border border-rose-100 flex flex-col justify-between gap-3 relative overflow-hidden group hover:border-rose-300 hover:shadow-md transition-all">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-rose-500"></div>
+                    <div class="pl-1">
+                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">WO: ${req.nomor_wo}</span>
+                            <span class="text-[9px] text-slate-400 font-medium">${dateStr}</span>
+                        </div>
+                        <h4 class="text-xs font-bold text-slate-800 leading-snug line-clamp-2" title="${req.kode_barang} - ${req.nama_barang}">${req.kode_barang} - ${req.nama_barang}</h4>
+                        <p class="text-[11px] text-rose-600 font-bold mt-1 bg-rose-50 w-fit px-1.5 py-0.5 rounded border border-rose-100">Kurang: ${req.jumlah_diminta} ${req.satuan}</p>
+                    </div>
+                    <div class="pl-1 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 mt-auto">
+                        <button onclick="window.openCreatePRModal('${req.kode_barang}', ${req.jumlah_diminta})" class="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold px-3 py-1.5 rounded-md shadow-sm flex items-center gap-1.5 transition-all flex-1 justify-center">
+                            <span class="material-symbols-outlined text-[14px]">add_shopping_cart</span>
+                            Buat PR Baru
+                        </button>
+                        <button onclick="window.markRequestSelesai(${req.id})" class="bg-white hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 border border-slate-200 hover:border-emerald-200 text-[10px] font-bold px-2 py-1.5 rounded-md shadow-sm transition-all shrink-0" title="Tandai Selesai / Hapus">
+                            <span class="material-symbols-outlined text-[16px]">check</span>
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        } else {
+            const btnAutoGeneratePR = document.getElementById('btn-auto-generate-pr');
+            if (btnAutoGeneratePR) btnAutoGeneratePR.classList.add('hidden');
+
+            emptyState.classList.remove('hidden');
+            container.classList.add('hidden');
+            listContainer.innerHTML = '';
+        }
+    } catch (error) {
+        console.error('Failed to load restock requests', error);
+    }
+}
+
+(window as any).openCreatePRModal = (kodeBarang: string, qtyDiminta: number) => {
+    openBuatPrModal();
+};
+
+(window as any).markRequestSelesai = async (id: number) => {
+    // Jika ID negatif, itu adalah alarm otomatis MRP
+    if (id < 0) {
+        Swal.fire({
+            title: 'Alarm Otomatis',
+            text: 'Ini adalah alarm otomatis dari sistem MRP. Alarm ini tidak bisa ditutup secara manual dan akan hilang dengan sendirinya ketika stok fisik di gudang telah ditambah (di atas batas minimal).',
+            icon: 'info',
+            confirmButtonText: 'Mengerti',
+            confirmButtonColor: '#00288e'
+        });
+        return;
+    }
+
+    const result = await Swal.fire({
+        title: 'Tandai Selesai?',
+        text: 'Anda yakin permintaan material ini sudah ditangani (PR/PO sudah dibuat)?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Ya, Selesai',
+        cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const response = await apiFetch<ActionResponse>(`pengadaan/requests/${id}/selesai`, {
+                method: 'PATCH'
+            });
+            if (response.success) {
+                Swal.fire('Berhasil!', 'Permintaan Material diselesaikan.', 'success');
+                await loadRestockRequests();
+            } else {
+                Swal.fire('Gagal', response.message || 'Gagal menandai selesai', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+        }
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   const user = initRBAC('nav-pengadaan');
   if (!user) return;
 
   loadPengadaan();
-  loadDefisitRadar();
+  loadRestockRequests();
   loadDropdownData();
 
   const btnConfirmNo = document.getElementById('confirm-no');
@@ -854,20 +1330,40 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnApprove) btnApprove.addEventListener('click', confirmBulkApprove);
   if (btnDelete) btnDelete.addEventListener('click', confirmBulkDelete);
 
-  // RBAC: Show bulk buttons for Executives
-  if (user.divisi_role === 'Owner' || user.divisi_role === 'General Manager') {
-      btnApprove?.classList.remove('hidden');
-      btnDelete?.classList.remove('hidden');
-  } else if (user.divisi_role === 'Pengadaan') {
-      // Pengadaan can delete but not approve
-      btnDelete?.classList.remove('hidden');
-  }
 
-  const btnAutoGenerate = document.getElementById('btn-auto-generate-pr');
-  if (btnAutoGenerate) btnAutoGenerate.addEventListener('click', proceedAutoGeneratePR);
 
   const btnCreatePR = document.getElementById('btn-create-pr');
   if (btnCreatePR) btnCreatePR.addEventListener('click', openBuatPrModal);
+
+  const btnAutoGeneratePR = document.getElementById('btn-auto-generate-pr');
+  if (btnAutoGeneratePR) {
+      btnAutoGeneratePR.addEventListener('click', async () => {
+          const result = await Swal.fire({
+              title: 'Auto-Generate PR?',
+              text: 'Sistem akan secara otomatis membuatkan dokumen Permintaan Pembelian (PR) untuk seluruh barang di gudang yang sedang mengalami defisit (di bawah batas minimal).',
+              icon: 'question',
+              showCancelButton: true,
+              confirmButtonText: 'Ya, Buat Otomatis',
+              cancelButtonText: 'Batal',
+              confirmButtonColor: '#4f46e5'
+          });
+
+          if (result.isConfirmed) {
+              try {
+                  const response = await apiFetch<ActionResponse>('pengadaan/pr/auto-generate', { method: 'POST' });
+                  if (response.success) {
+                      Swal.fire('Berhasil!', response.message, 'success');
+                      loadPengadaan();
+                      loadRestockRequests();
+                  } else {
+                      Swal.fire('Gagal', response.message, 'error');
+                  }
+              } catch (err) {
+                  Swal.fire('Error', 'Kesalahan jaringan', 'error');
+              }
+          }
+      });
+  }
 
   const btnClosePrModal = document.getElementById('btn-close-pr-modal');
   const btnCancelPr = document.getElementById('btn-cancel-pr');
@@ -890,4 +1386,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectItemBarang = document.getElementById('select-item-barang');
   if (selectVendor) selectVendor.addEventListener('change', handleVendorChange);
   if (selectItemBarang) selectItemBarang.addEventListener('change', handleItemChange);
+
+  setupTabs();
+  setupSRMModals();
+
+  // Polling for Real-Time Experience (Every 30 seconds)
+  setInterval(() => {
+      const tab = localStorage.getItem('pengadaanLastTab') || 'pr';
+      if (tab === 'pr') loadPengadaan();
+      else if (tab === 'srm') loadVendorsSRM();
+  }, 30000);
 });

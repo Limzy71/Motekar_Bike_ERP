@@ -1,15 +1,22 @@
 import { Router } from 'express';
-import { login } from './controllers/authController.js';
+import { login, refreshToken, logout } from './controllers/authController.js';
+import { validateRequest } from './middlewares/validateRequest.js';
+import { loginSchema } from './schemas/authSchema.js';
 import { authenticate, requireRole } from './middlewares/authMiddleware.js';
 import { getDashboard } from './controllers/dashboardController.js';
 import { getAllPR, createPR, approvePR, bulkApprovePR, deletePR, bulkDeletePR, getVendors, getItems, createRestockRequest, getPendingRequests, completeRequest, getReorderAlerts, autoGeneratePR } from './controllers/pengadaanController.js';
 import { generatePO, updatePOStatus, getAllPO, getPODetails, bulkGeneratePO, createDirectPO, deletePO, bulkReceivePO, bulkApprovePO } from './controllers/poController.js';
-import { getAllStok, stokMasuk, opnameStok } from './controllers/gudangController.js';
+import { getAllStok, stokMasuk, opnameStok, getPendingPO, getPendingPODetails, receiveGoods } from './controllers/gudangController.js';
+import { getVendorsSRM, createVendor, updateVendor, updateVendorStatus } from './controllers/vendorController.js';
+import { createVendorSchema, updateVendorStatusSchema } from './schemas/vendorSchema.js';
+import { goodsReceiptSchema } from './schemas/inventorySchema.js';
 const router = Router();
 // Alias Auth untuk Jenderal
 const executiveAuth = [authenticate, requireRole('Owner', 'General Manager')];
 // Endpoint untuk login POST /api/login
-router.post('/login', login);
+router.post('/login', validateRequest(loginSchema), login);
+router.post('/auth/refresh', refreshToken);
+router.post('/auth/logout', logout);
 // Endpoint untuk dashboard GET /api/dashboard (memerlukan autentikasi)
 router.get('/dashboard', authenticate, getDashboard);
 // ============================================================
@@ -50,6 +57,13 @@ router.post('/pengadaan/requests', pengadaanReadStrictAuth, createRestockRequest
 router.get('/pengadaan/requests', pengadaanStrictAuth, getPendingRequests);
 router.patch('/pengadaan/requests/:id', pengadaanStrictAuth, completeRequest);
 // ============================================================
+// MODUL PENGADAAN (SRM & VENDOR MANAGEMENT)
+// ============================================================
+router.get('/vendor', pengadaanStrictAuth, getVendorsSRM);
+router.post('/vendor', pengadaanStrictAuth, validateRequest(createVendorSchema), createVendor);
+router.put('/vendor/:id', pengadaanStrictAuth, validateRequest(createVendorSchema), updateVendor);
+router.patch('/vendor/:id/status', pengadaanStrictAuth, validateRequest(updateVendorStatusSchema), updateVendorStatus);
+// ============================================================
 // MODUL GUDANG (Inventory Stok)
 // Akses: Owner, General Manager, Gudang
 // ============================================================
@@ -58,6 +72,10 @@ const gudangReadAuth = [authenticate, requireRole('Owner', 'General Manager', 'G
 router.get('/gudang', gudangReadAuth, getAllStok);
 router.post('/gudang/masuk', gudangAuth, stokMasuk);
 router.patch('/gudang/opname/:id', gudangAuth, opnameStok);
+// Goods Receipt Endpoints
+router.get('/gudang/po-pending', gudangAuth, getPendingPO);
+router.get('/gudang/po-pending/:id', gudangAuth, getPendingPODetails);
+router.post('/gudang/receive', gudangAuth, validateRequest(goodsReceiptSchema), receiveGoods);
 // ============================================================
 // MODUL OPERASI INTI (Manufaktur & Perakitan)
 // Akses: Owner, General Manager, Operasi Inti
@@ -103,9 +121,26 @@ router.patch('/mrp/costs/:kode_barang', mrpAuth, updateCosts);
 // MODUL KEUANGAN & AKUNTANSI (Financial Ledger & HPP)
 // ============================================================
 import { getAllJurnal, getKPI } from './controllers/keuanganController.js';
+import { getPendingReceipts, getAllInvoices, createInvoice, payInvoice } from './controllers/financeController.js';
+import { createInvoiceSchema, paymentSchema } from './schemas/financeSchema.js';
 const keuanganAuth = [authenticate, requireRole('Owner', 'General Manager', 'Keuangan & Akuntansi')];
 router.get('/keuangan/jurnal', keuanganAuth, getAllJurnal);
 router.get('/keuangan/kpi', keuanganAuth, getKPI);
+// Accounts Payable
+router.get('/finance/ap/pending-receipts', keuanganAuth, getPendingReceipts);
+router.get('/finance/ap/invoices', keuanganAuth, getAllInvoices);
+router.post('/finance/ap/invoice', keuanganAuth, validateRequest(createInvoiceSchema), createInvoice);
+router.post('/finance/ap/pay', keuanganAuth, validateRequest(paymentSchema), payInvoice);
+// ============================================================
+// MODUL PENJUALAN (Order-to-Cash)
+// ============================================================
+import { getSalesOrders, createSalesOrder, shipSalesOrder } from './controllers/salesController.js';
+import { createSOSchema } from './schemas/salesSchema.js';
+const salesAuth = [authenticate, requireRole('Owner', 'General Manager', 'Pemasaran & Penjualan')];
+const logistikOutboundAuth = [authenticate, requireRole('Owner', 'General Manager', 'Gudang')];
+router.get('/sales/orders', salesAuth, getSalesOrders);
+router.post('/sales/orders', salesAuth, validateRequest(createSOSchema), createSalesOrder);
+router.patch('/sales/orders/:id/ship', logistikOutboundAuth, shipSalesOrder);
 // ============================================================
 // MODUL PROFIL & USER MANAGEMENT
 // IT Support hanya ada di sini.
@@ -118,8 +153,8 @@ router.delete('/profil/avatar', authenticate, deleteAvatar);
 router.post('/profil/email/request', authenticate, requestEmailChange);
 router.post('/profil/email/verify', authenticate, verifyEmailChange);
 router.post('/profil/telegram/test', authenticate, testTelegram);
-// Audit logs is technically System Maintenance. IT Support and Owner.
-const auditAuth = [authenticate, requireRole('Owner', 'IT Support', 'General Manager')];
+// Log Audit & System Settings
+const auditAuth = [authenticate, requireRole('Owner', 'IT Support', 'General Manager', 'Legal & Kepatuhan')];
 router.get('/profil/audit', auditAuth, getAuditLogs);
 // Users CRUD (IT Support & Owner)
 import { getAllUsers, createUser, updateUser, resetPassword } from './controllers/userController.js';
@@ -134,7 +169,7 @@ router.get('/dashboard/it', userAuth, getITDashboardStats);
 // MODUL PEMASARAN B2B (CRM & Campaign Management)
 // ============================================================
 import { getAllCampaigns, createCampaign, updateCampaign, deleteCampaign, getAllLeads, createLead, updateLeadStatus, updateLead, deleteLead, getAktivitasByLead, createAktivitas, getPemasaranKPI } from './controllers/pemasaranController.js';
-const pemasaranAuth = [authenticate, requireRole('Owner', 'General Manager', 'Pemasaran')];
+const pemasaranAuth = [authenticate, requireRole('Owner', 'General Manager', 'Pemasaran & Penjualan')];
 router.get('/pemasaran/campaigns', pemasaranAuth, getAllCampaigns);
 router.post('/pemasaran/campaigns', pemasaranAuth, createCampaign);
 router.patch('/pemasaran/campaigns/:id', pemasaranAuth, updateCampaign);
@@ -147,4 +182,26 @@ router.delete('/pemasaran/leads/:id', pemasaranAuth, deleteLead);
 router.get('/pemasaran/aktivitas/:id_lead', pemasaranAuth, getAktivitasByLead);
 router.post('/pemasaran/aktivitas', pemasaranAuth, createAktivitas);
 router.get('/pemasaran/kpi', pemasaranAuth, getPemasaranKPI);
+// ============================================================
+// MODUL KLAIM GARANSI & AFTER-SALES (CRM Modul 4)
+// ============================================================
+import { createKlaim, getAllKlaim, investigateKlaim } from './controllers/aftersalesController.js';
+const klaimReadAuth = [authenticate, requireRole('Owner', 'General Manager', 'Pemasaran & Penjualan', 'Kendali Mutu')];
+const klaimWritePemasaranAuth = [authenticate, requireRole('Owner', 'Pemasaran & Penjualan')];
+const klaimInvestigateAuth = [authenticate, requireRole('Owner', 'Kendali Mutu')];
+router.post('/aftersales/klaim', klaimWritePemasaranAuth, createKlaim);
+router.get('/aftersales/klaim', klaimReadAuth, getAllKlaim);
+router.patch('/aftersales/klaim/:id/investigate', klaimInvestigateAuth, investigateKlaim);
+// ============================================================
+// MODUL EXCEPTION HANDLING & KENDALI DARURAT
+// ============================================================
+import { submitRTV, reportFailedDelivery, rescheduleDelivery, submitWriteOff, approveWriteOff, getWriteOffs } from './controllers/exceptionController.js';
+const exceptionAuth = [authenticate, requireRole('Owner', 'General Manager', 'Gudang', 'Kendali Mutu')];
+const logistikAuth = [authenticate, requireRole('Owner', 'General Manager', 'Gudang', 'Pemasaran & Penjualan')];
+router.post('/exception/rtv', exceptionAuth, submitRTV);
+router.patch('/exception/so/:id/failed-delivery', logistikAuth, reportFailedDelivery);
+router.patch('/exception/so/:id/reschedule', logistikAuth, rescheduleDelivery);
+router.post('/exception/writeoff', exceptionAuth, submitWriteOff);
+router.patch('/exception/writeoff/:id/approve', executiveAuth, approveWriteOff);
+router.get('/exception/writeoff', exceptionAuth, getWriteOffs);
 export default router;

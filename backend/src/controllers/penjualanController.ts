@@ -27,20 +27,17 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
 export const getAllSO = async (req: Request, res: Response): Promise<void> => {
   try {
     const [headers]: any = await pool.query(`
-      SELECT id, nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, 
-             foto_bukti_terima_retailer, vendor_3pl, nomor_resi_3pl, foto_serah_terima_3pl,
-             status_so, total_nilai, catatan, created_at
-             status_so, total_nilai, catatan, created_at, biaya_pengiriman
-      FROM sales_order_header
+      SELECT id, no_so AS nomor_so, id_customer, status AS status_so, created_at
+      FROM penjualan_so_header
       ORDER BY id DESC
     `);
 
     const [details]: any = await pool.query(`
-      SELECT d.id, d.id_so_header, d.id_inventory_barang_jadi, d.qty, 
-             d.harga_satuan, d.subtotal, d.status_item, d.id_wo_terkait, d.hpp_satuan_tercatat,
-             i.nama_barang, i.kode_barang, i.satuan
-      FROM sales_order_detail d
-      JOIN inventory_stok i ON d.id_inventory_barang_jadi = i.id
+      SELECT d.id, d.id_so_header, d.kode_barang, d.qty,
+             d.harga_jual_satuan AS harga_satuan, d.hpp_snapshot AS hpp_satuan_tercatat,
+             i.nama_barang, i.satuan
+      FROM penjualan_so_detail d
+      LEFT JOIN inventory_stok i ON d.kode_barang = i.kode_barang
     `);
 
     const result = headers.map((h: any) => {

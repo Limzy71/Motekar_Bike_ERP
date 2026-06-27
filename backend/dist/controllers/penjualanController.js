@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { insertJurnal } from './keuanganController.js';
 /**
  * Controller untuk Modul Penjualan & Penagihan (Order-to-Cash & Dual-Track Engine).
  * Architecture: sales_order_header + sales_order_detail
@@ -204,7 +205,7 @@ export const fulfillSO = async (req, res) => {
             throw new Error('ID SO tidak valid.');
         await connection.beginTransaction();
         // 1. Get SO Header
-        const [headerRows] = await connection.query('SELECT status_so, foto_bukti_terima_retailer FROM sales_order_header WHERE id = ? FOR UPDATE', [soId]);
+        const [headerRows] = await connection.query('SELECT nomor_so, total_nilai, status_so, foto_bukti_terima_retailer FROM sales_order_header WHERE id = ? FOR UPDATE', [soId]);
         if (headerRows.length === 0)
             throw new Error('SO tidak ditemukan.');
         const soHeader = headerRows[0];
@@ -234,7 +235,7 @@ export const fulfillSO = async (req, res) => {
             return;
         }
         // 2. Check Detail Items "All-or-Nothing"
-        const [detailRows] = await connection.query('SELECT id, id_inventory_barang_jadi, qty, status_item FROM sales_order_detail WHERE id_so_header = ?', [soId]);
+        const [detailRows] = await connection.query('SELECT id, id_inventory_barang_jadi, qty, status_item, hpp_satuan_tercatat FROM sales_order_detail WHERE id_so_header = ?', [soId]);
         const isDefisit = detailRows.some((d) => d.status_item === 'DEFISIT');
         if (isDefisit) {
             throw new Error('All-or-Nothing Fulfillment Error: Masih ada baris detail yang berstatus DEFISIT. Harap tunggu WO diselesaikan.');
@@ -250,6 +251,20 @@ export const fulfillSO = async (req, res) => {
         // 4. Update Status SO
         await connection.query('UPDATE sales_order_header SET status_so = ? WHERE id = ?', ['PAID', soId] // After paid, eventually to COMPLETED. Here we set to PAID to reflect money received.
         );
+        // 5. JURNAL AKUNTANSI PENJUALAN (4 Baris: Kas vs Pendapatan, HPP vs Persediaan)
+        const totalPendapatan = parseFloat(soHeader.total_nilai || 0);
+        if (totalPendapatan > 0) {
+            await insertJurnal(connection, soHeader.nomor_so, `Pelunasan Piutang / Penjualan ${soHeader.nomor_so}`, 'Kas_Bank', 'Debit', totalPendapatan);
+            await insertJurnal(connection, soHeader.nomor_so, `Pendapatan Operasional ${soHeader.nomor_so}`, 'Pendapatan', 'Kredit', totalPendapatan);
+        }
+        let totalHPP = 0;
+        for (const item of detailRows) {
+            totalHPP += parseFloat(item.hpp_satuan_tercatat || 0) * item.qty;
+        }
+        if (totalHPP > 0) {
+            await insertJurnal(connection, soHeader.nomor_so, `Pengakuan HPP ${soHeader.nomor_so}`, 'HPP', 'Debit', totalHPP);
+            await insertJurnal(connection, soHeader.nomor_so, `Pelepasan Persediaan ${soHeader.nomor_so}`, 'Aset_Persediaan', 'Kredit', totalHPP);
+        }
         await connection.commit();
         res.json({ success: true, message: `Fulfillment sukses! Pembayaran divalidasi, stok di-hard consume dan SO berstatus PAID.` });
     }

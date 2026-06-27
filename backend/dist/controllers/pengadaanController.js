@@ -70,6 +70,12 @@ export const createPR = async (req, res) => {
             connection.release();
             return;
         }
+        const [vendorCheck] = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [id_vendor]);
+        if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+            res.status(400).json({ success: false, message: `Akses Ditolak: Vendor telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}` });
+            connection.release();
+            return;
+        }
         await connection.beginTransaction();
         const [headerResult] = await connection.query('INSERT INTO pengadaan_pr_header (nomor_pr, id_vendor, status_pr) VALUES (?, ?, ?)', [nomor_pr.trim(), id_vendor, 'Menunggu Persetujuan']);
         const prHeaderId = headerResult.insertId;
@@ -119,6 +125,13 @@ export const approvePR = async (req, res) => {
             // Auto-generate PO ISSUED with PR's vendor and id_pr linkage
             const [prs] = await connection.query('SELECT * FROM pengadaan_pr_header WHERE id = ?', [prId]);
             const pr = prs[0];
+            // HARD GUARD VENDOR BLACKLIST
+            const [vendorCheck] = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [pr.id_vendor]);
+            if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+                await connection.rollback();
+                res.status(400).json({ success: false, message: `Akses Ditolak: Vendor telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}` });
+                return;
+            }
             const [prDetails] = await connection.query('SELECT * FROM pengadaan_pr_detail WHERE id_pr_header = ?', [prId]);
             const nomor_po = await generatePONumber(connection);
             const [poInsert] = await connection.query('INSERT INTO pengadaan_po_header (nomor_po, id_vendor, status, catatan, id_pr) VALUES (?, ?, ?, ?, ?)', [nomor_po, pr.id_vendor, 'ISSUED', `Generated from PR ${pr.nomor_pr}`, prId]);
@@ -167,6 +180,11 @@ export const bulkApprovePR = async (req, res) => {
         }
         let generatedCount = 0;
         for (const pr of prs) {
+            // HARD GUARD VENDOR BLACKLIST
+            const [vendorCheck] = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [pr.id_vendor]);
+            if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+                throw new Error(`Vendor ${pr.id_vendor} telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}`);
+            }
             await connection.query('UPDATE pengadaan_pr_header SET status_pr = ? WHERE id = ?', ['Diproses Vendor', pr.id]);
             const [prDetails] = await connection.query('SELECT * FROM pengadaan_pr_detail WHERE id_pr_header = ?', [pr.id]);
             if (prDetails.length === 0)

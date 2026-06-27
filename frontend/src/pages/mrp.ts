@@ -396,7 +396,7 @@ function renderRecommendations(tbodyWO: HTMLElement, tbodyPO: HTMLElement): void
     } else {
         pendingWO.forEach(wo => {
             tbodyWO.innerHTML += `
-                <tr class="hover:bg-slate-50 transition-colors">
+                <tr class="hover:bg-slate-100 transition-colors">
                     <td class="px-4 py-3 font-data-mono text-[11px] text-slate-500">${wo.kode_sepeda}</td>
                     <td class="px-4 py-3 font-bold text-slate-700">${wo.nama_barang}</td>
                     <td class="px-4 py-3 text-right font-black text-blue-600">${wo.qty} <span class="text-[10px] font-normal text-slate-400">Unit</span></td>
@@ -410,7 +410,7 @@ function renderRecommendations(tbodyWO: HTMLElement, tbodyPO: HTMLElement): void
     } else {
         pendingPO.forEach(po => {
             tbodyPO.innerHTML += `
-                <tr class="hover:bg-slate-50 transition-colors">
+                <tr class="hover:bg-slate-100 transition-colors">
                     <td class="px-4 py-3 font-data-mono text-[11px] text-slate-500">${po.kode_barang}</td>
                     <td class="px-4 py-3 font-bold text-slate-700">${po.nama_barang}</td>
                     <td class="px-4 py-3 text-right font-black text-amber-600">${po.qty} <span class="text-[10px] font-normal text-slate-400">Pcs</span></td>

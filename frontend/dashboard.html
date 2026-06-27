@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
@@ -8,298 +7,383 @@
     <meta name="description" content="Dashboard utama Motekar Bike Assembly ERP — pantau performa bisnis secara real-time.">
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
-    <script id="tailwind-config">
+    <script>
         tailwind.config = {
-            darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "surface-tint": "#3755c3", "surface-dim": "#d8dadc", "inverse-primary": "#b8c4ff", "surface": "#f7f9fb",
-                        "outline": "#757684", "surface-bright": "#f7f9fb", "tertiary": "#003c36", "tertiary-fixed-dim": "#6bd8cb",
-                        "on-primary-fixed": "#001453", "surface-container": "#eceef0", "on-surface": "#191c1e",
-                        "surface-container-highest": "#e0e3e5", "outline-variant": "#c4c5d5", "on-primary-container": "#a8b8ff",
-                        "on-secondary": "#ffffff", "on-error-container": "#93000a", "error": "#ba1a1a", "on-error": "#ffffff",
-                        "inverse-on-surface": "#eff1f3", "on-primary-fixed-variant": "#173bab", "background": "#f7f9fb",
-                        "on-surface-variant": "#444653", "on-primary": "#ffffff", "on-secondary-fixed": "#0d1c2f",
-                        "primary-container": "#1e40af", "on-tertiary-fixed": "#00201d", "secondary-fixed-dim": "#b9c7e0",
-                        "on-tertiary": "#ffffff", "secondary-container": "#d5e3fd", "primary": "#00288e", "surface-container-high": "#e6e8ea",
-                        "secondary-fixed": "#d5e3fd", "on-tertiary-container": "#5fcdbf", "on-secondary-fixed-variant": "#3a485c",
-                        "on-background": "#191c1e", "primary-fixed": "#dde1ff", "secondary": "#515f74", "primary-fixed-dim": "#b8c4ff",
-                        "on-tertiary-fixed-variant": "#005049", "tertiary-container": "#00554e", "tertiary-fixed": "#89f5e7",
-                        "surface-container-low": "#f2f4f6", "on-secondary-container": "#57657b", "surface-container-lowest": "#ffffff",
-                        "surface-variant": "#e0e3e5", "inverse-surface": "#2d3133", "error-container": "#ffdad6"
+                        "surface-tint":"#3755c3","surface":"#f7f9fb","outline":"#757684","surface-container":"#eceef0","on-surface":"#191c1e",
+                        "surface-container-highest":"#e0e3e5","outline-variant":"#c4c5d5","on-secondary":"#ffffff","error":"#ba1a1a","on-error":"#ffffff",
+                        "on-primary":"#ffffff","primary-container":"#1e40af","primary":"#00288e","surface-container-high":"#e6e8ea",
+                        "on-surface-variant":"#444653","inverse-surface":"#2d3133","inverse-on-surface":"#eff1f3","surface-container-lowest":"#ffffff",
+                        "surface-container-low":"#f2f4f6","error-container":"#ffdad6","tertiary":"#003c36"
                     },
-                    spacing: { "sidebar-width": "260px" },
-                    fontFamily: {
-                        "data-mono": ["JetBrains Mono"], "title-sm": ["Inter"], "headline-md": ["Inter"],
-                        "display-lg": ["Inter"], "label-caps": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"]
-                    }
+                    spacing:{"sidebar-width":"260px"},
+                    fontFamily:{"data-mono":["JetBrains Mono"],"headline-md":["Inter"]}
                 }
             }
         }
     </script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
+        body { font-family: 'Inter', sans-serif; background: #f7f9fb; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+        .toast { position:fixed; bottom:1.5rem; right:1.5rem; z-index:60; transform:translateY(24px); opacity:0; transition:transform .28s,opacity .28s; }
+        .toast.show { transform:translateY(0); opacity:1; }
+
+        /* Hero gradient banner */
+        .hero-banner {
+            background: linear-gradient(135deg, #00288e 0%, #1e40af 50%, #1d4ed8 100%);
+            position: relative;
+            overflow: hidden;
         }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        .hero-banner::before {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
         }
-        .active-nav {
-            background-color: #e8eaf2;
-            border-left: 4px solid #00288e;
+        .hero-banner::after {
+            content: '';
+            position: absolute;
+            bottom: -80px; left: 30%;
+            width: 400px; height: 400px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
         }
-        .toast {
-            position: fixed;
-            bottom: 1.5rem;
-            right: 1.5rem;
-            z-index: 60;
-            pointer-events: none;
-            transform: translateY(24px);
-            opacity: 0;
-            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+
+        /* KPI card shimmer */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
         }
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
         }
-        .toast .material-symbols-outlined {
-            font-size: 1.2rem;
-        }
-        button, .btn-action {
-            -webkit-tap-highlight-color: transparent;
-            cursor: pointer;
-        }
-        button, .nav-item, .material-symbols-outlined {
-            outline: none;
-        }
-        button:focus, .nav-item:focus {
-            outline: none;
-            box-shadow: none;
-        }
-        button:focus-visible, .nav-item:focus-visible {
-            outline: 2px solid rgba(37, 99, 235, 0.22);
-            outline-offset: 2px;
-            box-shadow: none;
-        }
-        button::-moz-focus-inner {
-            border: 0;
-        }
-        button:active, .nav-item:active {
-            outline: none;
-            box-shadow: none;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+
+        /* KPI hover */
+        .kpi-card { transition: transform .2s, box-shadow .2s; }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -4px rgba(0,0,0,0.12); }
+
+        /* Chart area */
+        .chart-card { transition: box-shadow .2s; }
+        .chart-card:hover { box-shadow: 0 4px 16px -4px rgba(0,0,0,0.1); }
+
+        button:focus { outline: none; box-shadow: none; }
+        button:focus-visible { outline: 2px solid rgba(37,99,235,.22); outline-offset: 2px; }
     </style>
 </head>
-
 <body class="text-on-surface">
-    <div class="flex h-screen overflow-hidden">
+<div class="flex h-screen overflow-hidden">
 
-        <!-- ==================== SIDEBAR ==================== -->
-        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
-                <div class="flex flex-col gap-1" id="sidebar-logo">
-                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
-                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
-                </div>
-                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4">
-                    <!-- Nav items akan di-render oleh rbac.ts -->
-                </nav>
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20">
+        <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+            <div class="flex flex-col gap-1" id="sidebar-logo">
+                <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
+                <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
             </div>
-            <div class="p-6 border-t border-outline-variant">
-                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
-                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
-                    <span class="menu-text">Keluar Sistem</span>
+            <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
+        </div>
+        <div class="p-6 border-t border-outline-variant">
+            <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity">
+                <span class="material-symbols-outlined text-[18px]">logout</span><span>Keluar Sistem</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-surface">
+        <!-- TOP HEADER -->
+        <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
+            <div class="flex items-center gap-4">
+                <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
+                    <span class="material-symbols-outlined text-[24px]">menu</span>
                 </button>
+                <span class="text-headline-md text-on-surface font-bold">Ringkasan Eksekutif</span>
             </div>
-        </aside>
-
-        <!-- ==================== MAIN CONTENT ==================== -->
-        <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <!-- HEADER -->
-            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
-                <div class="flex items-center gap-4">
-                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-[24px]">menu</span>
-                    </button>
-                    <span class="text-headline-md text-on-surface font-bold">Ringkasan Eksekutif</span>
+            <a href="/profil" class="flex items-center gap-3 cursor-pointer select-none group transition-all">
+                <div class="text-right">
+                    <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama</p>
+                    <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Role</p>
                 </div>
-                <div class="flex items-center gap-6">
-                    <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all" title="Lihat Profil Saya">
-                        <div class="text-right">
-                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
-                        </div>
-                        <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
-                            <span id="header-inisial">--</span>
-                        </div>
-                    </a>
+                <div id="header-avatar-container" class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm overflow-hidden">
+                    <span id="header-inisial">U</span>
                 </div>
-            </header>
+            </a>
+        </header>
 
-            <!-- SCROLLABLE CONTENT -->
-            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+        <!-- SCROLLABLE CONTENT -->
+        <div class="flex-1 overflow-y-auto bg-slate-50/30">
 
-                <!-- HEADER SECTION -->
-                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary text-[24px]">analytics</span>
-                            Dashboard Motekar Bike Assy
-                        </h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Pantau performa bisnis secara real-time dari satu layar.</p>
+            <!-- ============================================================ -->
+            <!-- DASHBOARD: OPERASIONAL (Owner, GM, & semua role operasional) -->
+            <!-- ============================================================ -->
+            <div id="dashboard-operasional" class="hidden">
+
+                <!-- HERO BANNER -->
+                <div class="hero-banner px-8 py-7 relative z-10">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="material-symbols-outlined text-white/70 text-[18px]">analytics</span>
+                                <p class="text-white/70 text-xs font-semibold uppercase tracking-widest">Motekar Bike Assy</p>
+                            </div>
+                            <h2 class="text-2xl font-black text-white leading-tight">Dashboard Operasional</h2>
+                            <p class="text-white/60 text-xs mt-1">Pantau performa bisnis secara real-time dari satu layar.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white/10 border border-white/20 rounded-xl px-4 py-2 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+                                <span class="text-white/80 text-xs font-semibold" id="last-updated">Live</span>
+                            </div>
+                            <button id="btn-refresh" class="bg-white text-primary font-bold text-sm px-4 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[16px]">sync</span> Refresh
+                            </button>
+                        </div>
                     </div>
-                    <button id="btn-refresh" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs flex items-center gap-2 transition-all">
-                        <span class="material-symbols-outlined text-[16px]">sync</span> Segarkan Data
-                    </button>
                 </div>
 
-                <div id="dashboard-operasional" class="hidden">
+                <div class="p-8 space-y-6">
+
                     <!-- 4 KPI CARDS -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <!-- KPI 1: Total PR Aktif -->
-                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center gap-4 hover:shadow-sm transition-shadow">
-                        <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-[24px]">shopping_cart</span>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+                        <!-- KPI 1: PR Aktif -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-blue-50 -translate-y-8 translate-x-8"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-[20px]">shopping_cart</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total PR Aktif</p>
+                                <p class="text-3xl font-black text-slate-900 font-data-mono leading-none" id="kpi-pr">
+                                    <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Purchase Requisition</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total PR Aktif</p>
-                            <p class="text-3xl font-black text-slate-900 font-data-mono leading-tight" id="kpi-pr">
-                                <span class="inline-block w-8 h-6 bg-slate-100 rounded animate-pulse"></span>
-                            </p>
+
+                        <!-- KPI 2: Invoice -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-emerald-50 -translate-y-8 translate-x-8"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Invoice</p>
+                                <p class="text-3xl font-black text-slate-900 font-data-mono leading-none" id="kpi-invoice">
+                                    <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Faktur Penjualan</p>
+                            </div>
+                        </div>
+
+                        <!-- KPI 3: Job Selesai -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-teal-50 -translate-y-8 translate-x-8"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-[20px]">task_alt</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Job Selesai</p>
+                                <p class="text-3xl font-black text-slate-900 font-data-mono leading-none" id="kpi-job">
+                                    <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Work Order Completed</p>
+                            </div>
+                        </div>
+
+                        <!-- KPI 4: Stok Komponen -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-amber-50 -translate-y-8 translate-x-8"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stok Komponen</p>
+                                <p class="text-3xl font-black text-slate-900 font-data-mono leading-none" id="kpi-stok">
+                                    <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Item di Gudang</p>
+                            </div>
                         </div>
                     </div>
-                    <!-- KPI 2: Total Invoice -->
-                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center gap-4 hover:shadow-sm transition-shadow">
-                        <div class="w-12 h-12 rounded-xl bg-[#e6f4ea] text-[#137333] flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-[24px]">receipt_long</span>
+
+                    <!-- 2 CHARTS -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                        <!-- Chart 1: Bar Chart - Tren Operasi Kanban -->
+                        <div class="chart-card bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-[18px]">bar_chart</span>
+                                    </div>
+                                    <h3 class="text-sm font-bold text-slate-900">Tren Operasi Kanban</h3>
+                                </div>
+                                <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-widest bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">Real-time</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mb-5 ml-10">Distribusi status pekerjaan produksi saat ini.</p>
+                            <div class="relative h-64 w-full">
+                                <canvas id="kanbanChart"></canvas>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Invoice</p>
-                            <p class="text-3xl font-black text-slate-900 font-data-mono leading-tight" id="kpi-invoice">
-                                <span class="inline-block w-8 h-6 bg-slate-100 rounded animate-pulse"></span>
-                            </p>
+
+                        <!-- Chart 2: Doughnut Chart - Proporsi Stok -->
+                        <div class="chart-card bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-[18px]">donut_large</span>
+                                    </div>
+                                    <h3 class="text-sm font-bold text-slate-900">Proporsi Master Stok</h3>
+                                </div>
+                                <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-widest bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">Snapshot</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mb-5 ml-10">Perbandingan stok antara Komponen dan Sepeda Jadi.</p>
+                            <div class="relative h-64 w-full flex items-center justify-center">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8" id="stok-center-text-container">
+                                    <p class="text-3xl font-black text-slate-800 font-data-mono" id="stok-total-text">0</p>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Total Item</p>
+                                </div>
+                                <canvas id="stokChart" class="relative z-10"></canvas>
+                            </div>
                         </div>
                     </div>
-                    <!-- KPI 3: Job Selesai -->
-                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center gap-4 hover:shadow-sm transition-shadow">
-                        <div class="w-12 h-12 rounded-xl bg-tertiary/10 text-tertiary flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-[24px]">task_alt</span>
-                        </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Job Selesai</p>
-                            <p class="text-3xl font-black text-slate-900 font-data-mono leading-tight" id="kpi-job">
-                                <span class="inline-block w-8 h-6 bg-slate-100 rounded animate-pulse"></span>
-                            </p>
+
+                    <!-- QUICK ACCESS MODULES -->
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Akses Cepat Modul</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                            <a href="/pengadaan" id="qa-pengadaan" class="bg-white border border-slate-200/80 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-blue-300 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer group">
+                                <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">shopping_cart</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-600 text-center">Pengadaan</span>
+                            </a>
+                            <a href="/penjualan" id="qa-penjualan" class="bg-white border border-slate-200/80 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-emerald-300 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer group">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">point_of_sale</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-600 text-center">Penjualan</span>
+                            </a>
+                            <a href="/operasi" id="qa-operasi" class="bg-white border border-slate-200/80 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-teal-300 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer group">
+                                <div class="w-9 h-9 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">precision_manufacturing</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-600 text-center">Operasi Inti</span>
+                            </a>
+                            <a href="/gudang" id="qa-gudang" class="bg-white border border-slate-200/80 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-amber-300 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer group">
+                                <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">warehouse</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-600 text-center">Gudang</span>
+                            </a>
+                            <a href="/pemasaran" id="qa-pemasaran" class="bg-white border border-slate-200/80 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-violet-300 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer group">
+                                <div class="w-9 h-9 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">campaign</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-600 text-center">Pemasaran</span>
+                            </a>
+                            <a href="/keuangan" id="qa-keuangan" class="bg-white border border-slate-200/80 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-rose-300 hover:shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer group">
+                                <div class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">account_balance</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-600 text-center">Keuangan</span>
+                            </a>
                         </div>
                     </div>
-                    <!-- KPI 4: Total Stok Komponen -->
-                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex items-center gap-4 hover:shadow-sm transition-shadow">
-                        <div class="w-12 h-12 rounded-xl bg-[#fff8e1] text-[#b8860b] flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-[24px]">inventory_2</span>
+
+                </div><!-- end p-8 -->
+            </div><!-- end dashboard-operasional -->
+
+            <!-- ============================================================ -->
+            <!-- DASHBOARD: IT SUPPORT -->
+            <!-- ============================================================ -->
+            <div id="dashboard-it-support" class="hidden">
+
+                <div class="hero-banner px-8 py-7 relative z-10">
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="material-symbols-outlined text-white/70 text-[18px]">computer</span>
+                            <p class="text-white/70 text-xs font-semibold uppercase tracking-widest">IT Support Panel</p>
                         </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stok Komponen</p>
-                            <p class="text-3xl font-black text-slate-900 font-data-mono leading-tight" id="kpi-stok">
-                                <span class="inline-block w-8 h-6 bg-slate-100 rounded animate-pulse"></span>
-                            </p>
-                        </div>
+                        <h2 class="text-2xl font-black text-white">System Health Monitor</h2>
+                        <p class="text-white/60 text-xs mt-1">Pantau kesehatan sistem dan aktivitas pengguna.</p>
                     </div>
                 </div>
 
-                <!-- 2 CHARTS -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Chart 1: Bar Chart - Tren Operasi Kanban -->
-                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-6">
-                        <div class="flex items-center gap-2 mb-4">
-                            <span class="material-symbols-outlined text-primary text-[20px]">bar_chart</span>
-                            <h3 class="text-[15px] font-bold text-slate-900 tracking-tight">Tren Operasi Kanban</h3>
-                        </div>
-                        <p class="text-[11px] text-slate-500 mb-4">Distribusi status pekerjaan produksi saat ini.</p>
-                        <div class="relative h-72 w-full">
-                            <canvas id="kanbanChart"></canvas>
-                        </div>
-                    </div>
-                    <!-- Chart 2: Doughnut Chart - Proporsi Stok -->
-                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-6">
-                        <div class="flex items-center gap-2 mb-4">
-                            <span class="material-symbols-outlined text-primary text-[20px]">donut_large</span>
-                            <h3 class="text-[15px] font-bold text-slate-900 tracking-tight">Proporsi Master Stok</h3>
-                        </div>
-                        <p class="text-[11px] text-slate-500 mb-4">Perbandingan stok antara Komponen dan Sepeda Jadi.</p>
-                        <div class="relative h-72 w-full flex items-center justify-center">
-                            <canvas id="stokChart"></canvas>
-                        </div>
-                    </div>
-                    </div>
-                </div>
+                <div class="p-8 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-                <!-- DASHBOARD IT SUPPORT -->
-                <div id="dashboard-it-support" class="hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <!-- KPI 1: Total Pengguna -->
-                        <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-6 flex flex-col justify-between hover:shadow-sm transition-shadow min-h-[140px]">
-                            <div class="flex items-center gap-3 mb-2">
-                                <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <!-- KPI: Pengguna Aktif -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-indigo-50 -translate-y-10 translate-x-10"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
                                     <span class="material-symbols-outlined text-[20px]">group</span>
                                 </div>
-                                <p class="text-sm font-bold text-slate-600 uppercase tracking-wide">Pengguna Aktif</p>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pengguna Aktif</p>
+                                <p class="text-4xl font-black text-slate-900 font-data-mono" id="kpi-it-users">
+                                    <span class="skeleton inline-block w-12 h-9">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Akun terdaftar & aktif</p>
                             </div>
-                            <p class="text-4xl font-black text-slate-900 font-data-mono" id="kpi-it-users">
-                                <span class="inline-block w-8 h-8 bg-slate-100 rounded animate-pulse"></span>
-                            </p>
-                        </div>
-                        
-                        <!-- KPI 2: Total Sesi Hari Ini -->
-                        <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-6 flex flex-col justify-between hover:shadow-sm transition-shadow min-h-[140px]">
-                            <div class="flex items-center gap-3 mb-2">
-                                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-[20px]">login</span>
-                                </div>
-                                <p class="text-sm font-bold text-slate-600 uppercase tracking-wide">Sesi Login (24h)</p>
-                            </div>
-                            <p class="text-4xl font-black text-slate-900 font-data-mono" id="kpi-it-sessions">
-                                42
-                            </p>
                         </div>
 
-                        <!-- KPI 3: Database Status -->
-                        <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-6 flex flex-col justify-between hover:shadow-sm transition-shadow min-h-[140px]">
-                            <div class="flex items-center gap-3 mb-2">
-                                <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <!-- KPI: Sesi Login -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-emerald-50 -translate-y-10 translate-x-10"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+                                    <span class="material-symbols-outlined text-[20px]">login</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Sesi Login (24h)</p>
+                                <p class="text-4xl font-black text-slate-900 font-data-mono" id="kpi-it-sessions">—</p>
+                                <p class="text-[10px] text-slate-400 mt-2">Aktivitas login hari ini</p>
+                            </div>
+                        </div>
+
+                        <!-- KPI: Status Database -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-24 h-24 rounded-full bg-emerald-50 -translate-y-10 translate-x-10"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
                                     <span class="material-symbols-outlined text-[20px]">database</span>
                                 </div>
-                                <p class="text-sm font-bold text-slate-600 uppercase tracking-wide">Status Database</p>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <p class="text-xl font-bold text-emerald-600">Connected</p>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status Database</p>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+                                    <p class="text-xl font-black text-emerald-600">Connected</p>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-2">motekar_db @ MariaDB</p>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div><!-- end dashboard-it-support -->
 
-            </div>
-        </main>
+        </div><!-- end scrollable -->
+    </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast-el">
+    <div id="toast-body" class="bg-slate-900 text-white text-xs font-semibold px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 min-w-[220px]">
+        <span id="toast-icon" class="material-symbols-outlined text-[18px] text-emerald-400">check_circle</span>
+        <span id="toast-msg">Berhasil</span>
     </div>
+</div>
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
-            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
-        </div>
-    </div>
-
-    <script type="module" src="/src/pages/dashboard.ts"></script>
+<script type="module" src="/src/pages/dashboard.ts"></script>
 </body>
-
 </html>

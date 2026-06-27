@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import pool from '../config/database.js';
+import jwt from 'jsonwebtoken';
 
 // Extend Express Request interface to include authenticated user data
 export interface AuthenticatedRequest extends Request {
@@ -12,14 +12,7 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Middleware utama untuk memvalidasi Bearer Token dari header Authorization.
- * Migrasi dari: Motekar_ERP/backend/auth_middleware.php
- *
- * Cara kerja:
- * 1. Baca header Authorization: "Bearer <token>"
- * 2. Query users WHERE api_token = token
- * 3. Jika valid → attach req.user → next()
- * 4. Jika tidak valid → respond 401
+ * Middleware utama untuk memvalidasi JWT Bearer Token.
  */
 export const authenticate = async (
   req: AuthenticatedRequest,
@@ -48,35 +41,20 @@ export const authenticate = async (
   const token = match[1];
 
   try {
-    const [rows] = await pool.query(
-      'SELECT id, username, nama_lengkap, divisi_role FROM users WHERE api_token = ?',
-      [token]
-    );
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
 
-    const users = rows as any[];
-
-    if (users.length === 0) {
-      res.status(401).json({
-        success: false,
-        message: 'Unauthorized: Token tidak valid atau sudah expired.',
-      });
-      return;
-    }
-
-    // Attach user data ke request object agar bisa diakses oleh controller berikutnya
     req.user = {
-      id: users[0].id,
-      username: users[0].username,
-      nama_lengkap: users[0].nama_lengkap,
-      divisi_role: users[0].divisi_role,
+      id: decoded.id,
+      username: decoded.username,
+      nama_lengkap: decoded.nama_lengkap,
+      divisi_role: decoded.divisi_role,
     };
 
     next();
   } catch (error: any) {
-    console.error('[AuthMiddleware] Database error:', error.message);
-    res.status(500).json({
+    res.status(401).json({
       success: false,
-      message: 'Server error saat memvalidasi token.',
+      message: 'Unauthorized: Token expired atau tidak valid.',
     });
   }
 };

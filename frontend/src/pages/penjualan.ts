@@ -92,7 +92,7 @@ const formatIndoNumber = (numStr: string | number) => {
 // ============================================================
 async function loadSOs() {
     try {
-        const response = await apiFetch<{ success: boolean; data: SOHeader[] }>('penjualan/so');
+        const response = await apiFetch<{ success: boolean; data: SOHeader[] }>('sales/orders');
         if (!response.success) throw new Error('Gagal mengambil data SO');
         
         allSOs = response.data;
@@ -115,6 +115,19 @@ function updateKPIs() {
     document.getElementById('kpi-total')!.textContent = totalAktif.toString();
     document.getElementById('kpi-unpaid')!.textContent = unpaid.toString();
     document.getElementById('kpi-selesai')!.textContent = selesai.toString();
+
+    // Failed Delivery Banner Logic
+    const failedDeliveries = allSOs.filter(s => s.status_so === 'FAILED_DELIVERY');
+    const alertBanner = document.getElementById('alert-failed-delivery');
+    const alertCount = document.getElementById('count-failed-delivery');
+    if (alertBanner && alertCount) {
+        if (failedDeliveries.length > 0) {
+            alertCount.textContent = failedDeliveries.length.toString();
+            alertBanner.classList.remove('hidden');
+        } else {
+            alertBanner.classList.add('hidden');
+        }
+    }
 }
 
 function renderTable() {
@@ -139,7 +152,7 @@ function renderTable() {
     currentItems.forEach(so => {
         const dateStr = new Date(so.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50/50 transition-colors duration-150 text-xs font-medium text-slate-600 group cursor-pointer';
+        tr.className = 'hover:bg-slate-100 transition-colors duration-150 text-xs font-medium text-slate-600 group cursor-pointer';
         tr.onclick = () => openRightDrawerSO(so);
 
         let badgeClass = 'bg-slate-100 text-slate-600';
@@ -151,6 +164,7 @@ function renderTable() {
         if (so.status_so === 'COMPLETED') { badgeClass = 'bg-emerald-100 text-emerald-700 border border-emerald-200/80'; statusLabel = 'Selesai'; }
         if (so.status_so === 'BACKORDER') { badgeClass = 'bg-rose-100 text-rose-700'; statusLabel = 'Backorder (Defisit)'; }
         if (so.status_so === 'DRAFT') { statusLabel = 'Draf'; }
+        if (so.status_so === 'FAILED_DELIVERY') { badgeClass = 'bg-rose-100 text-rose-700 border border-rose-300 font-black'; statusLabel = 'Gagal Kirim'; }
 
         let materialText = '-';
         let jumlahText = '-';
@@ -272,6 +286,7 @@ function openRightDrawerSO(so: SOHeader) {
     if (so.status_so === 'PAID') { statusLabelDrawer = 'Lunas'; badgeColorClass = 'bg-blue-500'; }
     if (so.status_so === 'COMPLETED') { statusLabelDrawer = 'Selesai'; badgeColorClass = 'bg-emerald-500'; }
     if (so.status_so === 'BACKORDER') { statusLabelDrawer = 'Backorder (Defisit)'; badgeColorClass = 'bg-rose-500'; }
+    if (so.status_so === 'FAILED_DELIVERY') { statusLabelDrawer = 'Gagal Kirim'; badgeColorClass = 'bg-rose-600'; }
 
     document.getElementById('drawer-so-status')!.textContent = statusLabelDrawer;
     document.getElementById('drawer-status-dot')!.className = `w-2 h-2 rounded-full ${badgeColorClass}`;
@@ -312,7 +327,7 @@ function openRightDrawerSO(so: SOHeader) {
                 : '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold ml-2">TERSEDIA</span>';
 
             return `
-            <tr class="hover:bg-slate-50 transition-colors">
+            <tr class="hover:bg-slate-100 transition-colors">
                 <td class="py-3 px-3">
                     <p class="font-bold text-slate-800">${item.nama_barang} ${statusBadge}</p>
                     <p class="text-[10px] text-slate-500 font-data-mono mt-0.5">${item.kode_barang}</p>
@@ -415,6 +430,12 @@ function openRightDrawerSO(so: SOHeader) {
                 </button>
             `;
         }
+    } else if (so.status_so === 'FAILED_DELIVERY') {
+        bay.innerHTML = `
+            <button onclick="window.rescheduleDelivery(${so.id})" class="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-rose-700 transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">autorenew</span> Jadwalkan Ulang Pengiriman
+            </button>
+        `;
     }
 
     backdrop.classList.remove('hidden');
@@ -447,6 +468,7 @@ declare global {
         triggerWO: (id: number) => void;
         confirmDelivered: (id: number) => void;
         reportFailed: (id: number) => void;
+        rescheduleDelivery: (id: number) => void;
     }
 }
 window.openRightDrawerSO = openRightDrawerSO;
@@ -454,32 +476,60 @@ window.openRightDrawerSO = openRightDrawerSO;
 
 
 window.confirmDelivered = async (id: number) => {
-    const fotoPod = (document.getElementById('file-foto-retailer') as HTMLInputElement).value;
-    if (!fotoPod) {
+    const fileInput = document.getElementById('file-foto-retailer') as HTMLInputElement;
+    if (!fileInput.files || fileInput.files.length === 0) {
         showToast('Validasi Gagal: Bukti Foto Terima (POD) wajib dilampirkan!', 'error');
         return;
     }
 
+    const formData = new FormData();
+    formData.append('foto_bukti_terima', fileInput.files[0]);
+
     try {
-        // Tembak endpoint terpisah atau gunakan endpoint confirm dengan body status DELIVERED
-        const res = await apiFetch<{success: boolean, message: string}>(`penjualan/so/${id}/deliver`, {
-            method: 'PATCH',
-            body: JSON.stringify({ foto_pod: 'base64_foto_pod_dummy' })
+        const res = await apiFetch<{success: boolean, message: string}>(`sales/deliver/${id}`, {
+            method: 'POST',
+            body: formData
         });
-        if (res.success) { showToast('Status menjadi DELIVERED!', 'success'); loadSOs(); document.getElementById('right-drawer')?.classList.add('translate-x-full'); }
-        else { showToast(res.message || 'Gagal update POD', 'error'); }
-    } catch (e: any) { showToast(e.message || 'Error Sistem', 'error'); }
+        if (res.success) { 
+            showToast(res.message); 
+            loadSOs(); 
+            document.getElementById('right-drawer')?.classList.add('translate-x-full'); 
+        } else { 
+            showToast(res.message, 'error'); 
+        }
+    } catch (e: any) { 
+        showToast(e.message || 'Error Sistem', 'error'); 
+    }
 };
 
 window.reportFailed = async (id: number) => {
+    // @ts-ignore
+    const result = await Swal.fire({
+        title: 'Peringatan',
+        text: 'Laporkan Gagal Kirim? Barang akan dikarantina.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Ya, Laporkan',
+        cancelButtonText: 'Batal'
+    });
+    if (!result.isConfirmed) return;
+
     try {
-        const res = await apiFetch<{success: boolean, message: string}>(`penjualan/so/${id}/fulfill`, {
-            method: 'PATCH',
-            body: JSON.stringify({ action: 'report_failed' })
+        const res = await apiFetch<{success: boolean, message: string}>(`exception/so/${id}/failed-delivery`, {
+            method: 'PATCH'
         });
-        if (res.success) { showToast('Gagal Kirim Dilaporkan!', 'success'); loadSOs(); document.getElementById('right-drawer')?.classList.add('translate-x-full'); }
-        else { showToast(res.message || 'Gagal', 'error'); }
-    } catch (e: any) { showToast(e.message || 'Error Sistem', 'error'); }
+        if (res.success) { 
+            showToast(res.message); 
+            loadSOs(); 
+            document.getElementById('right-drawer')?.classList.add('translate-x-full'); 
+        } else { 
+            showToast(res.message, 'error'); 
+        }
+    } catch (e: any) { 
+        showToast(e.message || 'Error Sistem', 'error'); 
+    }
 };
 
 window.payAndShip = async (id: number) => {
@@ -500,6 +550,32 @@ window.triggerWO = async (idDetail: number) => {
         });
         if (res.success) { showToast('Work Order Berhasil Diterbitkan ke MES!', 'success'); loadSOs(); document.getElementById('right-drawer')?.classList.add('translate-x-full'); }
         else { showToast(res.message || 'Gagal menerbitkan WO', 'error'); }
+    } catch (e: any) { showToast(e.message || 'Error Sistem', 'error'); }
+};
+
+window.rescheduleDelivery = async (id: number) => {
+    const result = await (window as any).Swal.fire({
+        title: 'Jadwalkan Ulang Pengiriman?',
+        text: "Status akan dikembalikan ke RESERVED dan siap dikirim ulang.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0ea5e9',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Ya, Jadwalkan!',
+        cancelButtonText: 'Batal'
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await apiFetch<{success: boolean, message: string}>(`exception/so/${id}/reschedule`, {
+            method: 'PATCH'
+        });
+        if (res.success) { 
+            showToast('Penjadwalan Ulang Berhasil!', 'success'); 
+            loadSOs(); 
+            document.getElementById('right-drawer')?.classList.add('translate-x-full'); 
+        }
+        else { showToast(res.message || 'Gagal jadwalkan ulang', 'error'); }
     } catch (e: any) { showToast(e.message || 'Error Sistem', 'error'); }
 };
 
@@ -525,9 +601,28 @@ async function initCreateModal() {
         }
     });
 
+    let mapPreview: any = null;
+    let mapMarker: any = null;
+
     btnNewSO.onclick = () => {
         resetModal();
         modal.classList.remove('hidden');
+
+        // Initialize Map Preview lazily
+        const mapContainer = document.getElementById('map-preview');
+        if (typeof (window as any).google !== 'undefined' && (window as any).google.maps && mapContainer && !mapPreview) {
+            mapPreview = new (window as any).google.maps.Map(mapContainer, {
+                center: { lat: -6.200000, lng: 106.816666 },
+                zoom: 15,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false
+            });
+            mapMarker = new (window as any).google.maps.Marker({
+                map: mapPreview,
+                animation: (window as any).google.maps.Animation.DROP
+            });
+        }
     };
 
     // Fetch Finished Goods
@@ -659,14 +754,24 @@ async function initCreateModal() {
 
             autocomplete.addListener('place_changed', async () => {
                 const place = autocomplete.getPlace();
+                const mapContainer = document.getElementById('map-preview');
                 
                 if (!place.geometry || !place.geometry.location) {
                     inputLat.value = '0';
                     inputLng.value = '0';
+                    if (mapContainer) mapContainer.classList.add('hidden');
                 } else {
                     inputLat.value = place.geometry.location.lat().toString();
                     inputLng.value = place.geometry.location.lng().toString();
                     inputAlamat.value = place.formatted_address || place.name;
+                    
+                    if (mapContainer && mapPreview && mapMarker) {
+                        mapContainer.classList.remove('hidden');
+                        (window as any).google.maps.event.trigger(mapPreview, 'resize');
+                        mapPreview.setCenter(place.geometry.location);
+                        mapPreview.setZoom(16);
+                        mapMarker.setPosition(place.geometry.location);
+                    }
                 }
                 await calculateShippingCost();
             });
@@ -755,6 +860,10 @@ async function initCreateModal() {
         const inputLng = document.getElementById('input-longitude') as HTMLInputElement;
         if (inputLng) inputLng.value = '';
         
+        const mapContainer = document.getElementById('map-preview');
+        if (mapContainer) mapContainer.classList.add('hidden');
+        if (mapMarker) mapMarker.setPosition(null);
+        
         container.innerHTML = generateRowHTML();
         attachRowEvents(container.firstElementChild as HTMLElement);
     }
@@ -788,19 +897,13 @@ async function initCreateModal() {
             catatan: catatan,
             biaya_pengiriman: parseFloat(biayaPengiriman.replace(/\D/g, '')) || 0,
             items: [{
-                id_inventory_barang_jadi: parseInt(select.value),
-                qty: parseInt(qtyInput.value),
-                harga_satuan: parseFloat(hargaRaw) || 0
+                barang_id: parseInt(select.value),
+                qty_order: parseInt(qtyInput.value)
             }]
         };
 
-        if (lat && lng) {
-            payload.latitude = parseFloat(lat);
-            payload.longitude = parseFloat(lng);
-        }
-
         try {
-            const res = await apiFetch<{success: boolean, message: string}>('penjualan/so', {
+            const res = await apiFetch<{success: boolean, message: string}>('sales/orders', {
                 method: 'POST',
                 body: JSON.stringify(payload)
             });
@@ -825,4 +928,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initRBAC('Penjualan'); 
     loadSOs();
     initCreateModal();
+
+    // Polling for Real-Time Experience (Every 30 seconds)
+    setInterval(() => {
+        loadSOs();
+    }, 30000);
 });

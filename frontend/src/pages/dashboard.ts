@@ -63,46 +63,24 @@ interface DashboardResponse {
  */
 async function loadDashboard(): Promise<void> {
   try {
-    console.log('📊 Fetching dashboard data from /api/dashboard...');
     const response = await apiFetch<DashboardResponse>('dashboard');
-
-    console.log('📊 Dashboard API Response:', response);
-
-    if (!response) {
-      console.error('Fetch Dashboard Error: Response is null or undefined');
-      showToast('Gagal menghubungi server (response kosong)', true);
-      return;
-    }
-
+    if (!response) { showToast('Gagal menghubungi server', true); return; }
     if (response.success) {
       const kpi = response.data?.kpi;
       const charts = response.data?.charts;
-
-      if (!kpi || !charts) {
-        console.error('Fetch Dashboard Error: Missing data structure', { kpi, charts });
-        showToast('Data dashboard tidak lengkap', true);
-        return;
-      }
-
-      console.log('✓ KPI data loaded:', kpi);
-      console.log('✓ Chart data loaded:', charts);
-
-      // === Render KPI Cards ===
+      if (!kpi || !charts) { showToast('Data dashboard tidak lengkap', true); return; }
       renderKPI(kpi);
-
-      // === Render Charts ===
       renderKanbanChart(charts.kanban_status);
       renderStokChart(charts.stok_kategori);
-
-      console.log('✅ Dashboard loaded successfully');
-      showToast('Dashboard dimuat berhasil');
+      // Update last-updated timestamp
+      const el = document.getElementById('last-updated');
+      if (el) el.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     } else {
-      console.error('Fetch Dashboard Error: API returned success=false', response);
-      showToast('Server error: ' + (response.message || 'Unknown error'), true);
+      showToast('Server error: ' + (response.message || 'Unknown'), true);
     }
   } catch (err: any) {
-    console.error('Fetch Dashboard Error:', err);
-    showToast('Gagal menghubungi server — periksa console untuk detail error', true);
+    console.error('Dashboard error:', err);
+    showToast('Gagal memuat data dashboard', true);
   }
 }
 
@@ -167,25 +145,42 @@ function renderKanbanChart(kanbanStatus: ChartItem[]): void {
     type: 'bar',
     data: {
       labels,
-      datasets: [
-        {
-          label: 'Jumlah Pekerjaan',
-          data,
-          backgroundColor: '#0f172a',
-          borderRadius: 4,
-        },
-      ],
+      datasets: [{
+        label: 'Jumlah Pekerjaan',
+        data,
+        backgroundColor: [
+          'rgba(59,130,246,0.85)',
+          'rgba(16,185,129,0.85)',
+          'rgba(245,158,11,0.85)',
+          'rgba(239,68,68,0.85)',
+          'rgba(139,92,246,0.85)',
+        ],
+        borderRadius: 8,
+        borderSkipped: false,
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { family: 'Inter', weight: 'bold', size: 12 },
+          bodyFont: { family: 'Inter', size: 11 },
+          padding: 10,
+          cornerRadius: 8,
+        },
       },
       scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8' },
+        },
         y: {
           beginAtZero: true,
-          ticks: { precision: 0 },
+          ticks: { precision: 0, font: { family: 'Inter', size: 10 }, color: '#94a3b8' },
+          grid: { color: '#f1f5f9' },
         },
       },
     },
@@ -209,24 +204,44 @@ function renderStokChart(stokKategori: ChartItem[]): void {
 
   const labels = stokKategori.map((item) => item.label);
   const data = stokKategori.map((item) => item.data);
+  const total = data.reduce((a, b) => a + b, 0);
+
+  const elTotal = document.getElementById('stok-total-text');
+  if (elTotal) elTotal.textContent = total.toLocaleString('id-ID');
 
   stokChartInstance = new Chart(canvas, {
     type: 'doughnut',
     data: {
       labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: ['#1e293b', '#475569', '#94a3b8'],
-          borderWidth: 0,
-        },
-      ],
+      datasets: [{
+        data,
+        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
+        borderWidth: 0,
+        hoverOffset: 4,
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      cutout: '75%',
       plugins: {
-        legend: { position: 'bottom' },
+        legend: {
+          position: 'bottom',
+          labels: {
+            font: { family: 'Inter', size: 11 },
+            color: '#64748b',
+            padding: 16,
+            usePointStyle: true,
+            pointStyleWidth: 8,
+          },
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { family: 'Inter', weight: 'bold', size: 12 },
+          bodyFont: { family: 'Inter', size: 11 },
+          padding: 10,
+          cornerRadius: 8,
+        },
       },
     },
   });
@@ -245,6 +260,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const dashOps = document.getElementById('dashboard-operasional');
   const dashIT = document.getElementById('dashboard-it-support');
+
+  // Filter Quick Access Modul berdasarkan role
+  const role = user.divisi_role;
+  const qaVisibility: Record<string, string[]> = {
+    'qa-pengadaan': ['Owner', 'General Manager', 'Pengadaan'],
+    'qa-penjualan': ['Owner', 'General Manager', 'Pemasaran & Penjualan'],
+    'qa-operasi': ['Owner', 'General Manager', 'Operasi Inti'],
+    'qa-gudang': ['Owner', 'General Manager', 'Gudang'],
+    'qa-pemasaran': ['Owner', 'General Manager', 'Pemasaran & Penjualan'],
+    'qa-keuangan': ['Owner', 'General Manager', 'Keuangan & Akuntansi']
+  };
+
+  for (const [id, roles] of Object.entries(qaVisibility)) {
+    const el = document.getElementById(id);
+    if (el && !roles.includes(role)) {
+      el.style.display = 'none';
+    }
+  }
 
   // 2. Load dashboard data based on role
   if (user.divisi_role === 'IT Support') {
@@ -268,4 +301,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Polling for Real-Time Experience (Every 30 seconds)
+  setInterval(() => {
+    if (user.divisi_role === 'IT Support') {
+      loadITDashboard();
+    } else {
+      loadDashboard();
+    }
+  }, 30000);
 });

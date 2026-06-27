@@ -68,6 +68,11 @@ export const createDirectPO = async (req: Request, res: Response): Promise<void>
             throw new Error('Minimal harus ada 1 item material.');
         }
 
+        const [vendorCheck]: any = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [id_vendor]);
+        if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+            throw new Error(`Akses Ditolak: Vendor telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}`);
+        }
+
         await connection.beginTransaction();
 
         const nomor_po = await generatePONumber(connection);
@@ -222,6 +227,11 @@ export const generatePO = async (req: Request, res: Response): Promise<void> => 
         const [prDetails]: any = await connection.query('SELECT * FROM pengadaan_pr_detail WHERE id_pr_header = ?', [id_pr]);
         if (prDetails.length === 0) throw new Error('PR tidak memiliki item');
 
+        const [vendorCheck]: any = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [pr.id_vendor]);
+        if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+            throw new Error(`Akses Ditolak: Vendor telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}`);
+        }
+
         // 2. Generate Nomor PO
         const nomor_po = await generatePONumber(connection);
 
@@ -291,6 +301,11 @@ export const bulkGeneratePO = async (req: Request, res: Response): Promise<void>
         let generatedCount = 0;
 
         for (const pr of prs) {
+            const [vendorCheck]: any = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [pr.id_vendor]);
+            if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+                throw new Error(`Akses Ditolak: Vendor ${pr.id_vendor} telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}`);
+            }
+
             const [prDetails]: any = await connection.query('SELECT * FROM pengadaan_pr_detail WHERE id_pr_header = ?', [pr.id]);
             if (prDetails.length === 0) continue;
 
@@ -445,6 +460,48 @@ export const bulkReceivePO = async (req: Request, res: Response): Promise<void> 
     } catch (error: any) {
         await connection.rollback();
         console.error('[bulkReceivePO] Error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        connection.release();
+    }
+};
+
+// ============================================================
+// [POST] /api/pengadaan/po/bulk-issue — Bulk Issue PO (DRAFT -> ISSUED)
+// ============================================================
+export const bulkIssuePO = async (req: Request, res: Response): Promise<void> => {
+    const connection = await pool.getConnection();
+    const user = (req as any).user;
+    const role = user?.divisi_role;
+
+    try {
+        if (role !== 'Pengadaan' && role !== 'Owner' && role !== 'General Manager') {
+            throw new Error('Akses ditolak: Hanya Pengadaan atau Executive yang bisa mengajukan PO massal.');
+        }
+
+        await connection.beginTransaction();
+
+        const [pos]: any = await connection.query('SELECT id, nomor_po FROM pengadaan_po_header WHERE status = "DRAFT"');
+        
+        if (pos.length === 0) {
+            await connection.rollback();
+            res.json({ success: false, message: 'Tidak ada Purchase Order (Draft) yang menunggu untuk diajukan.' });
+            return;
+        }
+
+        let count = 0;
+        for (const po of pos) {
+            await connection.query('UPDATE pengadaan_po_header SET status = "ISSUED" WHERE id = ?', [po.id]);
+            await logAudit(user.id, `PO ${po.nomor_po}: Diajukan Massal (ISSUED)`, req.ip, 'Success');
+            count++;
+        }
+
+        await connection.commit();
+        res.json({ success: true, message: `${count} Purchase Order berhasil diajukan secara massal (Status: ISSUED).` });
+
+    } catch (error: any) {
+        await connection.rollback();
+        console.error('[bulkIssuePO] Error:', error);
         res.status(500).json({ success: false, message: error.message });
     } finally {
         connection.release();

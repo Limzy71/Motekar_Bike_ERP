@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Manajemen Pengguna - Motekar ERP</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script id="tailwind-config">
@@ -41,30 +45,60 @@
         }
     </script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
         .toast {
-            position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 60; pointer-events: none;
-            transform: translateY(24px); opacity: 0;
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 60;
+            pointer-events: none;
+            transform: translateY(24px);
+            opacity: 0;
             transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
         }
-        .toast.show { transform: translateY(0); opacity: 1; }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important; /* Tailwind slate-900/40 */
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
 </head>
 
 <body class="text-on-surface">
     <div class="flex h-screen overflow-hidden">
         <!-- SIDEBAR -->
-        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
+        <aside id="sidebar"
+            class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
             <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
                 <div class="flex flex-col gap-1" id="sidebar-logo">
                     <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
-                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
+                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu
+                    </p>
                 </div>
                 <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
             </div>
             <div class="p-6 border-t border-outline-variant">
-                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
+                <button id="btn-logout"
+                    class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
                     <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
                     <span class="menu-text">Keluar Sistem</span>
                 </button>
@@ -73,20 +107,26 @@
 
         <!-- MAIN CONTENT -->
         <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
+            <header
+                class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
                 <div class="flex items-center gap-4">
-                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
+                    <button id="btn-hamburger"
+                        class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
                         <span class="material-symbols-outlined text-[24px]">menu</span>
                     </button>
                     <span class="text-headline-md text-on-surface font-bold">Manajemen Pengguna</span>
                 </div>
                 <div class="flex items-center gap-6">
-                    <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
+                    <a href="/profil.html"
+                        class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
                         <div class="text-right">
                             <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
+                            <p id="header-role"
+                                class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-
+                            </p>
                         </div>
-                        <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
+                        <div id="header-avatar-container"
+                            class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
                             <span id="header-inisial">--</span>
                         </div>
                     </a>
@@ -104,19 +144,24 @@
                                 <span class="material-symbols-outlined text-primary text-[24px]">manage_accounts</span>
                                 Direktori Karyawan
                             </h2>
-                            <p class="text-xs text-slate-500 mt-0.5">Kelola hak akses dan peran karyawan dalam sistem.</p>
+                            <p class="text-xs text-slate-500 mt-0.5">Kelola hak akses dan peran karyawan dalam sistem.
+                            </p>
                         </div>
-                        <button id="btn-tambah-user" class="bg-primary hover:bg-primary-container text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors">
+                        <button id="btn-tambah-user"
+                            class="bg-primary hover:bg-primary-container text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors">
                             <span class="material-symbols-outlined text-[18px]">person_add</span> Tambah Pengguna
                         </button>
                     </div>
 
-                    <!-- Table Container -->
-                    <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
+                    <!-- TABLE & PAGINATION WRAPPER -->
+                    <div class="flex flex-col">
+                        <!-- Table Container -->
+                        <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
-                                    <tr class="bg-slate-50/80 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                                    <tr
+                                        class="bg-slate-50/80 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
                                         <th class="px-6 py-4">ID</th>
                                         <th class="px-6 py-4">Pengguna</th>
                                         <th class="px-6 py-4">Divisi / Role</th>
@@ -132,27 +177,33 @@
                     </div>
 
                     <!-- Pagination Controls -->
-                    <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
-                        <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="users-pagination-info">Menampilkan 0-0 dari 0 data</p>
+                    <div
+                        class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
+                        <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest"
+                            id="users-pagination-info">Menampilkan 0-0 dari 0 data</p>
                         <div class="flex items-center gap-1.5">
-                            <button id="users-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <button id="users-btn-prev"
+                                class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                                 <span class="material-symbols-outlined text-[20px]">chevron_left</span>
                             </button>
                             <div id="users-pagination-pages" class="flex items-center gap-1">
                                 <!-- Page buttons injected via TS -->
                             </div>
-                            <button id="users-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <button id="users-btn-next"
+                                class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                                 <span class="material-symbols-outlined text-[20px]">chevron_right</span>
                             </button>
                         </div>
                     </div>
+                    </div> <!-- End TABLE & PAGINATION WRAPPER -->
                 </div>
             </div>
         </main>
     </div>
 
     <!-- MODAL EDIT/ADD USER -->
-    <div id="modal-user" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modal-user"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex items-center justify-between p-6 border-b border-slate-100">
                 <h3 id="modal-title" class="text-lg font-bold text-slate-900 tracking-tight">Form Pengguna</h3>
@@ -160,66 +211,76 @@
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            
+
             <div class="p-6 overflow-y-auto">
                 <form id="form-user" class="space-y-4">
                     <input type="hidden" id="input-id">
-                    
+
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Username</label>
-                        <input type="text" id="input-username" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" required>
+                        <label
+                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Username</label>
+                        <input type="text" id="input-username"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                            required>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Nama Lengkap</label>
-                        <input type="text" id="input-nama" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" required>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Nama
+                            Lengkap</label>
+                        <input type="text" id="input-nama"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                            required>
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Email</label>
-                        <input type="email" id="input-email" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                        <input type="email" id="input-email"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Divisi / Role</label>
-                        <select id="select-role" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" required>
-                            <option value="Pengadaan">Pengadaan</option>
-                            <option value="Kendali Mutu">Kendali Mutu</option>
-                            <option value="Penjualan & Penagihan">Penjualan & Penagihan</option>
-                            <option value="Keuangan">Keuangan</option>
-                            <option value="Operasi Inti">Operasi Inti</option>
-                            <option value="Pemasaran">Pemasaran</option>
-                            <option value="Gudang">Gudang</option>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Divisi /
+                            Role</label>
+                        <select id="select-role"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                            required>
+                            <option value="General Manager">General Manager</option>
                             <option value="IT Support">IT Support</option>
+                            <option value="Pengadaan">Pengadaan</option>
+                            <option value="Gudang">Gudang</option>
+                            <option value="Operasi Inti">Operasi Inti</option>
+                            <option value="Kendali Mutu">Kendali Mutu</option>
+                            <option value="Keuangan & Akuntansi">Keuangan & Akuntansi</option>
+                            <option value="Pemasaran & Penjualan">Pemasaran & Penjualan</option>
+                            <option value="Legal & Kepatuhan">Legal & Kepatuhan</option>
                             <option value="Owner">Owner</option>
                         </select>
                     </div>
 
                     <div id="container-status" class="hidden">
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Status</label>
-                        <select id="select-status" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                        <label
+                            class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Status</label>
+                        <select id="select-status"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
                             <option value="Aktif">Aktif</option>
                             <option value="Nonaktif">Nonaktif</option>
                         </select>
                     </div>
 
                     <div class="pt-4 border-t border-slate-100 flex gap-3">
-                        <button type="button" id="btn-cancel-modal" class="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">Batal</button>
-                        <button type="submit" id="btn-submit-modal" class="flex-1 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all">Simpan</button>
+                        <button type="button" id="btn-cancel-modal"
+                            class="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">Batal</button>
+                        <button type="submit" id="btn-submit-modal"
+                            class="flex-1 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all">Simpan</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
-            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
-        </div>
-    </div>
+    {{> toast }}
 
     <script type="module" src="/src/pages/users.ts"></script>
 </body>
+
 </html>

@@ -1,151 +1,156 @@
-import pool from '../config/database.js';
-import bcrypt from 'bcrypt';
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+dotenv.config();
 
-/**
- * MASTER DATA SEEDER — Data Fundamental (Bukan Transaksi)
- * 
- * Isi:
- * 1. Akun Login Owner (bcrypt-hashed)
- * 2. Master Vendor
- * 3. Master Komponen (RM) + Finished Goods (FG)
- * 4. Master BOM (Resep Perakitan SEP-001)
- * 
- * TIDAK menyuntikkan data transaksi apa pun (PR, WO, SO kosong).
- */
+const vendors = [
+  { kode_vendor: 'VND-001', nama_vendor: 'Frame-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-002', nama_vendor: 'Fork-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-003', nama_vendor: 'Saddle-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-004', nama_vendor: 'Seatpost-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-005', nama_vendor: 'Rim-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-006', nama_vendor: 'Spoke-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-007', nama_vendor: 'Ban-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-008', nama_vendor: 'Cran-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-009', nama_vendor: 'Chain-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-010', nama_vendor: 'Cassette-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-011', nama_vendor: 'Derail-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-012', nama_vendor: 'Handle-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-013', nama_vendor: 'Stem-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-014', nama_vendor: 'Brake-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-015', nama_vendor: 'Shifter-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-016', nama_vendor: 'Grips-Indonesia', kategori: 'LOKAL' },
+];
 
-async function seedMasterData() {
-  const connection = await pool.getConnection();
+const inventories = [
+  // RM (Komponen)
+  { kode: 'RM-001', nama: 'Frame', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 500000 },
+  { kode: 'RM-002', nama: 'Fork', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 150000 },
+  { kode: 'RM-003', nama: 'Saddle', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 50000 },
+  { kode: 'RM-004', nama: 'Seatpost', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 30000 },
+  { kode: 'RM-005', nama: 'Rim', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 80000 },
+  { kode: 'RM-006', nama: 'Spokes & Hub', kategori: 'Komponen', tipe: 'RM', satuan: 'set', harga: 60000 },
+  { kode: 'RM-007', nama: 'Tire & Tube', kategori: 'Komponen', tipe: 'RM', satuan: 'set', harga: 90000 },
+  { kode: 'RM-008', nama: 'Crankset', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 200000 },
+  { kode: 'RM-009', nama: 'Chain', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 40000 },
+  { kode: 'RM-010', nama: 'Cassette', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 120000 },
+  { kode: 'RM-011', nama: 'Derailleur (Front/Rear)', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 180000 },
+  { kode: 'RM-012', nama: 'Handlebar', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 60000 },
+  { kode: 'RM-013', nama: 'Stem', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 45000 },
+  { kode: 'RM-014', nama: 'Brake Levers', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 75000 },
+  { kode: 'RM-015', nama: 'Shifters', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 110000 },
+  { kode: 'RM-016', nama: 'Grips', kategori: 'Komponen', tipe: 'RM', satuan: 'pc', harga: 20000 },
+
+  // SA (WIP / Sub-Assembly)
+  { kode: 'SA-001', nama: 'Frame Set Assy', kategori: 'Komponen', tipe: 'SA', satuan: 'set', harga: 730000 },
+  { kode: 'SA-002', nama: 'Wheel Set Assy', kategori: 'Komponen', tipe: 'SA', satuan: 'set', harga: 460000 }, // 2 rim + 2 spoke + 2 tire = (80+60+90)*2
+  { kode: 'SA-003', nama: 'Drivetrain Assy', kategori: 'Komponen', tipe: 'SA', satuan: 'set', harga: 720000 }, // 200+40+120+(180*2) = 720k
+  { kode: 'SA-004', nama: 'Cockpit & Controls Assy', kategori: 'Komponen', tipe: 'SA', satuan: 'set', harga: 485000 }, // 60+45+(75*2)+(110*2)+(20*2) = 485k
+
+  // FG (Barang Jadi)
+  { kode: 'FG-001', nama: 'Sepeda Motekar Bike Assy', kategori: 'Sepeda Jadi', tipe: 'FG', satuan: 'unit', harga: 2395000, jual: 3500000 }
+];
+
+const bomHeaders = [
+  { id_bom: 'BOM-FG-001', nama_bom: 'BOM Sepeda Motekar Bike Assy', kode_item_parent: 'FG-001', versi: '1.0' },
+  { id_bom: 'BOM-SA-001', nama_bom: 'BOM Frame Set Assy', kode_item_parent: 'SA-001', versi: '1.0' },
+  { id_bom: 'BOM-SA-002', nama_bom: 'BOM Wheel Set Assy', kode_item_parent: 'SA-002', versi: '1.0' },
+  { id_bom: 'BOM-SA-003', nama_bom: 'BOM Drivetrain Assy', kode_item_parent: 'SA-003', versi: '1.0' },
+  { id_bom: 'BOM-SA-004', nama_bom: 'BOM Cockpit & Controls Assy', kode_item_parent: 'SA-004', versi: '1.0' },
+];
+
+const bomDetails = [
+  // FG BOM
+  { id_bom: 'BOM-FG-001', kode_item_komponen: 'SA-001', qty: 1 },
+  { id_bom: 'BOM-FG-001', kode_item_komponen: 'SA-002', qty: 1 }, // Wheel Set Assy
+  { id_bom: 'BOM-FG-001', kode_item_komponen: 'SA-003', qty: 1 },
+  { id_bom: 'BOM-FG-001', kode_item_komponen: 'SA-004', qty: 1 },
+
+  // Frame Set Assy BOM
+  { id_bom: 'BOM-SA-001', kode_item_komponen: 'RM-001', qty: 1 }, // Frame
+  { id_bom: 'BOM-SA-001', kode_item_komponen: 'RM-002', qty: 1 }, // Fork
+  { id_bom: 'BOM-SA-001', kode_item_komponen: 'RM-003', qty: 1 }, // Saddle
+  { id_bom: 'BOM-SA-001', kode_item_komponen: 'RM-004', qty: 1 }, // Seatpost
+
+  // Wheel Set Assy BOM
+  { id_bom: 'BOM-SA-002', kode_item_komponen: 'RM-005', qty: 2 }, // Rim
+  { id_bom: 'BOM-SA-002', kode_item_komponen: 'RM-006', qty: 2 }, // Spokes & Hub
+  { id_bom: 'BOM-SA-002', kode_item_komponen: 'RM-007', qty: 2 }, // Tire & Tube
+
+  // Drivetrain Assy BOM
+  { id_bom: 'BOM-SA-003', kode_item_komponen: 'RM-008', qty: 1 }, // Crankset
+  { id_bom: 'BOM-SA-003', kode_item_komponen: 'RM-009', qty: 1 }, // Chain
+  { id_bom: 'BOM-SA-003', kode_item_komponen: 'RM-010', qty: 1 }, // Cassette
+  { id_bom: 'BOM-SA-003', kode_item_komponen: 'RM-011', qty: 2 }, // Derailleur (Front/Rear)
+
+  // Cockpit & Controls Assy BOM
+  { id_bom: 'BOM-SA-004', kode_item_komponen: 'RM-012', qty: 1 }, // Handlebar
+  { id_bom: 'BOM-SA-004', kode_item_komponen: 'RM-013', qty: 1 }, // Stem
+  { id_bom: 'BOM-SA-004', kode_item_komponen: 'RM-014', qty: 2 }, // Brake Levers
+  { id_bom: 'BOM-SA-004', kode_item_komponen: 'RM-015', qty: 2 }, // Shifters
+  { id_bom: 'BOM-SA-004', kode_item_komponen: 'RM-016', qty: 2 }, // Grips
+];
+
+async function run() {
+  const connection = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'motekar_db'
+  });
+
   try {
-    await connection.beginTransaction();
-    console.log('\n========================================');
-    console.log('🌱 MASTER DATA SEEDER — Motekar ERP');
-    console.log('========================================\n');
-
-    // ============================================================
-    // 1. AKUN LOGIN OWNER
-    // ============================================================
-    console.log('[1/5] Menyuntikkan akun Owner...');
+    await connection.query('SET FOREIGN_KEY_CHECKS = 0');
     
-    // Cek apakah user sudah ada
-    const [existingUser]: any = await connection.query(
-      'SELECT id FROM users WHERE username = ?', ['agus']
-    );
-
-    if (existingUser.length === 0) {
-      const hashedPassword = await bcrypt.hash('password123', 10);
+    // Clean tables
+    await connection.query('TRUNCATE TABLE manufaktur_bom_detail');
+    await connection.query('TRUNCATE TABLE manufaktur_bom_header');
+    await connection.query('TRUNCATE TABLE inventory_stok');
+    await connection.query('TRUNCATE TABLE master_vendor');
+    
+    // Seed Vendors
+    for (const v of vendors) {
       await connection.query(
-        `INSERT INTO users (username, password, nama_lengkap, email, divisi_role) 
-         VALUES (?, ?, ?, ?, ?)`,
-        ['agus', hashedPassword, 'Ir. Agus Hexagraha', 'agus@motekar.com', 'Owner']
+        'INSERT INTO master_vendor (kode_vendor, nama_vendor, kategori, status_vendor) VALUES (?, ?, ?, ?)',
+        [v.kode_vendor, v.nama_vendor, v.kategori, 'AKTIF']
       );
-      console.log('      ✔ Akun "agus" (Owner) berhasil dibuat.');
-    } else {
-      console.log('      ⊘ Akun "agus" sudah ada, skip.');
     }
+    console.log('Vendors seeded.');
 
-    // ============================================================
-    // 2. MASTER VENDOR
-    // ============================================================
-    console.log('[2/5] Menyuntikkan Master Vendor...');
-
-    const [existingVendor]: any = await connection.query(
-      "SELECT id FROM master_vendor WHERE nama_vendor = 'PT Shimano Indonesia'"
-    );
-
-    if (existingVendor.length === 0) {
+    // Seed Inventory
+    for (const i of inventories) {
       await connection.query(
-        `INSERT INTO master_vendor (nama_vendor, kontak, alamat) VALUES 
-         ('PT Shimano Indonesia', '021-5551234', 'Kawasan Industri Cikarang, Jawa Barat')`
+        'INSERT INTO inventory_stok (kode_barang, nama_barang, kategori, satuan, tipe_item, harga_standar, harga_jual, jumlah_stok) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [i.kode, i.nama, i.kategori, i.satuan, i.tipe, i.harga, i.jual || 0, 100] // Beri stok awal 100 agar mudah testing WO
       );
-      console.log('      ✔ Vendor "PT Shimano Indonesia" berhasil ditambahkan.');
-    } else {
-      console.log('      ⊘ Vendor sudah ada, skip.');
     }
+    console.log('Inventory seeded.');
 
-    // ============================================================
-    // 3. MASTER INVENTORY (KOMPONEN + FINISHED GOODS)
-    // ============================================================
-    console.log('[3/5] Menyuntikkan Master Inventory...');
-
-    const inventoryItems = [
-      { kode: 'KOMP-001', nama: 'Frame Sepeda',      kategori: 'Komponen',    tipe: 'RM', satuan: 'pcs', harga_standar: 850000 },
-      { kode: 'KOMP-002', nama: 'Ban Luar Kenda 27.5', kategori: 'Komponen',  tipe: 'RM', satuan: 'pcs', harga_standar: 175000 },
-      { kode: 'SEP-001',  nama: 'MTB Motekar X1',     kategori: 'Sepeda Jadi', tipe: 'FG', satuan: 'unit', harga_standar: 3200000 },
-    ];
-
-    for (const item of inventoryItems) {
-      const [existing]: any = await connection.query(
-        'SELECT id FROM inventory_stok WHERE kode_barang = ?', [item.kode]
-      );
-      if (existing.length === 0) {
-        await connection.query(
-          `INSERT INTO inventory_stok (kode_barang, nama_barang, kategori, tipe_item, jumlah_stok, satuan, harga_standar, stok_committed) 
-           VALUES (?, ?, ?, ?, 0, ?, ?, 0)`,
-          [item.kode, item.nama, item.kategori, item.tipe, item.satuan, item.harga_standar]
-        );
-        console.log(`      ✔ ${item.kode} — ${item.nama} (stok: 0)`);
-      } else {
-        console.log(`      ⊘ ${item.kode} sudah ada, skip.`);
-      }
-    }
-
-    // ============================================================
-    // 4. MASTER BOM (RESEP PERAKITAN SEP-001)
-    // ============================================================
-    console.log('[4/5] Menyuntikkan Master BOM untuk SEP-001...');
-
-    const idBom = 'BOM-SEP-001';
-    const [existingBom]: any = await connection.query(
-      'SELECT id_bom FROM manufaktur_bom_header WHERE id_bom = ?', [idBom]
-    );
-
-    if (existingBom.length === 0) {
+    // Seed BOM Header
+    for (const bh of bomHeaders) {
       await connection.query(
-        'INSERT INTO manufaktur_bom_header (id_bom, kode_item_parent, nama_resep) VALUES (?, ?, ?)',
-        [idBom, 'SEP-001', 'Resep Standar MTB Motekar X1']
+        'INSERT INTO manufaktur_bom_header (id_bom, nama_resep, kode_item_parent) VALUES (?, ?, ?)',
+        [bh.id_bom, bh.nama_bom, bh.kode_item_parent]
       );
-      await connection.query(
-        `INSERT INTO manufaktur_bom_detail (id_bom, kode_item_komponen, qty_kebutuhan) VALUES 
-         (?, 'KOMP-001', 1),
-         (?, 'KOMP-002', 2)`,
-        [idBom, idBom]
-      );
-      console.log('      ✔ BOM SEP-001 → KOMP-001 (x1), KOMP-002 (x2)');
-    } else {
-      console.log('      ⊘ BOM SEP-001 sudah ada, skip.');
     }
+    console.log('BOM Headers seeded.');
 
-    // ============================================================
-    // 5. VALIDASI AKHIR
-    // ============================================================
-    console.log('[5/5] Validasi akhir...');
+    // Seed BOM Details
+    for (const bd of bomDetails) {
+      await connection.query(
+        'INSERT INTO manufaktur_bom_detail (id_bom, kode_item_komponen, qty_kebutuhan) VALUES (?, ?, ?)',
+        [bd.id_bom, bd.kode_item_komponen, bd.qty]
+      );
+    }
+    console.log('BOM Details seeded.');
 
-    const [userCount]: any = await connection.query('SELECT COUNT(*) as c FROM users');
-    const [invCount]: any = await connection.query('SELECT COUNT(*) as c FROM inventory_stok');
-    const [bomCount]: any = await connection.query('SELECT COUNT(*) as c FROM manufaktur_bom_header');
-    const [vendorCount]: any = await connection.query('SELECT COUNT(*) as c FROM master_vendor');
+    await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+    console.log('All done successfully!');
 
-    await connection.commit();
-
-    console.log('\n========================================');
-    console.log('✅ MASTER DATA SEEDER COMPLETE!');
-    console.log('========================================');
-    console.log(`   Users       : ${userCount[0].c} akun`);
-    console.log(`   Vendor      : ${vendorCount[0].c} vendor`);
-    console.log(`   Inventory   : ${invCount[0].c} item (stok semua 0)`);
-    console.log(`   BOM         : ${bomCount[0].c} resep`);
-    console.log(`   Transaksi   : 0 (PR/WO/SO kosong bersih)`);
-    console.log('========================================');
-    console.log('\n🔑 LOGIN: username=agus | password=password123\n');
-
-  } catch (error: any) {
-    await connection.rollback();
-    console.error('\n[✘] Seeder GAGAL:', error.message);
-    console.error(error);
+  } catch(e) {
+    console.error(e);
   } finally {
-    connection.release();
-    process.exit(0);
+    connection.end();
   }
 }
 
-seedMasterData();
+run();

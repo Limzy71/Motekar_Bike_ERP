@@ -10,7 +10,7 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
   const connection = await pool.getConnection();
 
   try {
-    const { id, result, defectNotes } = req.body;
+    const { id, result, defectNotes, qcHistory } = req.body;
 
     const woId = parseInt(id, 10);
     if (isNaN(woId) || !result) {
@@ -27,7 +27,7 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
 
     // Ambil data WO saat ini (dari arsitektur Header-Detail)
     const [woData]: any = await connection.query(
-      `SELECT w.id, w.jumlah_produksi, w.status, i.kode_barang as kode_sepeda, i.nama_barang
+      `SELECT w.id, w.jumlah_produksi, w.status, w.id_inventory_fg, i.kode_barang as kode_sepeda, i.nama_barang
        FROM operasi_wo_header w
        JOIN inventory_stok i ON w.id_inventory_fg = i.id
        WHERE w.id = ?`,
@@ -42,9 +42,9 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
 
     const wo = woData[0];
 
-    // Pastikan WO berada di tahap yang valid (Selesai)
-    if (wo.status !== 'COMPLETED') {
-      res.status(400).json({ success: false, message: `Work Order berstatus ${wo.status}, hanya WO berstatus COMPLETED yang bisa diinspeksi.` });
+    // Pastikan WO berada di tahap yang valid (Selesai Perakitan -> Masuk QC)
+    if (wo.status !== 'TUNING_QC') {
+      res.status(400).json({ success: false, message: `Work Order berstatus ${wo.status}, hanya WO berstatus TUNING_QC yang bisa diinspeksi.` });
       connection.release();
       return;
     }
@@ -53,13 +53,44 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
 
     if (result === 'Pass') {
       // SKENARIO A: LOLOS QC
-      // 1. Ubah status menjadi 'Closed'
+      // 1. Ubah status menjadi 'COMPLETED' dan bersihkan data rework/qc
       await connection.query(
-        "UPDATE operasi_wo_header SET status = 'COMPLETED' WHERE id = ?",
+        "UPDATE operasi_wo_header SET status = 'COMPLETED', catatan_rework = NULL, qc_history = NULL WHERE id = ?",
         [woId]
       );
 
-      // 2. Tambah stok gudang
+      // 2. BACKFLUSHING ENGINE: Ambil resep komponen dari master_bom
+      const [bomRows]: any = await connection.query(
+        'SELECT komponen_id, qty_dibutuhkan FROM master_bom WHERE barang_jadi_id = ?',
+        [wo.id_inventory_fg]
+      );
+      
+      for (const bom of bomRows) {
+        const totalKebutuhan = bom.qty_dibutuhkan * wo.jumlah_produksi;
+        
+        // Cek stok komponen di WIP dengan Pessimistic Lock
+        const [kompRows]: any = await connection.query(
+          'SELECT jumlah_stok, nama_barang, lokasi FROM inventory_stok WHERE id = ? FOR UPDATE',
+          [bom.komponen_id]
+        );
+
+        if (kompRows.length === 0) {
+          throw new Error(`Komponen dengan ID ${bom.komponen_id} tidak ditemukan di gudang.`);
+        }
+        
+        const komponen = kompRows[0];
+        if (komponen.jumlah_stok < totalKebutuhan) {
+          throw new Error(`Stok komponen ${komponen.nama_barang} tidak mencukupi di ${komponen.lokasi}! Butuh: ${totalKebutuhan}, Tersedia: ${komponen.jumlah_stok}`);
+        }
+
+        // Kurangi stok (Backflush)
+        await connection.query(
+          'UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE id = ?',
+          [totalKebutuhan, bom.komponen_id]
+        );
+      }
+
+      // 3. Tambah stok gudang (Barang Jadi)
       const [stokUpdateResult]: any = await connection.query(
         'UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE kode_barang = ?',
         [wo.jumlah_produksi, wo.kode_sepeda]
@@ -69,7 +100,7 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
         throw new Error(`Kode Sepeda ${wo.kode_sepeda} tidak ditemukan di master gudang.`);
       }
 
-      // 3. AUTOMATED FINANCIAL LEDGER — Catat jurnal HPP masuk ke Aset Persediaan
+      // 4. AUTOMATED FINANCIAL LEDGER — Catat jurnal HPP masuk ke Aset Persediaan
       const hppPerUnit = await calculateHPP(connection, wo.kode_sepeda);
       const totalNilaiHPP = hppPerUnit * wo.jumlah_produksi;
 
@@ -95,10 +126,10 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
       
       const newNotes = wo.catatan_rework ? wo.catatan_rework + formattedNote : formattedNote.trim();
 
-      // 1. Ubah status mundur ke 'Perakitan Frame' dan update catatan
+      // 1. Ubah status mundur ke 'Sub-Assembly' dan update catatan serta riwayat QC
       await connection.query(
-        "UPDATE operasi_wo_header SET status = 'ON_PROGRESS' WHERE id = ?",
-        [woId]
+        "UPDATE operasi_wo_header SET status = 'SUB_ASSEMBLY', catatan_rework = ?, qc_history = ? WHERE id = ?",
+        [newNotes, qcHistory ? JSON.stringify(qcHistory) : null, woId]
       );
 
       await connection.commit();

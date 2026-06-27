@@ -38,7 +38,28 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important; /* Tailwind slate-900/40 */
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
+    <!-- Tab Persistence Anti-Flicker Script -->
+    <script>
+        (function() {
+            var lastTab = localStorage.getItem('pemasaranLastTab') || 'pipeline';
+            var s = document.createElement('style');
+            s.id = 'anti-flicker';
+            s.innerHTML = '#view-pipeline, #view-campaigns, #view-klaim { display: none !important; } #view-' + lastTab + ' { display: block !important; }';
+            document.head.appendChild(s);
+        })();
+    </script>
 </head>
 <body class="text-on-surface">
 <div class="flex h-screen overflow-hidden print:hidden">
@@ -107,12 +128,11 @@
             </div>
             <!-- Tabs -->
             <div class="flex gap-4 border-b border-slate-200 mb-6">
-                <button id="tab-pipeline" class="pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors">Pipeline Leads (Kanban)</button>
+                <button id="tab-pipeline" class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Pipeline Leads (Kanban)</button>
                 <button id="tab-campaigns" class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Manajemen Kampanye</button>
-                <button id="tab-klaim" class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Klaim Garansi (After-Sales)</button>
             </div>
             <!-- TAB 1: KANBAN -->
-            <div id="view-pipeline" class="block">
+            <div id="view-pipeline" class="hidden">
                 <div class="flex justify-end mb-4">
                     <button id="btn-add-lead" class="bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg font-semibold text-sm shadow-sm flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">person_add</span>Tambah Lead</button>
                 </div>
@@ -147,6 +167,7 @@
                 <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
                     <table class="w-full table-auto"><thead><tr class="border-b border-slate-200/80">
                         <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">NAMA KAMPANYE</th>
+                        <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">LOKASI</th>
                         <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">JENIS</th>
                         <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-right">BUDGET</th>
                         <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">STATUS</th>
@@ -171,31 +192,6 @@
                 </div>
             </div>
 
-            <!-- TAB 3: KLAIM GARANSI -->
-            <div id="view-klaim" class="hidden">
-                <div class="flex justify-between mb-4">
-                    <button id="btn-add-klaim" class="bg-primary hover:bg-primary/90 text-on-primary px-4 py-2 rounded-lg font-semibold text-sm shadow-sm flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">add_circle</span>Buat Tiket Klaim Baru
-                    </button>
-                </div>
-                <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
-                    <table class="w-full table-auto">
-                        <thead>
-                            <tr class="border-b border-slate-200/80 bg-slate-50/75 text-left">
-                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">ID KLAIM</th>
-                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">TANGGAL</th>
-                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">RETAILER</th>
-                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">PRODUK</th>
-                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4">KELUHAN</th>
-                                <th class="text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">STATUS</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100" id="tbody-klaim">
-                            <tr><td colspan="6" class="px-4 py-8 text-center text-xs text-slate-500">Memuat data klaim...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
     </main>
 </div>
@@ -267,9 +263,10 @@
             <form id="form-campaign" class="space-y-4">
                 <input type="hidden" name="id_campaign" id="input-campaign-id">
                 <div><label class="block text-xs font-bold text-slate-700 mb-1">Nama Kampanye</label><input type="text" name="nama_campaign" required placeholder="Pameran Inabicycle JCC 2026" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                <div><label class="block text-xs font-bold text-slate-700 mb-1">Lokasi Event</label><input type="text" name="lokasi" required placeholder="Jakarta Convention Center" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="block text-xs font-bold text-slate-700 mb-1">Jenis</label><select name="jenis" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"><option value="Pameran">Pameran</option><option value="Digital Ads">Digital Ads</option><option value="Kunjungan Langsung">Kunjungan Langsung</option></select></div>
-                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Budget (Rp)</label><input type="number" name="budget_alokasi" min="0" required placeholder="25000000" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Budget (Rp)</label><input type="text" name="budget_alokasi" id="input-camp-budget" required placeholder="25.000.000" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary font-data-mono"></div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Mulai</label><input type="date" name="tanggal_mulai" id="input-camp-mulai" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></div>
@@ -294,51 +291,48 @@
         </div>
     </div>
 </div>
-<!-- Modal Klaim Garansi -->
-<div id="modal-klaim" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
-    <div id="modal-klaim-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
+
+
+<!-- Modal Cetak Penawaran -->
+<div id="modal-cetak" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
+    <div id="modal-cetak-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <h3 class="text-lg font-bold text-slate-900">Buat Tiket Klaim Garansi</h3>
-            <button id="btn-close-klaim" class="text-slate-400 hover:text-slate-600 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
+            <h3 class="text-lg font-bold text-slate-900">Buat Surat Penawaran</h3>
+            <button id="btn-close-cetak" class="text-slate-400 hover:text-slate-600 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
         </div>
-        <div class="p-6 overflow-y-auto max-h-[80vh]">
-            <form id="form-klaim" class="space-y-4">
+        <div class="p-6 overflow-y-auto">
+            <form id="form-cetak" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Sales Order (Referensi)</label>
-                    <select id="input-klaim-so" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
-                        <option value="">-- Pilih SO --</option>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Klien / Lead</label>
+                    <select id="input-cetak-lead" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                        <option value="">-- Pilih Lead --</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Nama Retailer</label>
-                    <input type="text" id="input-klaim-retailer" required readonly class="w-full text-sm border-slate-200 bg-slate-50 text-slate-500 rounded-lg outline-none">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Item yang Ditawarkan</label>
+                    <input type="text" id="input-cetak-item" required placeholder="Motekar Premium E-Bike" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Kode Barang Jadi (FG)</label>
-                    <select id="input-klaim-fg" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
-                        <option value="">-- Pilih Produk --</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Deskripsi Keluhan / Cacat Produk</label>
-                    <textarea id="input-klaim-keluhan" required rows="3" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
-                </div>
-                <div class="p-3 border border-dashed border-slate-300 rounded-xl bg-slate-50">
-                    <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[16px]">photo_camera</span> Foto Bukti Kerusakan (Wajib)
-                    </label>
-                    <input type="file" id="input-klaim-foto" required accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Kuantitas (Qty)</label>
+                        <input type="number" id="input-cetak-qty" required min="1" placeholder="10" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Harga Satuan (Rp)</label>
+                        <input type="number" id="input-cetak-harga" required min="0" placeholder="15000000" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                    </div>
                 </div>
             </form>
         </div>
         <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
-            <button type="button" id="btn-cancel-klaim" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
-            <button type="submit" form="form-klaim" id="btn-submit-klaim" class="px-5 py-2 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg shadow-xs flex items-center gap-2">
-                <span class="material-symbols-outlined text-[16px] hidden animate-spin" id="spinner-klaim">sync</span> Submit Klaim
+            <button type="button" id="btn-cancel-cetak" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
+            <button type="submit" form="form-cetak" class="px-5 py-2 text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]">print</span> Generate PDF
             </button>
         </div>
     </div>
 </div>
+
 <!-- Toast -->
 <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
     <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[320px]" id="toast">

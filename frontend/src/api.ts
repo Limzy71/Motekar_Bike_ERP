@@ -8,7 +8,7 @@
  * - Type-safe getUserData helper
  */
 
-const API_BASE = 'http://127.0.0.1:5050/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5050/api';
 
 /** Struktur data user yang disimpan di localStorage setelah login */
 export interface UserData {
@@ -17,6 +17,7 @@ export interface UserData {
   nama: string;
   divisi_role: string;
   api_token: string;
+  refresh_token?: string;
 }
 
 /**
@@ -69,28 +70,46 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
   }
 
   try {
-    const response = await fetch(`${API_BASE}/${endpoint}`, {
+    let response = await fetch(`${API_BASE}/${endpoint}`, {
       ...options,
       headers,
     });
 
-    // Handle 401: sesi expired atau token tidak valid
-    if (response.status === 401) {
-      localStorage.removeItem('userData');
-      if (typeof (window as any).Swal !== 'undefined') {
-        await (window as any).Swal.fire({
-          icon: 'warning',
-          title: 'Sesi Berakhir',
-          text: 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.',
-          confirmButtonColor: '#00288e',
-          confirmButtonText: 'Login Ulang',
-          allowOutsideClick: false
-        });
+    // Handle 401: Token expired, coba silent refresh
+    if (response.status === 401 && endpoint !== 'auth/refresh') {
+      const user = getUserData();
+      if (user && user.refresh_token) {
+        try {
+          const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: user.refresh_token })
+          });
+
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            // Update token baru di localStorage
+            user.api_token = refreshData.data.api_token;
+            localStorage.setItem('userData', JSON.stringify(user));
+
+            // Ulangi request asli dengan token baru
+            headers.set('Authorization', `Bearer ${user.api_token}`);
+            response = await fetch(`${API_BASE}/${endpoint}`, {
+              ...options,
+              headers,
+            });
+          } else {
+            return forceLogout();
+          }
+        } catch (error) {
+          return forceLogout();
+        }
       } else {
-        alert('Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
+        return forceLogout();
       }
-      window.location.href = '/';
-      throw new Error('Unauthorized (401)');
+    } else if (response.status === 401) {
+       // Gagal pada saat refresh token itu sendiri
+       return forceLogout();
     }
 
     return (await response.json()) as T;
@@ -98,6 +117,22 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
     console.error('[apiFetch] Error:', error);
     throw error;
   }
+}
+
+async function forceLogout(): Promise<never> {
+  localStorage.removeItem('userData');
+  if (typeof (window as any).Swal !== 'undefined') {
+    await (window as any).Swal.fire({
+      icon: 'warning',
+      title: 'Sesi Berakhir',
+      text: 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.',
+      confirmButtonColor: '#00288e',
+      confirmButtonText: 'Login Ulang',
+      allowOutsideClick: false
+    });
+  }
+  window.location.href = '/';
+  throw new Error('Unauthorized (401)');
 }
 export interface ReorderAlertItem {
   id: number;
@@ -116,3 +151,12 @@ export async function getReorderAlerts(): Promise<ReorderAlertItem[]> {
   const response = await apiFetch<{success: boolean, data: ReorderAlertItem[]}>('pengadaan/alerts');
   return response.data;
 }
+
+// Global listener to close modals when clicking backdrop
+document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('fixed') && target.classList.contains('inset-0') && target.classList.contains('z-50')) {
+        const closeBtn = target.querySelector('button[id^="btn-close"]') as HTMLButtonElement;
+        if (closeBtn) closeBtn.click();
+    }
+});

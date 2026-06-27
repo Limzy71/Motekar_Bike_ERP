@@ -19,6 +19,7 @@ interface WorkOrder {
     produk: string;
     kode_barang: string;
     materials: MaterialAllocation[];
+    catatan_rework?: string;
 }
 
 let allWorkOrders: WorkOrder[] = [];
@@ -104,7 +105,7 @@ function renderTable() {
     tbody.innerHTML = '';
 
     if (allWorkOrders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400 italic font-medium">Belum ada data Work Order.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 italic font-medium">Belum ada data Work Order.</td></tr>`;
         updatePaginationUI();
         return;
     }
@@ -119,23 +120,25 @@ function renderTable() {
     const currentItems = allWorkOrders.slice(startIndex, endIndex);
 
     currentItems.forEach(wo => {
-        const isProduction = ['KITTING_RELEASED', 'SUB_ASSEMBLY', 'FINAL_ASSEMBLY', 'TUNING_QC', 'IN_PROGRESS'].includes(wo.status);
-
         // Status Badge
         let badgeHtml = '';
-        if (wo.status === 'DRAFT') {
-            badgeHtml = `<span class="bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-full">DRAFT</span>`;
-        } else if (isProduction) {
+        if (wo.catatan_rework && wo.status !== 'COMPLETED') {
+            badgeHtml = `<span class="bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full text-[10px] shadow-sm flex items-center justify-center gap-1 w-fit mx-auto"><span class="material-symbols-outlined text-[12px]">build</span> REWORK (${wo.status.replace('_', ' ')})</span>`;
+        } else if (wo.status === 'DRAFT') {
+            badgeHtml = `<span class="bg-slate-100 text-slate-500 font-medium px-2.5 py-0.5 rounded-full text-[10px]">DRAFT</span>`;
+        } else if (wo.status === 'KITTING_RELEASED') {
+            badgeHtml = `<span class="bg-blue-100 text-blue-800 font-medium px-2.5 py-0.5 rounded-full text-[10px]">KITTING RELEASED</span>`;
+        } else if (wo.status === 'SUB_ASSEMBLY' || wo.status === 'FINAL_ASSEMBLY' || wo.status === 'TUNING_QC') {
             badgeHtml = `<span class="bg-amber-100 text-amber-800 font-medium px-2.5 py-0.5 rounded-full text-[10px]">${wo.status.replace('_', ' ')}</span>`;
         } else if (wo.status === 'COMPLETED') {
-            badgeHtml = `<span class="bg-emerald-100 text-emerald-800 font-medium px-2.5 py-0.5 rounded-full">COMPLETED</span>`;
+            badgeHtml = `<span class="bg-emerald-100 text-emerald-800 font-medium px-2.5 py-0.5 rounded-full text-[10px]">COMPLETED</span>`;
         } else {
-            badgeHtml = `<span class="bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-full">${wo.status}</span>`;
+            badgeHtml = `<span class="bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-full text-[10px]">${wo.status}</span>`;
         }
 
         // Create Table Row
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50/50 transition-colors duration-150 group cursor-pointer';
+        tr.className = 'hover:bg-slate-100 transition-colors duration-150 group cursor-pointer';
         tr.onclick = () => openRightDrawer(wo);
 
         const dateStr = new Date(wo.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -146,18 +149,6 @@ function renderTable() {
             <td class="py-3 px-4 font-medium text-slate-800">${wo.produk}</td>
             <td class="py-3 px-4 font-bold text-slate-700 text-right">${wo.jumlah_produksi} Unit</td>
             <td class="py-3 px-4 text-center">${badgeHtml}</td>
-            <td class="py-3 px-4 text-center">
-                <div class="flex items-center justify-center gap-1">
-                    <button class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all" title="Lihat Detail" onclick="event.stopPropagation(); openRightDrawer(${JSON.stringify(wo).replace(/"/g, '&quot;')})">
-                        <span class="material-symbols-outlined text-[18px]">visibility</span>
-                    </button>
-                    ${wo.status === 'COMPLETED' ? `
-                    <button class="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-all" title="Cetak Label QC" onclick="event.stopPropagation(); printQCLabel(${JSON.stringify(wo).replace(/"/g, '&quot;')})">
-                        <span class="material-symbols-outlined text-[18px]">print</span>
-                    </button>
-                    ` : ''}
-                </div>
-            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -257,34 +248,83 @@ function openRightDrawer(wo: WorkOrder) {
     bomList.innerHTML = '';
     
     if (wo.materials && wo.materials.length > 0) {
+        let currentWipHtml = '';
+        let currentChildrenHtml = '';
+        let resultHtml = '';
+
+        const appendGroup = () => {
+            if (currentWipHtml) {
+                resultHtml += `
+                    <div class="border border-slate-200 rounded-xl overflow-hidden mb-3 bg-white shadow-sm">
+                        ${currentWipHtml}
+                        ${currentChildrenHtml ? `<div class="bg-slate-50 border-t border-slate-100 p-3 space-y-2 pl-6">${currentChildrenHtml}</div>` : ''}
+                    </div>
+                `;
+            } else if (currentChildrenHtml) {
+                resultHtml += `<div class="space-y-2 mb-3">${currentChildrenHtml}</div>`;
+            }
+        };
+
         wo.materials.forEach(mat => {
-            const isDeficit = mat.stok_committed > mat.jumlah_stok; // Very rough check visually, but actual deficit is prevented at creation
-            const statusIcon = wo.status === 'DRAFT' ? 'lock' : 'inventory_2';
+            const isDeficit = mat.stok_committed > mat.jumlah_stok;
+            const isWip = mat.kode_barang.startsWith('WIP');
             
-            bomList.innerHTML += `
-                <div class="flex items-center justify-between p-3 rounded-lg border ${isDeficit ? 'border-rose-200 bg-rose-50' : 'border-slate-100 bg-white'}">
-                    <div class="flex items-center gap-3">
-                        <span class="material-symbols-outlined text-[18px] text-slate-400">${statusIcon}</span>
+            let iconHtml = '';
+            if (isWip) {
+                const statusIcon = wo.status === 'DRAFT' ? 'lock' : 'account_tree';
+                iconHtml = `
+                    <div class="w-8 h-8 rounded bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0" title="Barang Setengah Jadi (WIP)">
+                        <span class="material-symbols-outlined text-[16px] text-amber-600">${statusIcon}</span>
+                    </div>
+                `;
+            } else {
+                const statusIcon = wo.status === 'DRAFT' ? 'lock' : 'inventory_2';
+                iconHtml = `
+                    <div class="w-8 h-8 rounded bg-white border border-slate-200 flex items-center justify-center shrink-0" title="Komponen/Material">
+                        <span class="material-symbols-outlined text-[16px] text-slate-500">${statusIcon}</span>
+                    </div>
+                `;
+            }
+
+            const badgeWip = isWip ? `<span class="bg-amber-100 text-amber-700 border border-amber-200 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ml-2 align-middle">Sub-Assembly</span>` : '';
+            
+            const itemHtml = `
+                <div class="flex items-center justify-between p-3 ${isWip ? 'bg-white' : 'bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors shadow-sm'} ${isDeficit ? (isWip ? 'bg-rose-50' : 'border-rose-200 bg-rose-50') : ''}">
+                    <div class="flex items-center gap-3 relative">
+                        ${iconHtml}
                         <div>
-                            <p class="text-xs font-bold text-slate-700">${mat.nama_barang}</p>
-                            <p class="text-[10px] font-data-mono text-slate-400">${mat.kode_barang}</p>
+                            <p class="text-xs font-bold text-slate-700 flex items-center">${mat.nama_barang} ${badgeWip}</p>
+                            <p class="text-[10px] font-data-mono text-slate-500 mt-0.5">${mat.kode_barang}</p>
                         </div>
                     </div>
                     <div class="text-right">
                         <p class="text-sm font-bold font-data-mono text-slate-800">${mat.qty_kebutuhan}</p>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase">Kebutuhan</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Kebutuhan</p>
                     </div>
                 </div>
             `;
+
+            if (isWip) {
+                appendGroup();
+                currentWipHtml = itemHtml;
+                currentChildrenHtml = '';
+            } else {
+                currentChildrenHtml += itemHtml;
+            }
         });
+        
+        appendGroup();
+        bomList.innerHTML = resultHtml;
     } else {
         bomList.innerHTML = `<p class="text-xs text-slate-500 italic">Data BOM tidak tersedia.</p>`;
     }
 
     // Render Execution Bay (Sequential Vertical Stepper)
+    const stepperBay = document.getElementById('drawer-stepper-bay')!;
+    stepperBay.innerHTML = '';
+    
     const execBay = document.getElementById('drawer-execution-bay')!;
     execBay.innerHTML = '';
-    execBay.className = 'p-6 border-t border-slate-200 bg-slate-50 flex flex-col gap-3 shrink-0';
 
     const stages: any[] = [
         { id: 'DRAFT', label: 'Release Kitting', next: 'KITTING_RELEASED', icon: 'inventory' },
@@ -311,7 +351,7 @@ function openRightDrawer(wo: WorkOrder) {
         },
         { 
             id: 'FINAL_ASSEMBLY', 
-            label: 'Masuk Tuning & QC', 
+            label: 'Serahkan ke Divisi Mutu (QC)', 
             next: 'TUNING_QC', 
             icon: 'rule',
             metadata: [
@@ -320,17 +360,9 @@ function openRightDrawer(wo: WorkOrder) {
                     time: "15 Menit",
                     tools: "Hex Key Set (4,5 mm), Cable Puller Pliers, Cable Cutter",
                     checklist: ["Menyetel kemiringan stang & tuas rem", "Menarik kawat kabel rem/shifter hingga tegang", "Memotong sisa kawat dengan rapi"]
-                }
-            ]
-        },
-        { 
-            id: 'TUNING_QC', 
-            label: 'Selesai Produksi (Harvest FG)', 
-            next: 'COMPLETED', 
-            icon: 'check_circle',
-            metadata: [
+                },
                 {
-                    title: "Langkah 4: Final Assembly & QC",
+                    title: "Langkah 4: Final Assembly",
                     time: "20 Menit",
                     tools: "Floor Pump with Pressure Gauge, Open-end Wrench (15 mm / QR), Obeng Plus/Minus (PH2)",
                     checklist: ["Memompa ban sesuai PSI standar", "Memasang hub roda ke drop-out frame", "Menyetel baut pembatas (H/L limit screw) pada derailleur"]
@@ -340,9 +372,17 @@ function openRightDrawer(wo: WorkOrder) {
     ];
 
     if (wo.status === 'CANCELLED') {
-        execBay.innerHTML = `<div class="w-full text-center py-2 text-rose-600 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">cancel</span> WO Dibatalkan</div>`;
+        stepperBay.innerHTML = `<div class="w-full text-center py-2 text-rose-600 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">cancel</span> WO Dibatalkan</div>`;
     } else if (wo.status === 'COMPLETED') {
-        execBay.innerHTML = `<div class="w-full text-center py-2 text-emerald-600 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">verified</span> Selesai Secara Permanen</div>`;
+        stepperBay.innerHTML = `<div class="w-full text-center py-2 text-emerald-600 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">verified</span> Selesai Secara Permanen</div>`;
+        
+        execBay.innerHTML = `
+            <button class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2" onclick="printQCLabel(${JSON.stringify(wo).replace(/"/g, '&quot;')})">
+                <span class="material-symbols-outlined text-[18px]">print</span> Cetak Label QC
+            </button>
+        `;
+    } else if (wo.status === 'TUNING_QC') {
+        stepperBay.innerHTML = `<div class="w-full text-center py-2 text-amber-600 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">pending</span> Menunggu Inspeksi Divisi Mutu</div>`;
     } else {
         const currentIndex = stages.findIndex(s => s.id === wo.status);
         
@@ -353,23 +393,36 @@ function openRightDrawer(wo: WorkOrder) {
             const stageWrapper = document.createElement('div');
             stageWrapper.className = 'flex flex-col gap-2 w-full';
 
+            let currentLabel = stage.label;
+            let currentNext = stage.next;
+            let currentIcon = stage.icon;
+
+            // OVERRIDE TOMBOL JIKA REWORK
+            if (wo.catatan_rework && isCurrent && (stage.id === 'SUB_ASSEMBLY' || stage.id === 'FINAL_ASSEMBLY')) {
+                currentLabel = 'Selesai Rework & Kembalikan ke QC';
+                currentNext = 'TUNING_QC';
+                currentIcon = 'assignment_return';
+            }
+
             const btn = document.createElement('button');
+            const btnColorClass = wo.catatan_rework && isCurrent ? 'bg-rose-600 text-white shadow-md hover:bg-rose-700 hover:scale-[1.02]' : 'bg-primary text-white shadow-md hover:bg-primary-container hover:scale-[1.02]';
+
             btn.className = `w-full py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-between ${
                 isPast ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-50' :
-                isCurrent ? 'bg-primary text-white shadow-md hover:bg-primary-container hover:scale-[1.02]' :
+                isCurrent ? btnColorClass :
                 'bg-white border border-slate-200 text-slate-400 opacity-50 cursor-not-allowed'
             }`;
             
             btn.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <span class="material-symbols-outlined text-[20px]">${stage.icon}</span>
-                    <span>${stage.label}</span>
+                    <span class="material-symbols-outlined text-[20px]">${currentIcon}</span>
+                    <span>${currentLabel}</span>
                 </div>
                 ${isPast ? '<span class="material-symbols-outlined text-[18px]">check</span>' : ''}
             `;
             
             if (isCurrent) {
-                btn.onclick = () => handleStateShift(wo.id, stage.next);
+                btn.onclick = () => handleStateShift(wo.id, currentNext);
             } else {
                 btn.disabled = true;
             }
@@ -381,7 +434,20 @@ function openRightDrawer(wo: WorkOrder) {
                 const metaContainer = document.createElement('div');
                 metaContainer.className = 'ml-4 mt-1 pl-4 border-l-2 border-indigo-200 flex flex-col gap-3 animate-fade-in';
                 
-                stage.metadata.forEach((meta: any) => {
+                let currentMetadata = stage.metadata;
+                
+                // OVERRIDE JIKA ADA REWORK
+                if (wo.catatan_rework && (stage.id === 'SUB_ASSEMBLY' || stage.id === 'FINAL_ASSEMBLY')) {
+                    currentMetadata = [{
+                        title: "INSTRUKSI REWORK (GAGAL QC)",
+                        time: "Prioritas",
+                        tools: "Fokus pada perbaikan defect berikut",
+                        checklist: wo.catatan_rework.split('\n').filter((line: string) => line.trim().length > 0),
+                        isRework: true
+                    }];
+                }
+                
+                currentMetadata.forEach((meta: any) => {
                     let checklistHtml = meta.checklist.map((item: string) => `
                         <li class="flex items-start gap-2 text-[11px] text-slate-600 group-hover:text-slate-800 transition-colors">
                             <span class="material-symbols-outlined text-[14px] text-slate-300 mt-[1px]">check_box_outline_blank</span>
@@ -389,18 +455,26 @@ function openRightDrawer(wo: WorkOrder) {
                         </li>
                     `).join('');
 
+                    const isRework = meta.isRework;
+                    
+                    const borderClass = isRework ? 'border-rose-300' : 'border-slate-200';
+                    const gradientClass = isRework ? 'from-rose-50/80' : 'from-indigo-50/50';
+                    const iconBgClass = isRework ? 'bg-rose-100 text-rose-700' : 'bg-indigo-50 text-indigo-600';
+                    const iconName = isRework ? 'build_circle' : 'assignment';
+                    const badgeClass = isRework ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-indigo-700 bg-indigo-50 border-indigo-100';
+
                     metaContainer.innerHTML += `
-                        <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-indigo-50/50 to-transparent rounded-bl-full -z-10"></div>
+                        <div class="bg-white border ${borderClass} rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${gradientClass} to-transparent rounded-bl-full -z-10"></div>
                             
                             <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-                                <h4 class="text-xs font-bold text-slate-800 flex items-center gap-2">
-                                    <div class="w-5 h-5 rounded bg-indigo-50 flex items-center justify-center text-indigo-600">
-                                        <span class="material-symbols-outlined text-[14px]">assignment</span>
+                                <h4 class="text-xs font-bold ${isRework ? 'text-rose-700' : 'text-slate-800'} flex items-center gap-2">
+                                    <div class="w-5 h-5 rounded ${iconBgClass} flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-[14px]">${iconName}</span>
                                     </div>
                                     ${meta.title}
                                 </h4>
-                                <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md flex items-center gap-1 border border-indigo-100">
+                                <span class="text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 border ${badgeClass}">
                                     <span class="material-symbols-outlined text-[12px]">timer</span> ${meta.time}
                                 </span>
                             </div>
@@ -426,7 +500,7 @@ function openRightDrawer(wo: WorkOrder) {
                 stageWrapper.appendChild(metaContainer);
             }
 
-            execBay.appendChild(stageWrapper);
+            stepperBay.appendChild(stageWrapper);
         });
 
         // Add Cancel Button for DRAFT and KITTING_RELEASED
@@ -460,12 +534,6 @@ function closeRightDrawer() {
 }
 
 async function handleStateShift(woId: number, newStatus: string, bypassModal: boolean = false) {
-    if (newStatus === 'COMPLETED' && !bypassModal) {
-        if (currentOpenedWO && currentOpenedWO.status === 'TUNING_QC') {
-            showQcModal(woId);
-            return;
-        }
-    }
 
     let confirmTitle = 'Ubah Status?';
     let confirmText = '';
@@ -520,77 +588,6 @@ async function handleStateShift(woId: number, newStatus: string, bypassModal: bo
 }
 
 
-// ============================================================
-// 3. QUALITY ASSURANCE GATEWAY (QC MODAL)
-// ============================================================
-let activeQcWoId: number | null = null;
-
-function showQcModal(woId: number) {
-    activeQcWoId = woId;
-    const modal = document.getElementById('modal-qc')!;
-    const btnSubmit = document.getElementById('btn-submit-qc') as HTMLButtonElement;
-    
-    // Reset Form
-    const radios = document.querySelectorAll('input[type="radio"]');
-    radios.forEach((r: any) => r.checked = false);
-    (document.getElementById('qc-notes') as HTMLTextAreaElement).value = '';
-    
-    btnSubmit.disabled = true;
-    btnSubmit.className = 'w-full py-3.5 bg-slate-200 text-slate-500 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2';
-    btnSubmit.innerHTML = `<span class="material-symbols-outlined text-[20px]">rule</span> Silakan Lengkapi Form QC`;
-
-    modal.classList.remove('hidden');
-}
-
-function initQcModal() {
-    const modal = document.getElementById('modal-qc')!;
-    const btnClose = document.getElementById('btn-close-qc')!;
-    const btnSubmit = document.getElementById('btn-submit-qc') as HTMLButtonElement;
-    const radios = document.querySelectorAll('#qc-parameters input[type="radio"]');
-
-    const closeModal = () => {
-        modal.classList.add('hidden');
-        activeQcWoId = null;
-    };
-
-    btnClose.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-
-    radios.forEach(radio => {
-        radio.addEventListener('change', () => {
-            const frameVal = document.querySelector('input[name="qc_frame"]:checked') as HTMLInputElement;
-            const brakeVal = document.querySelector('input[name="qc_brake"]:checked') as HTMLInputElement;
-            const driveVal = document.querySelector('input[name="qc_drive"]:checked') as HTMLInputElement;
-
-            if (frameVal && brakeVal && driveVal) {
-                btnSubmit.disabled = false;
-                const isPassed = frameVal.value === 'pass' && brakeVal.value === 'pass' && driveVal.value === 'pass';
-
-                if (isPassed) {
-                    btnSubmit.className = 'w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2';
-                    btnSubmit.innerHTML = `<span class="material-symbols-outlined text-[20px]">verified</span> Terbitkan QC Passed & Harvest FG`;
-                    btnSubmit.dataset.action = 'COMPLETED';
-                } else {
-                    btnSubmit.className = 'w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2';
-                    btnSubmit.innerHTML = `<span class="material-symbols-outlined text-[20px]">assignment_return</span> Retur untuk Rework`;
-                    btnSubmit.dataset.action = 'SUB_ASSEMBLY';
-                }
-            }
-        });
-    });
-
-    btnSubmit.addEventListener('click', () => {
-        if (!activeQcWoId) return;
-        const action = btnSubmit.dataset.action;
-        if (action) {
-            closeModal();
-            // Bypass modal since we already confirmed via QC Form
-            handleStateShift(activeQcWoId, action, true);
-        }
-    });
-}
 
 // ============================================================
 // 4. CETAK LABEL QC
@@ -671,7 +668,7 @@ async function initCreateModal() {
     try {
         const response = await apiFetch<{success: boolean, data: any[]}>('gudang');
         if (response.success) {
-            const fgs = response.data.filter(i => i.kategori === 'FG' || i.kategori === 'Barang Jadi');
+            const fgs = response.data.filter(i => i.tipe_item === 'FG');
             fgs.forEach(fg => {
                 const opt = document.createElement('option');
                 opt.value = fg.id;
@@ -789,7 +786,7 @@ async function initCreateModal() {
                 const borderLeftStyle = item.level > 0 ? `border-left: 2px solid #e2e8f0;` : '';
 
                 radarContent.innerHTML += `
-                    <div class="flex items-start justify-between gap-3 px-4 py-2.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors relative" style="padding-left: ${paddingLeft + 1}rem;">
+                    <div class="flex items-start justify-between gap-3 px-4 py-2.5 border-b border-slate-100 last:border-0 hover:bg-slate-100 transition-colors relative" style="padding-left: ${paddingLeft + 1}rem;">
                         <div class="absolute left-0 top-0 bottom-0" style="margin-left: ${paddingLeft === 0 ? 0 : paddingLeft + 1 - 0.75}rem; ${borderLeftStyle}"></div>
                         
                         <div class="flex-1 min-w-0 flex flex-col gap-0.5">
@@ -809,8 +806,8 @@ async function initCreateModal() {
                 `;
             });
 
-            // HUKUM BESI: Disable submit if any deficit
-            btnSubmit.disabled = hasDeficit;
+            // [AUTO-RESTOCK] Tidak lagi di-disable jika defisit, karena backend akan otomatis membuat Material Request
+            btnSubmit.disabled = false;
 
         } catch (error) {
             radarContent.innerHTML = `<div class="text-center text-rose-400 text-xs py-8">Gagal memuat BOM. Pastikan master BOM tersedia.</div>`;
@@ -861,5 +858,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Init modules
     loadWorkOrders();
     initCreateModal();
-    initQcModal();
+
+    // Polling for Real-Time Experience (Every 15 seconds for Shop Floor)
+    setInterval(() => {
+        loadWorkOrders();
+    }, 15000);
 });

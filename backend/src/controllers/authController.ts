@@ -2,24 +2,20 @@ import { Request, Response } from 'express';
 import pool from '../config/database.js';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { logAudit } from '../helpers/auditHelper.js';
+import { AppError } from '../utils/AppError.js';
+import { asyncHandler } from '../helpers/asyncHandler.js';
 
-export const login = async (req: Request, res: Response): Promise<void> => {
+export const login = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { username, password } = req.body;
 
-  if (!username || !password) {
-    res.status(400).json({ status: 'error', message: 'Username dan password wajib diisi!' });
-    return;
+  const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
+  const users = rows as any[];
+
+  if (users.length === 0) {
+    throw new AppError('Username tidak ditemukan!', 401);
   }
-
-  try {
-    const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
-    const users = rows as any[];
-
-    if (users.length === 0) {
-      res.status(401).json({ status: 'error', message: 'Username tidak ditemukan!' });
-      return;
-    }
 
     const user = users[0];
     const dbPassword = user.password;
@@ -40,33 +36,87 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       isMatch = dbPassword === password || dbPassword === inputMd5;
     }
 
-    if (!isMatch) {
-      await logAudit(user.id, 'Percobaan login gagal (Password salah).', req.ip, 'Failed');
-      res.status(401).json({ status: 'error', message: 'Password salah!' });
-      return;
+  if (!isMatch) {
+    await logAudit(user.id, 'Percobaan login gagal (Password salah).', req.ip, 'Failed');
+    throw new AppError('Password salah!', 401);
+  }
+
+  // Generate JWT Access Token (15 menit)
+  const accessToken = jwt.sign(
+    { id: user.id, username: user.username, nama_lengkap: user.nama_lengkap, divisi_role: user.divisi_role },
+    process.env.JWT_SECRET as string,
+    { expiresIn: '15m' }
+  );
+
+  // Generate JWT Refresh Token (7 hari)
+  const refreshToken = jwt.sign(
+    { id: user.id },
+    process.env.JWT_REFRESH_SECRET as string,
+    { expiresIn: '7d' }
+  );
+
+  // Simpan refresh_token ke database
+  await pool.query('UPDATE users SET refresh_token = ? WHERE id = ?', [refreshToken, user.id]);
+
+  await logAudit(user.id, 'Login sistem berhasil.', req.ip, 'Success');
+
+  res.json({
+    status: 'success',
+    message: 'Login berhasil!',
+    user: {
+      id: user.id,
+      username: user.username,
+      nama: user.nama_lengkap || user.username,
+      divisi_role: user.divisi_role || 'user',
+      api_token: accessToken, // Frontend masih memanggilnya api_token, biarkan agar kompatibel
+      refresh_token: refreshToken
+    }
+  });
+});
+
+export const refreshToken = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    throw new AppError('Refresh token tidak ditemukan!', 401);
+  }
+
+  try {
+    const payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as any;
+    
+    // Cek database untuk memastikan token masih valid (belum di-logout)
+    const [rows] = await pool.query('SELECT * FROM users WHERE id = ? AND refresh_token = ?', [payload.id, refreshToken]);
+    const users = rows as any[];
+
+    if (users.length === 0) {
+      throw new AppError('Refresh token tidak valid atau sudah ditarik!', 401);
     }
 
-    // Generate api_token secara random (64 karakter hex)
-    const apiToken = crypto.randomBytes(32).toString('hex');
+    const user = users[0];
 
-    // Simpan token ke database agar bisa divalidasi oleh authMiddleware
-    await pool.query('UPDATE users SET api_token = ? WHERE id = ?', [apiToken, user.id]);
-
-    await logAudit(user.id, 'Login sistem berhasil.', req.ip, 'Success');
+    // Generate accessToken baru
+    const newAccessToken = jwt.sign(
+      { id: user.id, username: user.username, nama_lengkap: user.nama_lengkap, divisi_role: user.divisi_role },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '15m' }
+    );
 
     res.json({
-      status: 'success',
-      message: 'Login berhasil!',
-      user: {
-        id: user.id,
-        username: user.username,
-        nama: user.nama_lengkap || user.username,
-        divisi_role: user.divisi_role || 'user',
-        api_token: apiToken
+      success: true,
+      data: {
+        api_token: newAccessToken
       }
     });
 
-  } catch (error: any) {
-    res.status(500).json({ status: 'error', message: `Server error: ${error.message}` });
+  } catch (error) {
+    throw new AppError('Refresh token expired atau tidak valid!', 401);
   }
-};
+});
+
+export const logout = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { refreshToken } = req.body;
+  if (refreshToken) {
+    await pool.query('UPDATE users SET refresh_token = NULL WHERE refresh_token = ?', [refreshToken]);
+  }
+  res.json({ success: true, message: 'Logout berhasil.' });
+});

@@ -49,7 +49,7 @@ export const updateUser = async (req, res) => {
     try {
         const currentUser = req.user;
         const targetId = parseInt(req.params.id, 10);
-        const { nama_lengkap, divisi_role, status, email } = req.body;
+        const { username, nama_lengkap, divisi_role, status, email } = req.body;
         if (!currentUser) {
             res.status(401).json({ success: false, message: 'Tidak terautentikasi' });
             return;
@@ -71,12 +71,22 @@ export const updateUser = async (req, res) => {
             res.status(403).json({ success: false, message: 'Anda dilarang mempromosikan user menjadi Owner.' });
             return;
         }
-        await pool.query('UPDATE users SET nama_lengkap = ?, divisi_role = ?, status = ?, email = ? WHERE id = ?', [nama_lengkap, divisi_role, status, email || null, targetId]);
+        if (username) {
+            await pool.query('UPDATE users SET username = ?, nama_lengkap = ?, divisi_role = ?, status = ?, email = ? WHERE id = ?', [username, nama_lengkap, divisi_role, status, email || null, targetId]);
+        }
+        else {
+            await pool.query('UPDATE users SET nama_lengkap = ?, divisi_role = ?, status = ?, email = ? WHERE id = ?', [nama_lengkap, divisi_role, status, email || null, targetId]);
+        }
         await logAudit(currentUser.id, `Mengubah data user ID: ${targetId} (${divisi_role})`, req.ip, 'Success');
         res.json({ success: true, message: 'Data user berhasil diperbarui.' });
     }
     catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (error.code === 'ER_DUP_ENTRY') {
+            res.status(400).json({ success: false, message: 'Username sudah digunakan.' });
+        }
+        else {
+            res.status(500).json({ success: false, message: error.message });
+        }
     }
 };
 // PATCH /api/users/:id/reset-password

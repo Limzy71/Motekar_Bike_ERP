@@ -55,7 +55,28 @@
             display: flex; align-items: center; justify-content: center;
         }
         .avatar-wrapper:hover .avatar-upload-overlay { opacity: 1; }
+    
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important; /* Tailwind slate-900/40 */
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
+    <!-- Tab Persistence Anti-Flicker Script -->
+    <script>
+        (function() {
+            var lastTab = localStorage.getItem('profilLastTab') || 'auth';
+            var s = document.createElement('style');
+            s.id = 'anti-flicker';
+            s.innerHTML = '#view-auth, #view-notif, #view-audit { display: none !important; } #view-' + lastTab + ' { display: block !important; }';
+            document.head.appendChild(s);
+        })();
+    </script>
 </head>
 
 <body class="text-on-surface">
@@ -385,13 +406,7 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
-            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
-        </div>
-    </div>
+    {{> toast }}
 
     <script type="module" src="/src/pages/profil.ts"></script>
 </body>

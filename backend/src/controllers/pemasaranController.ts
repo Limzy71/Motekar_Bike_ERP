@@ -13,7 +13,7 @@ import pool from '../config/database.js';
 export const getAllCampaigns = async (req: Request, res: Response): Promise<void> => {
   try {
     const [rows] = await pool.query(
-      'SELECT id_campaign, nama_campaign, jenis, budget_alokasi, status, DATE_FORMAT(tanggal_mulai, "%Y-%m-%d") as tanggal_mulai, DATE_FORMAT(tanggal_selesai, "%Y-%m-%d") as tanggal_selesai, created_at FROM pemasaran_campaigns ORDER BY created_at DESC'
+      'SELECT id_campaign, nama_campaign, jenis, budget_alokasi, status, lokasi, DATE_FORMAT(tanggal_mulai, "%Y-%m-%d") as tanggal_mulai, DATE_FORMAT(tanggal_selesai, "%Y-%m-%d") as tanggal_selesai, created_at FROM pemasaran_campaigns ORDER BY created_at DESC'
     );
     res.json({ success: true, data: rows });
   } catch (error: any) {
@@ -25,7 +25,7 @@ export const getAllCampaigns = async (req: Request, res: Response): Promise<void
 // [POST] /api/pemasaran/campaigns
 export const createCampaign = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nama_campaign, jenis, budget_alokasi, tanggal_mulai, tanggal_selesai } = req.body;
+    const { nama_campaign, jenis, budget_alokasi, tanggal_mulai, tanggal_selesai, lokasi } = req.body;
 
     if (!nama_campaign || !jenis || budget_alokasi === undefined) {
       res.status(400).json({ success: false, message: 'Mohon lengkapi seluruh field Kampanye.' });
@@ -33,8 +33,8 @@ export const createCampaign = async (req: Request, res: Response): Promise<void>
     }
 
     await pool.query(
-      'INSERT INTO pemasaran_campaigns (nama_campaign, jenis, budget_alokasi, tanggal_mulai, tanggal_selesai) VALUES (?, ?, ?, ?, ?)',
-      [nama_campaign.trim(), jenis, parseFloat(budget_alokasi), tanggal_mulai || null, tanggal_selesai || null]
+      'INSERT INTO pemasaran_campaigns (nama_campaign, jenis, budget_alokasi, tanggal_mulai, tanggal_selesai, lokasi) VALUES (?, ?, ?, ?, ?, ?)',
+      [nama_campaign.trim(), jenis, parseFloat(budget_alokasi), tanggal_mulai || null, tanggal_selesai || null, lokasi || ""]
     );
 
     res.status(201).json({ success: true, message: 'Kampanye baru berhasil dibuat.' });
@@ -48,11 +48,11 @@ export const createCampaign = async (req: Request, res: Response): Promise<void>
 export const updateCampaign = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nama_campaign, jenis, budget_alokasi, status, tanggal_mulai, tanggal_selesai } = req.body;
+    const { nama_campaign, jenis, budget_alokasi, status, tanggal_mulai, tanggal_selesai, lokasi } = req.body;
     
     await pool.query(
-      'UPDATE pemasaran_campaigns SET nama_campaign = ?, jenis = ?, budget_alokasi = ?, status = ?, tanggal_mulai = ?, tanggal_selesai = ? WHERE id_campaign = ?',
-      [nama_campaign?.trim(), jenis, parseFloat(budget_alokasi), status, tanggal_mulai || null, tanggal_selesai || null, id]
+      'UPDATE pemasaran_campaigns SET nama_campaign = ?, jenis = ?, budget_alokasi = ?, status = ?, tanggal_mulai = ?, tanggal_selesai = ?, lokasi = ? WHERE id_campaign = ?',
+      [nama_campaign?.trim(), jenis, parseFloat(budget_alokasi), status, tanggal_mulai || null, tanggal_selesai || null, lokasi || "", id]
     );
 
     res.json({ success: true, message: 'Kampanye berhasil diperbarui.' });

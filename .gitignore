@@ -1,9 +1,45 @@
-# Abaikan semua node_modules di folder manapun
+# 1. Dependency Directories
+node_modules/
 **/node_modules/
 
-# Abaikan file config rahasia
-**/.env
+# 2. Build Outputs (Compiled Code)
+backend/dist/
+frontend/dist/
+**/dist/
+build/
+out/
 
-# Abaikan isi folder uploads, tapi pertahankan foldernya
-uploads/*
-!uploads/.gitkeep
+# 3. Environment Variables (Extreme Security)
+.env
+backend/.env
+frontend/.env
+.env.local
+.env.development
+.env.production
+**/.env*
+!**/.env.example
+
+# 4. User Uploads & Media (Do not push real e-POD or KYC photos)
+public/uploads/
+backend/public/uploads/
+frontend/public/uploads/
+uploads/
+**/uploads/*
+!**/uploads/.gitkeep
+
+# 5. Application Logs & Debug Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+**/logs/*
+!**/logs/.gitkeep
+
+# 6. OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

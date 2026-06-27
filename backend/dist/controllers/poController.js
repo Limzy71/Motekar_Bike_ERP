@@ -55,6 +55,10 @@ export const createDirectPO = async (req, res) => {
         if (!items || items.length === 0) {
             throw new Error('Minimal harus ada 1 item material.');
         }
+        const [vendorCheck] = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [id_vendor]);
+        if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+            throw new Error(`Akses Ditolak: Vendor telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}`);
+        }
         await connection.beginTransaction();
         const nomor_po = await generatePONumber(connection);
         let total_nilai = 0;
@@ -188,6 +192,10 @@ export const generatePO = async (req, res) => {
         const [prDetails] = await connection.query('SELECT * FROM pengadaan_pr_detail WHERE id_pr_header = ?', [id_pr]);
         if (prDetails.length === 0)
             throw new Error('PR tidak memiliki item');
+        const [vendorCheck] = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [pr.id_vendor]);
+        if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+            throw new Error(`Akses Ditolak: Vendor telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}`);
+        }
         // 2. Generate Nomor PO
         const nomor_po = await generatePONumber(connection);
         // 3. Insert Header DRAFT
@@ -240,6 +248,10 @@ export const bulkGeneratePO = async (req, res) => {
         }
         let generatedCount = 0;
         for (const pr of prs) {
+            const [vendorCheck] = await connection.query('SELECT status_vendor, alasan_blacklist FROM master_vendor WHERE id = ?', [pr.id_vendor]);
+            if (vendorCheck.length > 0 && vendorCheck[0].status_vendor === 'BLACKLIST') {
+                throw new Error(`Akses Ditolak: Vendor ${pr.id_vendor} telah di-blacklist karena ${vendorCheck[0].alasan_blacklist}`);
+            }
             const [prDetails] = await connection.query('SELECT * FROM pengadaan_pr_detail WHERE id_pr_header = ?', [pr.id]);
             if (prDetails.length === 0)
                 continue;

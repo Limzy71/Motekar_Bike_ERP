@@ -24,13 +24,14 @@ import { getUserData, type UserData } from '../api.js';
 const ROLE_LABELS: Record<string, string> = {
   'Pengadaan': 'Pengadaan',
   'Kendali Mutu': 'Kendali Mutu',
-  'Penjualan & Penagihan': 'Penjualan & Penagihan',
-  'Keuangan': 'Keuangan',
+  'Pemasaran & Penjualan': 'Pemasaran & Penjualan',
+  'Keuangan & Akuntansi': 'Keuangan & Akuntansi',
   'Operasi Inti': 'Operasi Inti',
-  'Pemasaran': 'Pemasaran',
   'Gudang': 'Gudang',
   'Owner': 'Owner',
+  'General Manager': 'General Manager',
   'IT Support': 'IT Support',
+  'Legal & Kepatuhan': 'Legal & Kepatuhan',
 };
 
 /** Konfigurasi menu sidebar */
@@ -46,15 +47,16 @@ const MENU_ITEMS: MenuConfig[] = [
   { id: 'nav-pengadaan',  label: 'Pengadaan',              icon: 'shopping_cart',    href: '/pengadaan.html', allowedRoles: ['Owner', 'General Manager', 'Pengadaan'] },
   { id: 'nav-po',         label: 'Purchase Order (PO)',    icon: 'request_quote',    href: '/po.html',        allowedRoles: ['Owner', 'General Manager', 'Pengadaan', 'Gudang'] },
   { id: 'nav-mutu',       label: 'Kendali Mutu',           icon: 'fact_check',       href: '/mutu.html',      allowedRoles: ['Owner', 'General Manager', 'Kendali Mutu'] },
-  { id: 'nav-penjualan',  label: 'Penjualan & Penagihan',  icon: 'receipt_long',     href: '/penjualan.html', allowedRoles: ['Owner', 'General Manager', 'Penjualan & Penagihan'] },
-  { id: 'nav-keuangan',   label: 'Buku Besar Keuangan',    icon: 'account_balance',  href: '/keuangan.html',  allowedRoles: ['Owner', 'General Manager', 'Keuangan'] },
+  { id: 'nav-penjualan',  label: 'Penjualan & Penagihan',  icon: 'receipt_long',     href: '/penjualan.html', allowedRoles: ['Owner', 'General Manager', 'Pemasaran & Penjualan'] },
+  { id: 'nav-keuangan',   label: 'Buku Besar Keuangan',    icon: 'account_balance',  href: '/keuangan.html',  allowedRoles: ['Owner', 'General Manager', 'Keuangan & Akuntansi'] },
   { id: 'nav-operasi',    label: 'Operasi Inti',           icon: 'settings_suggest', href: '/operasi.html',   allowedRoles: ['Owner', 'General Manager', 'Operasi Inti'] },
-  { id: 'nav-pemasaran',  label: 'Pemasaran',              icon: 'group',            href: '/pemasaran.html', allowedRoles: ['Owner', 'General Manager', 'Pemasaran'] },
+  { id: 'nav-pemasaran',  label: 'Pemasaran',              icon: 'group',            href: '/pemasaran.html', allowedRoles: ['Owner', 'General Manager', 'Pemasaran & Penjualan'] },
+  { id: 'nav-crm',        label: 'CRM & After-Sales',      icon: 'support_agent',    href: '/crm.html',       allowedRoles: ['Owner', 'General Manager', 'Pemasaran & Penjualan'] },
   { id: 'nav-inventori',  label: 'Gudang',                 icon: 'inventory_2',      href: '/gudang.html',    allowedRoles: ['Owner', 'General Manager', 'Gudang'] },
   
   // Menu Khusus IT Support & Owner & General Manager
   { id: 'nav-users',      label: 'Manajemen Pengguna',     icon: 'manage_accounts',  href: '/users.html', allowedRoles: ['Owner', 'General Manager', 'IT Support'] },
-  { id: 'nav-profil',     label: 'Profil / Log Sistem',    icon: 'admin_panel_settings', href: '/profil.html',   allowedRoles: ['Owner', 'General Manager', 'IT Support'] },
+  { id: 'nav-profil',     label: 'Profil / Log Sistem',    icon: 'admin_panel_settings', href: '/profil.html',   allowedRoles: ['Owner', 'General Manager', 'IT Support', 'Legal & Kepatuhan'] },
 ];
 
 // ============================================================
@@ -115,7 +117,7 @@ export function renderSidebar(currentPage: string = 'dashboard'): void {
       <span class="text-sm menu-text">Dashboard</span>
     `;
   } else {
-    dashboardBtn.className = 'nav-item flex items-center gap-3 px-3 py-2.5 rounded transition-colors whitespace-nowrap overflow-hidden text-slate-600 hover:bg-slate-50 hover:text-slate-900';
+    dashboardBtn.className = 'nav-item flex items-center gap-3 px-3 py-2.5 rounded transition-colors whitespace-nowrap overflow-hidden text-slate-600 hover:bg-slate-100 hover:text-slate-900';
     dashboardBtn.innerHTML = `
       <span class="material-symbols-outlined shrink-0">dashboard</span>
       <span class="text-sm menu-text font-medium">Dashboard</span>
@@ -127,9 +129,9 @@ export function renderSidebar(currentPage: string = 'dashboard'): void {
   MENU_ITEMS.forEach((menu) => {
     if (!menu.allowedRoles.includes(role)) return;
 
-    // Remove leading slash for includes check
-    const hrefCheck = menu.href ? menu.href.replace('/', '') : '';
-    const isActive = hrefCheck !== '' && currentPath.includes(hrefCheck);
+    // Remove leading slash and .html for includes check to support extensionless URLs
+    const baseHref = menu.href ? menu.href.replace('/', '').replace('.html', '') : '';
+    const isActive = baseHref !== '' && (currentPath.includes(baseHref + '.html') || currentPath.endsWith('/' + baseHref) || currentPath === '/' + baseHref);
     
     const btn = document.createElement('a');
     btn.id = menu.id;
@@ -144,7 +146,7 @@ export function renderSidebar(currentPage: string = 'dashboard'): void {
         <span class="text-sm menu-text">${menu.label}</span>
       `;
     } else {
-      btn.className = 'nav-item flex items-center gap-3 px-3 py-2.5 rounded transition-colors whitespace-nowrap overflow-hidden text-slate-600 hover:bg-slate-50 hover:text-slate-900';
+      btn.className = 'nav-item flex items-center gap-3 px-3 py-2.5 rounded transition-colors whitespace-nowrap overflow-hidden text-slate-600 hover:bg-slate-100 hover:text-slate-900';
       btn.innerHTML = `
         <span class="material-symbols-outlined shrink-0">${menu.icon}</span>
         <span class="text-sm menu-text font-medium">${menu.label}</span>

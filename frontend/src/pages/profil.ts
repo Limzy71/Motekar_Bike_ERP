@@ -332,9 +332,7 @@ function setupTabs(): void {
   const activeClass = 'pb-4 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors flex items-center gap-2';
   const inactiveClass = 'pb-4 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-2';
 
-  tabs.forEach(tab => {
-    const btn = document.getElementById(tab.id);
-    btn?.addEventListener('click', () => {
+  const switchTab = (tabId: string, viewId: string) => {
       tabs.forEach(t => {
         document.getElementById(t.id)!.className = inactiveClass;
         const view = document.getElementById(t.view);
@@ -343,14 +341,32 @@ function setupTabs(): void {
           view.classList.remove('block');
         }
       });
-      btn.className = activeClass;
-      const activeView = document.getElementById(tab.view);
+      const btn = document.getElementById(tabId);
+      if (btn) btn.className = activeClass;
+      const activeView = document.getElementById(viewId);
       if (activeView) {
         activeView.classList.remove('hidden');
         activeView.classList.add('block');
       }
-    });
+      localStorage.setItem('profilLastTab', tabId);
+  };
+
+  tabs.forEach(tab => {
+    const btn = document.getElementById(tab.id);
+    btn?.addEventListener('click', () => switchTab(tab.id, tab.view));
   });
+
+  const lastTabId = localStorage.getItem('profilLastTab');
+  const foundTab = tabs.find(t => t.id === lastTabId);
+  if (foundTab) {
+      switchTab(foundTab.id, foundTab.view);
+  } else {
+      switchTab('tab-auth', 'view-auth');
+  }
+
+  // Remove anti-flicker style once tabs are properly initialized
+  const antiFlicker = document.getElementById('anti-flicker');
+  if (antiFlicker) antiFlicker.remove();
 }
 
 // ============================================================
@@ -600,7 +616,7 @@ async function renderAuditLogs(): Promise<void> {
                           'text-amber-600 bg-amber-50 border-amber-200';
 
       const tr = document.createElement('tr');
-      tr.className = 'hover:bg-slate-50 transition-colors';
+      tr.className = 'hover:bg-slate-100 transition-colors';
       tr.innerHTML = `
         <td class="px-6 py-4 whitespace-nowrap text-slate-500"><span class="font-data-mono">${log.waktu}</span></td>
         <td class="px-6 py-4 whitespace-nowrap text-slate-400 text-xs"><span class="font-data-mono">${log.ip_address}</span></td>

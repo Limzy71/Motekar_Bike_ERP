@@ -64,6 +64,17 @@
         /* Right Drawer Slide Animation */
         #right-drawer { transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         #right-drawer.open { transform: translateX(0); }
+    
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important; /* Tailwind slate-900/40 */
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
 </head>
 
@@ -71,47 +82,26 @@
     <div class="flex h-screen overflow-hidden relative">
         
         <!-- SIDEBAR -->
-        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
-                <div class="flex flex-col gap-1" id="sidebar-logo">
-                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
-                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
-                </div>
-                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
-            </div>
-            <div class="p-6 border-t border-outline-variant">
-                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
-                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
-                    <span class="menu-text">Keluar Sistem</span>
-                </button>
-            </div>
-        </aside>
+        {{> sidebar }}
 
         <!-- MAIN CONTENT -->
         <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
-                <div class="flex items-center gap-4">
-                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-[24px]">menu</span>
-                    </button>
-                    <span class="text-headline-md text-on-surface font-bold">Penjualan (O2C)</span>
-                </div>
-                <div class="flex items-center gap-6">
-                    <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all">
-                        <div class="text-right">
-                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
-                        </div>
-                        <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
-                            <span id="header-inisial">--</span>
-                        </div>
-                    </a>
-                </div>
-            </header>
+            {{> navbar title="Penjualan (O2C)" }}
 
             <!-- ZONA 1 & 2 Scrollable Container -->
             <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30 custom-scroll">
                 
+                <!-- Alert Banner (Gagal Kirim) -->
+                <div id="alert-failed-delivery" class="hidden mb-6 bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-[24px] text-rose-600">error</span>
+                        <div>
+                            <p class="text-sm font-bold">Peringatan: Terdapat <span id="count-failed-delivery" class="font-data-mono font-black text-rose-700">0</span> Pesanan Gagal Kirim (Failed Delivery)</p>
+                            <p class="text-xs mt-0.5 text-rose-600/80">Membutuhkan Reschedule agar stok dapat dikirim kembali!</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Page Header -->
                 <div class="mb-6 flex justify-between items-center">
                     <div>
@@ -361,6 +351,8 @@
                         <input type="text" id="input-alamat" autocomplete="off" style="background-image: none !important;" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="Ketik nama tempat atau jalan...">
                         <input type="hidden" id="input-latitude">
                         <input type="hidden" id="input-longitude">
+                        <!-- Map Preview Container -->
+                        <div id="map-preview" class="w-full h-48 bg-slate-100 rounded-lg border border-slate-200 mt-2 overflow-hidden shadow-inner hidden"></div>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Catatan</label>
@@ -386,7 +378,7 @@
             </div>
 
             <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0">
-                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">Batal</button>
+                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors">Batal</button>
                 <button id="btn-submit-so" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2">
                     <span class="material-symbols-outlined text-[18px]">send</span> Proses Pesanan
                 </button>

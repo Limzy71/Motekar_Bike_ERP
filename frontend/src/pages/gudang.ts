@@ -11,9 +11,9 @@ interface InventoryItem {
   kode_barang: string;
   nama_barang: string;
   kategori: string;
+  tipe_item: string;
   jumlah_stok: number;
   satuan: string;
-  reorder_point: number;
   last_updated: string;
 }
 
@@ -79,8 +79,12 @@ function renderTable(): void {
 
   // Filter & Search Logic
   const filteredData = masterStok.filter(item => {
-    // 1. Kategori Filter
-    const matchCategory = currentFilter === 'Semua' || item.kategori === currentFilter;
+    // 1. Kategori Filter (Berdasarkan tipe_item)
+    let matchCategory = true;
+    if (currentFilter !== 'Semua') {
+      const filterTipe = currentFilter === 'WIP' ? 'SA' : currentFilter;
+      matchCategory = item.tipe_item === filterTipe;
+    }
     
     // 2. Search Filter (kode atau nama)
     const searchTerm = currentSearch.toLowerCase();
@@ -109,23 +113,23 @@ function renderTable(): void {
   currentItems.forEach(item => {
     // Dynamic Stock Badges (MEDS Kunci UX)
     let statusBadge = '';
-    const rop = item.reorder_point || 10; // Fallback ke 10 jika ROP belum di-set
-    if (item.jumlah_stok <= rop) {
+    const isKritis = item.jumlah_stok <= 10; // ROP logic simplified for now
+    if (isKritis) {
       statusBadge = `<span class="whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border bg-rose-50 text-rose-700 border-rose-200/80">Kritis</span>`;
     } else {
       statusBadge = `<span class="whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border bg-emerald-50 text-emerald-700 border-emerald-200/80">Aman</span>`;
     }
 
     let lokasi = "Gudang Utama";
-    if (item.kategori === 'WIP') {
-        lokasi = "Shop Floor / Area Produksi";
+    if (item.kategori === 'WIP' || item.tipe_item === 'SA' || item.kategori === 'Barang Setengah Jadi') {
+        lokasi = "Meja Perakitan";
     } else if (item.kategori === 'FG' || item.kategori === 'Sepeda Jadi' || item.kategori === 'Barang Jadi') {
         lokasi = "Gudang Barang Jadi";
     }
     const lokasiBadge = `<span class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full whitespace-nowrap"><span class="material-symbols-outlined text-[14px]">location_on</span> ${lokasi}</span>`;
 
     const tr = document.createElement('tr');
-    tr.className = 'hover:bg-slate-50/50 transition-colors duration-150 border-b border-slate-100 text-xs font-medium text-slate-600 last:border-b-0 group';
+    tr.className = 'hover:bg-slate-100 transition-colors duration-150 border-b border-slate-100 text-xs font-medium text-slate-600 last:border-b-0 group';
     tr.innerHTML = `
         <td class="px-4 py-3">
             <p class="font-semibold text-slate-900 font-data-mono">${item.kode_barang}</p>
@@ -254,23 +258,69 @@ function setupFilters(): void {
   // Tab Logic
   const tabMaster = document.getElementById('tab-master');
   const tabOutbound = document.getElementById('tab-outbound');
+  const tabException = document.getElementById('tab-exception');
+  const tabReceipt = document.getElementById('tab-receipt');
   const sectionMaster = document.getElementById('section-master');
   const sectionOutbound = document.getElementById('section-outbound');
+  const sectionException = document.getElementById('section-exception');
+  const sectionReceipt = document.getElementById('section-receipt');
 
-  tabMaster?.addEventListener('click', () => {
-      tabMaster.className = "px-6 py-3 border-b-2 border-primary text-primary font-bold text-sm transition-colors";
-      tabOutbound!.className = "px-6 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium text-sm transition-colors flex items-center gap-2";
-      sectionMaster?.classList.remove('hidden');
-      sectionOutbound?.classList.add('hidden');
-  });
+  const activeClass = "px-6 py-3 border-b-2 border-primary text-primary font-bold text-sm transition-colors";
+  const inactiveClass = "px-6 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium text-sm transition-colors";
+  const exceptionActiveClass = "px-6 py-3 border-b-2 border-rose-500 text-rose-600 font-bold text-sm transition-colors";
+  const exceptionInactiveClass = "px-6 py-3 border-b-2 border-transparent text-rose-500 hover:text-rose-700 font-bold text-sm transition-colors";
 
-  tabOutbound?.addEventListener('click', () => {
-      tabOutbound.className = "px-6 py-3 border-b-2 border-primary text-primary font-bold text-sm transition-colors flex items-center gap-2";
-      tabMaster!.className = "px-6 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium text-sm transition-colors";
-      sectionOutbound?.classList.remove('hidden');
+  const switchTab = (tabName: 'master' | 'outbound' | 'exception' | 'receipt') => {
+      if (tabMaster) tabMaster.className = inactiveClass;
+      if (tabOutbound) tabOutbound.className = inactiveClass + " flex items-center gap-2";
+      if (tabException) tabException.className = exceptionInactiveClass + " flex items-center gap-2";
+      if (tabReceipt) tabReceipt.className = inactiveClass + " flex items-center gap-2";
       sectionMaster?.classList.add('hidden');
-      loadOutboundLogistics();
-  });
+      sectionOutbound?.classList.add('hidden');
+      sectionException?.classList.add('hidden');
+      sectionReceipt?.classList.add('hidden');
+
+      if (tabName === 'master') {
+          if (tabMaster) tabMaster.className = activeClass;
+          sectionMaster?.classList.remove('hidden');
+          localStorage.setItem('gudangLastTab', 'master');
+      } else if (tabName === 'outbound') {
+          if (tabOutbound) tabOutbound.className = activeClass + " flex items-center gap-2";
+          sectionOutbound?.classList.remove('hidden');
+          localStorage.setItem('gudangLastTab', 'outbound');
+          loadOutboundLogistics();
+      } else if (tabName === 'exception') {
+          if (tabException) tabException.className = exceptionActiveClass + " flex items-center gap-2";
+          sectionException?.classList.remove('hidden');
+          localStorage.setItem('gudangLastTab', 'exception');
+          loadWriteOffs();
+      } else if (tabName === 'receipt') {
+          if (tabReceipt) tabReceipt.className = activeClass + " flex items-center gap-2";
+          sectionReceipt?.classList.remove('hidden');
+          localStorage.setItem('gudangLastTab', 'receipt');
+          loadPendingPO();
+      }
+  };
+
+  tabMaster?.addEventListener('click', () => switchTab('master'));
+  tabOutbound?.addEventListener('click', () => switchTab('outbound'));
+  tabException?.addEventListener('click', () => switchTab('exception'));
+  tabReceipt?.addEventListener('click', () => switchTab('receipt'));
+
+  const lastTab = localStorage.getItem('gudangLastTab');
+  if (lastTab === 'outbound') {
+      switchTab('outbound');
+  } else if (lastTab === 'exception') {
+      switchTab('exception');
+  } else if (lastTab === 'receipt') {
+      switchTab('receipt');
+  } else {
+      switchTab('master');
+  }
+
+  // Remove anti-flicker style once tabs are properly initialized
+  const antiFlicker = document.getElementById('anti-flicker');
+  if (antiFlicker) antiFlicker.remove();
 }
 
 // ============================================================
@@ -282,10 +332,10 @@ async function loadOutboundLogistics(): Promise<void> {
   if (!tbody) return;
 
   try {
-      const response = await apiFetch<{success: boolean, data: OutboundSO[]}>('penjualan/so');
-      if (response.success) {
-          // Filter ONLY RESERVED
-          outboundSOs = response.data.filter(so => so.status_so === 'RESERVED');
+      const response = await apiFetch<{success: boolean, data: OutboundSO[]}>('sales/orders');
+      if (response && response.success) {
+          // Filter RESERVED or SHIPPED (for exception handling)
+          outboundSOs = response.data.filter(so => so.status_so === 'RESERVED' || so.status_so === 'SHIPPED');
           
           const badge = document.getElementById('badge-outbound');
           if (badge) {
@@ -321,17 +371,30 @@ function renderOutboundTable() {
             totalItems = so.items.reduce((sum, item) => sum + parseInt(item.qty || '0', 10), 0);
         }
 
+        let aksiButtons = '';
+        if (so.status_so === 'RESERVED') {
+            aksiButtons = `
+                <button onclick="window.openDispatchModal(${so.id}, '${so.nomor_so}')" class="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
+                    <span class="material-symbols-outlined text-[16px]">local_shipping</span> Dispatch
+                </button>
+            `;
+        } else if (so.status_so === 'SHIPPED') {
+            aksiButtons = `
+                <button onclick="window.reportFailedDelivery(${so.id})" class="px-3 py-1.5 bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
+                    <span class="material-symbols-outlined text-[16px]">warning</span> Gagal Kirim
+                </button>
+            `;
+        }
+
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50/50 transition-colors";
+        tr.className = "hover:bg-slate-100 transition-colors";
         tr.innerHTML = `
             <td class="px-4 py-4 whitespace-nowrap"><p class="font-bold text-blue-700">${so.nomor_so}</p></td>
             <td class="px-4 py-4"><p class="font-semibold text-slate-800">${so.nama_customer}</p></td>
             <td class="px-4 py-4"><p class="text-slate-600 truncate max-w-[200px]" title="${so.alamat_pengiriman}">${so.alamat_pengiriman}</p></td>
             <td class="px-4 py-4 text-right"><p class="font-data-mono font-bold">${totalItems}</p></td>
             <td class="px-4 py-4 text-center">
-                <button onclick="window.openDispatchModal(${so.id}, '${so.nomor_so}')" class="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
-                    <span class="material-symbols-outlined text-[16px]">local_shipping</span> Dispatch
-                </button>
+                ${aksiButtons}
             </td>
         `;
         tbody.appendChild(tr);
@@ -407,9 +470,9 @@ function setupModalDispatch(): void {
                 const base64Foto = reader.result as string;
 
                 try {
-                    const response = await apiFetch<ActionResponse>(`penjualan/so/${id}/ship`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ vendor, resi, foto: base64Foto })
+                    const response = await apiFetch<ActionResponse>(`sales/orders/${id}/ship`, {
+                      method: 'PATCH',
+                      body: JSON.stringify({ vendor, resi, foto: base64Foto })
                     });
 
                     if (response.success) {
@@ -697,8 +760,359 @@ function setupModalOpname(): void {
 
 
 // ============================================================
+// EXCEPTION HANDLING (WRITE-OFF & FAILED DELIVERY)
+// ============================================================
+
+async function loadWriteOffs() {
+    const tbody = document.getElementById('tbody-writeoff');
+    if (!tbody) return;
+
+    try {
+        const response = await apiFetch<any>('exception/writeoff');
+        if (response.success) {
+            tbody.innerHTML = '';
+            if (response.data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada antrean write-off.</td></tr>`;
+                return;
+            }
+            response.data.forEach((wo: any) => {
+                let badge = '';
+                if (wo.status_approval === 'PENDING') badge = `<span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-100 text-amber-700">PENDING</span>`;
+                else if (wo.status_approval === 'APPROVED') badge = `<span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">APPROVED</span>`;
+                else badge = `<span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700">REJECTED</span>`;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-data-mono font-bold text-rose-700">${wo.id_writeoff}</td>
+                    <td class="px-4 py-3 font-semibold text-slate-800">${wo.kode_item}</td>
+                    <td class="px-4 py-3 text-center font-data-mono font-bold">${wo.qty_hilang}</td>
+                    <td class="px-4 py-3 text-slate-600 max-w-[200px] truncate" title="${wo.alasan_hilang}">${wo.alasan_hilang}</td>
+                    <td class="px-4 py-3 text-center">${badge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat write-off.</td></tr>`;
+    }
+}
+
+function setupExceptionForms() {
+    const btnAjukan = document.getElementById('btn-ajukan-writeoff');
+    const modalWriteoff = document.getElementById('modal-writeoff');
+    const modalContent = document.getElementById('modal-writeoff-content');
+    const btnClose = document.getElementById('btn-close-writeoff');
+    const btnCancel = document.getElementById('btn-cancel-writeoff');
+    const btnSubmit = document.getElementById('btn-submit-writeoff');
+    const selectItem = document.getElementById('wo-kode-item') as HTMLSelectElement;
+
+    const openModal = () => {
+        // Populate items
+        if (selectItem) {
+            selectItem.innerHTML = '<option value="">-- Pilih Item --</option>';
+            masterStok.forEach(item => {
+                selectItem.innerHTML += `<option value="${item.kode_barang}">${item.kode_barang} - ${item.nama_barang} (Stok: ${item.jumlah_stok})</option>`;
+            });
+        }
+        modalWriteoff?.classList.remove('hidden');
+        setTimeout(() => {
+            modalWriteoff?.classList.remove('opacity-0');
+            modalContent?.classList.remove('scale-95');
+        }, 10);
+    };
+
+    const closeModal = () => {
+        modalWriteoff?.classList.add('opacity-0');
+        modalContent?.classList.add('scale-95');
+        setTimeout(() => {
+            modalWriteoff?.classList.add('hidden');
+        }, 300);
+    };
+
+    btnAjukan?.addEventListener('click', openModal);
+    btnClose?.addEventListener('click', closeModal);
+    btnCancel?.addEventListener('click', closeModal);
+
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
+    };
+
+    btnSubmit?.addEventListener('click', async () => {
+        const kode_item = selectItem.value;
+        const qty_hilang = (document.getElementById('wo-qty') as HTMLInputElement).value;
+        const alasan_hilang = (document.getElementById('wo-alasan') as HTMLTextAreaElement).value;
+        const fileInput = document.getElementById('wo-bukti') as HTMLInputElement;
+
+        if (!kode_item || !qty_hilang || !alasan_hilang || !fileInput.files || fileInput.files.length === 0) {
+            showToast('Lengkapi semua data dan unggah Berita Acara.', true);
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('kode_item', kode_item);
+            formData.append('qty_hilang', qty_hilang);
+            formData.append('alasan_hilang', alasan_hilang);
+            formData.append('bukti_berita_acara', fileInput.files[0]);
+
+            const response = await apiFetch<ActionResponse>('exception/writeoff', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.success) {
+                showToast(response.message);
+                closeModal();
+                loadWriteOffs();
+            } else {
+                showToast(response.message, true);
+            }
+        } catch (err) {
+            showToast('Gagal mengajukan write-off.', true);
+        }
+    });
+}
+
+(window as any).reportFailedDelivery = async (id: number) => {
+    const result = await (window as any).Swal.fire({
+        title: 'Laporkan Gagal Kirim?',
+        text: "Pesanan ini akan ditandai gagal dan stok akan dikarantina.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Ya, Laporkan!',
+        cancelButtonText: 'Batal'
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+        const response = await apiFetch<ActionResponse>(`exception/so/${id}/failed-delivery`, {
+            method: 'PATCH'
+        });
+        if (response.success) {
+            showToast(response.message);
+            loadOutboundLogistics();
+        } else {
+            showToast(response.message, true);
+        }
+    } catch (err) {
+        showToast('Kesalahan jaringan.', true);
+    }
+};
+
+
+// ============================================================
+// GOODS RECEIPT (PENERIMAAN BARANG) HANDLERS
+// ============================================================
+
+let pendingPOs: any[] = [];
+
+async function loadPendingPO(): Promise<void> {
+    const tbody = document.getElementById('tbody-receipt');
+    if (!tbody) return;
+
+    try {
+        const response = await apiFetch<any>('gudang/po-pending');
+        if (response.success) {
+            pendingPOs = response.data;
+            const badge = document.getElementById('badge-receipt');
+            if (badge) {
+                if (pendingPOs.length > 0) {
+                    badge.textContent = pendingPOs.length.toString();
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+            renderReceiptTable();
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat data PO.</td></tr>`;
+        }
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Kesalahan jaringan.</td></tr>`;
+    }
+}
+
+function renderReceiptTable() {
+    const tbody = document.getElementById('tbody-receipt');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (pendingPOs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada Purchase Order yang menunggu penerimaan.</td></tr>`;
+        return;
+    }
+
+    pendingPOs.forEach(po => {
+        let statusBadge = '';
+        if (po.status === 'APPROVED') {
+            statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-amber-50 text-amber-700 border-amber-200">APPROVED</span>`;
+        } else if (po.status === 'SENT_TO_VENDOR') {
+            statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200">DIKIRIM VENDOR</span>`;
+        }
+
+        const dateStr = new Date(po.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-100 transition-colors cursor-pointer";
+        tr.onclick = () => (window as any).openReceiptModal(po.id, po.nomor_po);
+        tr.innerHTML = `
+            <td class="px-4 py-4 whitespace-nowrap"><p class="font-bold text-slate-700 font-data-mono">${po.nomor_po}</p></td>
+            <td class="px-4 py-4"><p class="text-slate-600">${dateStr}</p></td>
+            <td class="px-4 py-4"><p class="font-semibold text-slate-800">${po.nama_vendor}</p></td>
+            <td class="px-4 py-4 text-center">${statusBadge}</td>
+            <td class="px-4 py-4 text-center">
+                <button class="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto" onclick="event.stopPropagation(); window.openReceiptModal(${po.id}, '${po.nomor_po}')">
+                    <span class="material-symbols-outlined text-[16px]">inventory_2</span> Terima
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+(window as any).openReceiptModal = async (id: number, no_po: string) => {
+    const modal = document.getElementById('modal-receipt');
+    const modalContent = document.getElementById('modal-receipt-content');
+    
+    (document.getElementById('input-receipt-po-id') as HTMLInputElement).value = id.toString();
+    (document.getElementById('input-receipt-po-no') as HTMLInputElement).value = no_po;
+    (document.getElementById('input-receipt-sj') as HTMLInputElement).value = '';
+    (document.getElementById('input-receipt-catatan') as HTMLTextAreaElement).value = '';
+    
+    const tbodyItems = document.getElementById('tbody-receipt-items');
+    if (tbodyItems) tbodyItems.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-slate-500">Memuat rincian PO...</td></tr>`;
+
+    if (modal && modalContent) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-95');
+        }, 10);
+    }
+
+    try {
+        const res = await apiFetch<any>(`gudang/po-pending/${id}`);
+        if (res.success && tbodyItems) {
+            tbodyItems.innerHTML = '';
+            res.data.forEach((item: any, index: number) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="py-2 px-3 font-data-mono font-bold text-slate-700">
+                        ${item.kode_barang}
+                        <input type="hidden" name="items[${index}][id_inventory_material]" value="${item.id_inventory_material}">
+                    </td>
+                    <td class="py-2 px-3 text-slate-600">${item.nama_barang}</td>
+                    <td class="py-2 px-3 text-center font-data-mono">${item.qty}</td>
+                    <td class="py-2 px-3 text-center">
+                        <input type="number" name="items[${index}][qty_diterima]" value="${item.qty}" min="0" max="${item.qty}" class="w-16 text-center text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors">
+                    </td>
+                    <td class="py-2 px-3 text-center">
+                        <select name="items[${index}][kondisi]" class="text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors cursor-pointer">
+                            <option value="BAIK">BAIK</option>
+                            <option value="RUSAK">RUSAK</option>
+                        </select>
+                    </td>
+                `;
+                tbodyItems.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        if (tbodyItems) tbodyItems.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-rose-500">Gagal memuat rincian barang.</td></tr>`;
+    }
+};
+
+function setupModalReceipt(): void {
+    const modal = document.getElementById('modal-receipt');
+    const modalContent = document.getElementById('modal-receipt-content');
+    const btnClose = document.getElementById('btn-close-receipt');
+    const btnCancel = document.getElementById('btn-cancel-receipt');
+    const form = document.getElementById('form-receipt') as HTMLFormElement;
+
+    const closeModal = () => {
+        if (modal && modalContent) {
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                form?.reset();
+            }, 300);
+        }
+    };
+
+    btnClose?.addEventListener('click', closeModal);
+    btnCancel?.addEventListener('click', closeModal);
+
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const btnSubmit = document.getElementById('btn-submit-receipt') as HTMLButtonElement;
+        const spinner = document.getElementById('spinner-receipt');
+        
+        // Parse items manually since FormData indexing can be tricky
+        const fd = new FormData(form);
+        const id_po_header = parseInt(fd.get('id_po_header') as string, 10);
+        const surat_jalan_vendor = fd.get('surat_jalan_vendor') as string;
+        const catatan = fd.get('catatan') as string;
+        
+        // Asumsi penerima adalah user yang login, but for simple payload, we get it from local storage
+        const userStr = localStorage.getItem('motekar_user');
+        const penerima = userStr ? JSON.parse(userStr).nama_lengkap : 'Staf Gudang';
+
+        const items: any[] = [];
+        let i = 0;
+        while (fd.has(`items[${i}][id_inventory_material]`)) {
+            items.push({
+                id_inventory_material: parseInt(fd.get(`items[${i}][id_inventory_material]`) as string, 10),
+                qty_diterima: parseInt(fd.get(`items[${i}][qty_diterima]`) as string, 10),
+                kondisi: fd.get(`items[${i}][kondisi]`) as string
+            });
+            // Hapus key lama agar tidak pusing di backend
+            fd.delete(`items[${i}][id_inventory_material]`);
+            fd.delete(`items[${i}][qty_diterima]`);
+            fd.delete(`items[${i}][kondisi]`);
+            i++;
+        }
+        
+        // Append parsed items as a JSON string
+        fd.append('items', JSON.stringify(items));
+        fd.append('penerima', penerima);
+
+        if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.classList.add('opacity-80', 'cursor-wait'); }
+        if (spinner) { spinner.classList.remove('hidden'); spinner.classList.add('animate-spin'); }
+
+        try {
+            const response = await apiFetch<ActionResponse>('gudang/receive', {
+                method: 'POST',
+                body: fd
+            });
+
+            if (response.success) {
+                showToast(response.message);
+                closeModal();
+                loadPendingPO(); // Refresh receipt list
+            } else {
+                showToast(response.message, true);
+            }
+        } catch (apiErr) {
+            showToast('Terjadi kesalahan koneksi API saat memproses penerimaan.', true);
+        } finally {
+            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-80', 'cursor-wait'); }
+            if (spinner) { spinner.classList.add('hidden'); spinner.classList.remove('animate-spin'); }
+        }
+    });
+}
+
+// ============================================================
 // INIT
 // ============================================================
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const user = initRBAC('nav-gudang');
@@ -709,4 +1123,15 @@ document.addEventListener('DOMContentLoaded', () => {
   setupModalInbound();
   setupModalOpname();
   setupModalDispatch();
+  setupExceptionForms();
+  setupModalReceipt();
+
+  // Polling for Real-Time Experience (Every 30 seconds)
+  setInterval(() => {
+      const tab = localStorage.getItem('gudangLastTab') || 'master';
+      if (tab === 'master') loadGudang();
+      else if (tab === 'outbound') loadOutboundLogistics();
+      else if (tab === 'exception') loadWriteOffs();
+      else if (tab === 'receipt') loadPendingPO();
+  }, 30000);
 });

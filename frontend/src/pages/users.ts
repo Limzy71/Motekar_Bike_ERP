@@ -131,7 +131,7 @@ function renderTable() {
     }
 
     const tr = document.createElement('tr');
-    tr.className = 'hover:bg-slate-50 transition-colors';
+    tr.className = 'hover:bg-slate-100 transition-colors';
     tr.innerHTML = `
       <td class="px-6 py-4 font-data-mono text-slate-500">#${displayId}</td>
       <td class="px-6 py-4">
@@ -241,7 +241,13 @@ function openModal(mode: 'add' | 'edit', userId?: number) {
 
     inputId.value = user.id.toString();
     inputUsername.value = user.username;
-    inputUsername.disabled = true; // Can't edit username
+    
+    // Hanya Owner dan GM yang bisa edit username
+    if (currentUserRole === 'Owner' || currentUserRole === 'General Manager') {
+      inputUsername.disabled = false;
+    } else {
+      inputUsername.disabled = true;
+    }
     
     inputNama.value = user.nama_lengkap;
     inputEmail.value = user.email || '';
@@ -264,14 +270,13 @@ form.addEventListener('submit', async (e) => {
   const isEdit = !!id;
 
   const payload: any = {
+    username: inputUsername.value,
     nama_lengkap: inputNama.value,
     email: inputEmail.value,
     divisi_role: selectRole.value,
   };
 
-  if (!isEdit) {
-    payload.username = inputUsername.value;
-  } else {
+  if (isEdit) {
     payload.status = selectStatus.value;
   }
 
@@ -307,6 +312,9 @@ form.addEventListener('submit', async (e) => {
 btnTambah.addEventListener('click', () => openModal('add'));
 btnClose.addEventListener('click', closeModal);
 btnCancel.addEventListener('click', closeModal);
+modal.addEventListener('click', (e) => {
+  if (e.target === modal) closeModal();
+});
 
 // ============================================================
 // ACTION BUTTONS (DELEGATION)
@@ -368,5 +376,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!user) return; 
 
   currentUserRole = user.divisi_role;
+  
+  // IT Support tidak boleh menambah user baru
+  if (currentUserRole === 'IT Support') {
+    btnTambah.style.display = 'none';
+  }
+  
   loadUsers();
 });

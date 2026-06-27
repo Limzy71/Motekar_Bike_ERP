@@ -101,9 +101,14 @@ CREATE TABLE `manufaktur_bom_header` (
 DROP TABLE IF EXISTS `master_vendor`;
 CREATE TABLE `master_vendor` (
   `id` int NOT NULL AUTO_INCREMENT,
+  `kode_vendor` varchar(50) DEFAULT NULL,
   `nama_vendor` varchar(255) NOT NULL,
+  `kategori` varchar(100) DEFAULT NULL,
   `kontak` varchar(100) DEFAULT NULL,
   `alamat` text,
+  `status_vendor` enum('AKTIF','INAKTIF','BLACKLIST') NOT NULL DEFAULT 'AKTIF',
+  `alasan_blacklist` text DEFAULT NULL,
+  `skor_rating` decimal(3,1) NOT NULL DEFAULT '5.0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -207,7 +212,7 @@ CREATE TABLE `pengadaan_po_header` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `nomor_po` (`nomor_po`),
   KEY `id_vendor` (`id_vendor`),
-  CONSTRAINT `pengadaan_po_header_ibfk_1` FOREIGN KEY (`id_vendor`) REFERENCES `master_vendor` (`id_vendor`) ON DELETE RESTRICT
+  CONSTRAINT `pengadaan_po_header_ibfk_1` FOREIGN KEY (`id_vendor`) REFERENCES `master_vendor` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 DROP TABLE IF EXISTS `pengadaan_po_detail`;
@@ -340,9 +345,89 @@ CREATE TABLE `users` (
   `divisi_role` varchar(50) DEFAULT NULL,
   `status` enum('Aktif','Nonaktif') DEFAULT 'Aktif',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `api_token` varchar(255) DEFAULT NULL,
+  `refresh_token` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+DROP TABLE IF EXISTS `penerimaan_barang`;
+CREATE TABLE `penerimaan_barang` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_po_header` INT NOT NULL,
+  `tanggal_terima` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `penerima` VARCHAR(150) NOT NULL,
+  `surat_jalan_vendor` VARCHAR(100),
+  `catatan` TEXT,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`id_po_header`) REFERENCES `pengadaan_po_header`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `detail_penerimaan`;
+CREATE TABLE `detail_penerimaan` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_penerimaan` INT NOT NULL,
+  `id_inventory_material` INT NOT NULL,
+  `qty_diterima` INT NOT NULL DEFAULT 0,
+  `kondisi` ENUM('BAIK', 'RUSAK') NOT NULL DEFAULT 'BAIK',
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`id_penerimaan`) REFERENCES `penerimaan_barang`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`id_inventory_material`) REFERENCES `inventory_stok`(`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `tagihan_vendor`;
+CREATE TABLE `tagihan_vendor` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `no_tagihan_vendor` VARCHAR(150) NOT NULL,
+  `id_po_header` INT NOT NULL,
+  `id_penerimaan` INT NOT NULL,
+  `tanggal_tagihan` DATE NOT NULL,
+  `jatuh_tempo` DATE NOT NULL,
+  `total_tagihan` DECIMAL(15,2) NOT NULL,
+  `status` ENUM('UNPAID', 'PARTIAL', 'PAID') NOT NULL DEFAULT 'UNPAID',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `no_tagihan_vendor` (`no_tagihan_vendor`),
+  FOREIGN KEY (`id_po_header`) REFERENCES `pengadaan_po_header`(`id`) ON DELETE RESTRICT,
+  FOREIGN KEY (`id_penerimaan`) REFERENCES `penerimaan_barang`(`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `pembayaran_vendor`;
+CREATE TABLE `pembayaran_vendor` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_tagihan` INT NOT NULL,
+  `tanggal_bayar` DATE NOT NULL,
+  `nominal_bayar` DECIMAL(15,2) NOT NULL,
+  `metode_bayar` VARCHAR(100) NOT NULL,
+  `referensi_transaksi` VARCHAR(200),
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`id_tagihan`) REFERENCES `tagihan_vendor`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE `sales_order` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `no_so` varchar(100) NOT NULL,
+  `nama_customer` varchar(200) NOT NULL,
+  `tanggal_order` date NOT NULL,
+  `total_harga` decimal(15,2) NOT NULL,
+  `status` enum('DRAFT','APPROVED','SHIPPED','CANCELLED') NOT NULL DEFAULT 'DRAFT',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `no_so` (`no_so`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `sales_order_detail` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `so_id` int NOT NULL,
+  `barang_id` int NOT NULL,
+  `qty_order` int NOT NULL,
+  `harga_satuan` decimal(15,2) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `so_id` (`so_id`),
+  KEY `barang_id` (`barang_id`),
+  CONSTRAINT `sales_order_detail_ibfk_1` FOREIGN KEY (`so_id`) REFERENCES `sales_order` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `sales_order_detail_ibfk_2` FOREIGN KEY (`barang_id`) REFERENCES `inventory_stok` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+

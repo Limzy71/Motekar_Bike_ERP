@@ -6,7 +6,7 @@ import { calculateHPP, insertJurnal } from './keuanganController.js';
 export const submitInspeksi = async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const { id, result, defectNotes } = req.body;
+        const { id, result, defectNotes, qcHistory } = req.body;
         const woId = parseInt(id, 10);
         if (isNaN(woId) || !result) {
             res.status(400).json({ success: false, message: 'ID atau Hasil Inspeksi tidak valid.' });
@@ -29,17 +29,17 @@ export const submitInspeksi = async (req, res) => {
             return;
         }
         const wo = woData[0];
-        // Pastikan WO berada di tahap yang valid (Selesai)
-        if (wo.status !== 'COMPLETED') {
-            res.status(400).json({ success: false, message: `Work Order berstatus ${wo.status}, hanya WO berstatus COMPLETED yang bisa diinspeksi.` });
+        // Pastikan WO berada di tahap yang valid (Selesai Perakitan -> Masuk QC)
+        if (wo.status !== 'TUNING_QC') {
+            res.status(400).json({ success: false, message: `Work Order berstatus ${wo.status}, hanya WO berstatus TUNING_QC yang bisa diinspeksi.` });
             connection.release();
             return;
         }
         await connection.beginTransaction();
         if (result === 'Pass') {
             // SKENARIO A: LOLOS QC
-            // 1. Ubah status menjadi 'Closed'
-            await connection.query("UPDATE operasi_wo_header SET status = 'COMPLETED' WHERE id = ?", [woId]);
+            // 1. Ubah status menjadi 'COMPLETED' dan bersihkan data rework/qc
+            await connection.query("UPDATE operasi_wo_header SET status = 'COMPLETED', catatan_rework = NULL, qc_history = NULL WHERE id = ?", [woId]);
             // 2. Tambah stok gudang
             const [stokUpdateResult] = await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE kode_barang = ?', [wo.jumlah_produksi, wo.kode_sepeda]);
             if (stokUpdateResult.affectedRows === 0) {
@@ -66,8 +66,8 @@ export const submitInspeksi = async (req, res) => {
             const dateStr = new Date().toLocaleDateString('id-ID');
             const formattedNote = `\n[ REWORK QC - ${dateStr} ] : ${defectNotes.trim()}`;
             const newNotes = wo.catatan_rework ? wo.catatan_rework + formattedNote : formattedNote.trim();
-            // 1. Ubah status mundur ke 'Perakitan Frame' dan update catatan
-            await connection.query("UPDATE operasi_wo_header SET status = 'ON_PROGRESS' WHERE id = ?", [woId]);
+            // 1. Ubah status mundur ke 'Sub-Assembly' dan update catatan serta riwayat QC
+            await connection.query("UPDATE operasi_wo_header SET status = 'SUB_ASSEMBLY', catatan_rework = ?, qc_history = ? WHERE id = ?", [newNotes, qcHistory ? JSON.stringify(qcHistory) : null, woId]);
             await connection.commit();
             connection.release();
             res.json({ success: true, message: 'Inspeksi Fail. Work Order dikembalikan ke Perakitan Frame.' });

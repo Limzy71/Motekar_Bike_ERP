@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>CRM & After-Sales - Motekar ERP</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-tint":"#3755c3","surface":"#f7f9fb","outline":"#757684","surface-container":"#eceef0","on-surface":"#191c1e",
+                        "surface-container-highest":"#e0e3e5","outline-variant":"#c4c5d5","on-secondary":"#ffffff","error":"#ba1a1a","on-error":"#ffffff",
+                        "on-primary":"#ffffff","primary-container":"#1e40af","primary":"#00288e","surface-container-high":"#e6e8ea",
+                        "on-surface-variant":"#444653","inverse-surface":"#2d3133","inverse-on-surface":"#eff1f3","surface-container-lowest":"#ffffff",
+                        "surface-container-low":"#f2f4f6","error-container":"#ffdad6"
+                    },
+                    spacing:{"sidebar-width":"260px"},
+                    fontFamily:{"data-mono":["JetBrains Mono"],"headline-md":["Inter"]}
+                }
+            }
+        }
+    </script>
+    <style>
+        body{font-family:'Inter',sans-serif;background:#f7f9fb}
+        .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+        .toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:60;transform:translateY(24px);opacity:0;transition:transform .28s,opacity .28s}
+        .toast.show{transform:translateY(0);opacity:1}
+    </style>
+    <!-- Tab Persistence Anti-Flicker Script -->
+    <script>
+        (function() {
+            var lastTab = localStorage.getItem('crmLastTab') || 'onboarding';
+            var s = document.createElement('style');
+            s.id = 'anti-flicker';
+            s.innerHTML = '#section-onboarding, #section-warranty { display: none !important; } #section-' + lastTab + ' { display: block !important; }';
+            document.head.appendChild(s);
+        })();
+    </script>
+</head>
+<body class="text-on-surface">
+<div class="flex h-screen overflow-hidden">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20">
+        <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
+            <div class="flex flex-col gap-1" id="sidebar-logo">
+                <h1 class="text-primary text-xl font-black tracking-tight leading-tight">Motekar Bike Assy</h1>
+                <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
+            </div>
+            <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4"></nav>
+        </div>
+        <div class="p-6 border-t border-outline-variant">
+            <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity">
+                <span class="material-symbols-outlined text-[18px]">logout</span><span>Keluar Sistem</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-surface">
+        <!-- TOP HEADER -->
+        <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
+            <div class="flex items-center gap-4">
+                <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[24px]">menu</span></button>
+                <span class="text-headline-md text-on-surface font-bold">CRM & After-Sales</span>
+            </div>
+            <a href="/profil" class="flex items-center gap-3 cursor-pointer select-none group transition-all">
+                <div class="text-right">
+                    <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Nama</p>
+                    <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">Role</p>
+                </div>
+                <div id="header-avatar-container" class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm overflow-hidden">
+                    <span id="header-inisial">U</span>
+                </div>
+            </a>
+        </header>
+
+        <!-- PAGE CONTENT -->
+        <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+
+            <!-- Page Header -->
+            <div class="mb-6 flex justify-between items-start">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[24px]">handshake</span>
+                        CRM & After-Sales
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Kelola onboarding retailer dan manajemen klaim garansi produk Motekar.</p>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-200 mb-6">
+                <button id="tab-onboarding"
+                    class="pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors flex items-center gap-2 mr-4"
+                    onclick="switchTab('onboarding')">
+                    <span class="material-symbols-outlined text-[16px]">storefront</span> Retailer Onboarding (KYC)
+                </button>
+                <button id="tab-warranty"
+                    class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-colors flex items-center gap-2"
+                    onclick="switchTab('warranty')">
+                    <span class="material-symbols-outlined text-[16px]">verified_user</span> Klaim Garansi
+                    <span id="badge-warranty" class="hidden min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">0</span>
+                </button>
+            </div>
+
+            <!-- ========================================= -->
+            <!-- SECTION: RETAILER ONBOARDING (KYC) -->
+            <!-- ========================================= -->
+            <div id="section-onboarding" class="space-y-5">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Prospek Retailer Baru</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Pantau status pendaftaran prospek distributor/retailer</p>
+                    </div>
+                    <button id="btn-add-prospek"
+                        class="bg-slate-900 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 transition-all">
+                        <span class="material-symbols-outlined text-[18px]">add</span> Registrasi Prospek
+                    </button>
+                </div>
+
+                <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
+                    <table class="w-full table-auto">
+                        <thead>
+                            <tr class="border-b border-slate-200/80">
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">ID</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">Nama Toko</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">PIC</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">Kontak</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">Status</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="onboarding-table-body" class="divide-y divide-slate-100 text-xs text-slate-600">
+                            <tr><td colspan="6" class="px-4 py-8 text-center text-xs text-slate-500">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ========================================= -->
+            <!-- SECTION: KLAIM GARANSI -->
+            <!-- ========================================= -->
+            <div id="section-warranty" class="space-y-5 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Manajemen Klaim Garansi</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Tiket klaim garansi produk Motekar dari retailer</p>
+                    </div>
+                    <button id="btn-add-klaim"
+                        class="bg-slate-900 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 transition-all">
+                        <span class="material-symbols-outlined text-[18px]">add</span> Ajukan Klaim Baru
+                    </button>
+                </div>
+
+                <!-- Stats row -->
+                <div id="warranty-stats" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
+
+                <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
+                    <table class="w-full table-auto">
+                        <thead>
+                            <tr class="border-b border-slate-200/80">
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">No. Klaim</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">Retailer</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">Produk</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">No. SO</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">Tanggal</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-left">Keluhan</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">Status</th>
+                                <th class="bg-slate-50/75 text-[10px] font-bold uppercase tracking-widest text-slate-400 py-3 px-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="warranty-table-body" class="divide-y divide-slate-100 text-xs text-slate-600">
+                            <tr><td colspan="8" class="px-4 py-8 text-center text-xs text-slate-500">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div><!-- end scroll -->
+    </main>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: REGISTRASI PROSPEK -->
+<!-- ============================================ -->
+<div id="modal-onboarding" class="fixed inset-0 z-50 hidden opacity-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-all duration-300">
+    <div id="modal-onboarding-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-900">Registrasi Retailer Baru</h3>
+            <button id="btn-close-onboarding" class="text-slate-400 hover:text-slate-600 p-1 rounded-full">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="form-onboarding" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nama Toko <span class="text-rose-500">*</span></label>
+                    <input type="text" name="nama_toko" required placeholder="Toko Sepeda Maju Jaya" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">PIC (Penanggung Jawab) <span class="text-rose-500">*</span></label>
+                    <input type="text" name="pic" required placeholder="Budi Santoso" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">No. Telepon / WhatsApp <span class="text-rose-500">*</span></label>
+                    <input type="text" name="kontak" required placeholder="08123456789" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Dokumen NIB <span class="text-rose-500">*</span></label>
+                    <input type="file" name="dokumen_nib" required accept="image/*,application/pdf" class="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:text-xs file:font-semibold hover:file:bg-slate-200">
+                    <p class="text-[10px] text-slate-400 mt-1">Format: JPG, PNG, atau PDF.</p>
+                </div>
+            </form>
+        </div>
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+            <button type="button" id="btn-cancel-onboarding" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
+            <button type="submit" form="form-onboarding" class="px-5 py-2 text-sm font-bold bg-slate-900 hover:bg-slate-700 text-white rounded-lg shadow-sm flex items-center gap-2 transition-colors">
+                <span class="material-symbols-outlined text-[16px]">send</span> Kirim Registrasi
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: AJUKAN KLAIM GARANSI -->
+<!-- ============================================ -->
+<div id="modal-klaim" class="fixed inset-0 z-50 hidden opacity-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-all duration-300">
+    <div id="modal-klaim-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-all duration-300 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-900">Ajukan Klaim Garansi Baru</h3>
+            <button id="btn-close-klaim" class="text-slate-400 hover:text-slate-600 p-1 rounded-full">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto max-h-[65vh] space-y-4">
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p class="text-xs text-amber-800 font-semibold flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px]">info</span>
+                    Garansi berlaku 1 tahun sejak tanggal penjualan (SO).
+                </p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Sales Order (SO) <span class="text-rose-500">*</span></label>
+                <select id="input-klaim-so" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                    <option value="">-- Pilih SO --</option>
+                </select>
+                <p class="text-[10px] text-slate-400 mt-1">Hanya SO berstatus DELIVERED yang dapat diklaim.</p>
+            </div>
+            <div id="klaim-so-detail" class="hidden bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1">
+                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Detail SO Terpilih</p>
+                <p class="text-xs text-slate-700 font-semibold" id="klaim-detail-retailer">—</p>
+                <p class="text-xs text-slate-400" id="klaim-detail-date">—</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Kode Produk yang Diklaim <span class="text-rose-500">*</span></label>
+                <select id="input-klaim-fg" required class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                    <option value="">-- Pilih dulu SO --</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Deskripsi Keluhan <span class="text-rose-500">*</span></label>
+                <textarea id="input-klaim-keluhan" required rows="3" placeholder="Jelaskan kerusakan secara detail..." class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary resize-none"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Foto Bukti Kerusakan <span class="text-rose-500">*</span></label>
+                <input type="file" id="input-klaim-foto" accept="image/*" required class="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:text-xs file:font-semibold hover:file:bg-slate-200">
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+            <button type="button" id="btn-cancel-klaim" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
+            <button type="button" id="btn-submit-klaim" class="px-5 py-2 text-sm font-bold bg-slate-900 hover:bg-slate-700 text-white rounded-lg shadow-sm flex items-center gap-2 transition-colors">
+                <span id="spinner-klaim" class="material-symbols-outlined text-[16px] hidden animate-spin">progress_activity</span>
+                <span class="material-symbols-outlined text-[16px]">send</span> Kirim Klaim
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: DETAIL / INVESTIGASI KLAIM -->
+<!-- ============================================ -->
+<div id="modal-investigasi" class="fixed inset-0 z-50 hidden opacity-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-all duration-300">
+    <div id="modal-investigasi-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-all duration-300 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-900">Detail & Investigasi Klaim</h3>
+            <button id="btn-close-investigasi" class="text-slate-400 hover:text-slate-600 p-1 rounded-full">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <div class="p-6 space-y-4 overflow-y-auto max-h-[65vh]">
+            <div id="investigasi-summary" class="bg-slate-50 rounded-xl border border-slate-200 p-4 text-sm space-y-2"></div>
+            <div id="investigasi-form-wrapper">
+                <div class="border-t border-slate-200 pt-4 space-y-3">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Resolusi Investigasi (Kendali Mutu)</p>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Status Resolusi</label>
+                        <select id="input-investigasi-status" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                            <option value="">-- Pilih Resolusi --</option>
+                            <option value="IN_INSPECTION">Sedang Diinspeksi</option>
+                            <option value="APPROVED_REPLACE">Disetujui — Ganti Unit Baru</option>
+                            <option value="APPROVED_REWORK">Disetujui — Perbaikan / Rework</option>
+                            <option value="REJECTED">Klaim Ditolak</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Catatan Investigasi</label>
+                        <textarea id="input-investigasi-catatan" rows="3" placeholder="Hasil pemeriksaan fisik produk..." class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary resize-none"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="investigasi-footer" class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3"></div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-crm" class="toast">
+    <div id="toast-crm-body" class="bg-slate-900 text-white text-xs font-semibold px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 min-w-[260px]">
+        <span id="toast-crm-icon" class="material-symbols-outlined text-[18px] text-emerald-400">check_circle</span>
+        <span id="toast-crm-msg">Berhasil.</span>
+    </div>
+</div>
+
+<script type="module" src="/src/pages/crm.ts"></script>
+
+<script>
+    const ACTIVE_TAB = "pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors flex items-center gap-2 mr-4";
+    const INACTIVE_TAB = "pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-colors flex items-center gap-2";
+
+    function switchTab(tabId) {
+        ['onboarding', 'warranty'].forEach(t => {
+            const btn = document.getElementById('tab-' + t);
+            const section = document.getElementById('section-' + t);
+            if (t === tabId) {
+                if (btn) btn.className = ACTIVE_TAB;
+                if (section) { section.classList.remove('hidden'); section.style.display = ''; }
+            } else {
+                if (btn) btn.className = INACTIVE_TAB;
+                if (section) section.classList.add('hidden');
+            }
+        });
+        localStorage.setItem('crmLastTab', tabId);
+    }
+</script>
+</body>
+</html>

@@ -9,12 +9,13 @@ import { initRBAC, showToast } from '../components/rbac.js';
 interface WorkOrder {
     id: number;
     nomor_wo: string;
-    kode_sepeda: string;
+    kode_barang: string;
     jumlah_produksi: number;
     status: string;
-    nama_sepeda: string;
+    produk: string;
     created_at: string;
     catatan_rework?: string;
+    qc_history?: any;
 }
 
 interface WOResponse {
@@ -24,14 +25,13 @@ interface WOResponse {
 }
 
 interface Klaim { 
-    id_klaim: string; 
-    nama_retailer: string; 
-    kode_item_fg: string; 
-    tanggal_klaim: string; 
-    deskripsi_keluhan: string; 
-    foto_bukti_kerusakan: string; 
-    status_klaim: string; 
-    catatan_investigasi_qc: string; 
+    no_klaim: string; 
+    ar_invoice_id: number; 
+    invoice_date: string;
+    keluhan: string; 
+    foto_kerusakan: string; 
+    status: string; 
+    catatan_investigasi_qc?: string;
 }
 
 interface ActionResponse {
@@ -75,11 +75,11 @@ function renderData(): void {
     if (!tbody) return;
 
     // Filter sisi klien sesuai instruksi
-    const queueSelesai = masterWO.filter(wo => wo.status === 'Selesai');
-    const countPassed = masterWO.filter(wo => wo.status === 'Closed').length;
+    const queueSelesai = masterWO.filter(wo => wo.status === 'TUNING_QC');
+    const countPassed = masterWO.filter(wo => wo.status === 'COMPLETED').length;
     
-    // Perlu Rework = WO yang memiliki catatan_rework dan statusnya masih belum Closed
-    const countFailed = masterWO.filter(wo => wo.catatan_rework && wo.status !== 'Closed').length;
+    // Perlu Rework = WO yang memiliki catatan_rework dan statusnya masih belum COMPLETED
+    const countFailed = masterWO.filter(wo => wo.catatan_rework && wo.status !== 'COMPLETED').length;
 
     // Update KPI
     const kpiAntrean = document.getElementById('kpi-antrean');
@@ -113,13 +113,14 @@ function renderData(): void {
         const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50/50 transition-colors duration-150 border-b border-slate-100 text-xs font-medium text-slate-600 last:border-b-0 group';
+        tr.className = 'hover:bg-slate-100 cursor-pointer transition-colors duration-150 border-b border-slate-100 text-xs font-medium text-slate-600 last:border-b-0 group';
+        tr.onclick = () => openQCModal(wo);
         tr.innerHTML = `
             <td class="px-4 py-3">
                 <p class="font-semibold text-slate-900 font-data-mono">${wo.nomor_wo}</p>
             </td>
             <td class="px-4 py-3">
-                <p class="font-bold text-slate-700">${wo.nama_sepeda || wo.kode_sepeda}</p>
+                <p class="font-bold text-slate-700">${wo.produk || wo.kode_barang}</p>
             </td>
             <td class="px-4 py-3">
                 <p class="font-bold text-slate-900">${wo.jumlah_produksi} Unit</p>
@@ -128,7 +129,7 @@ function renderData(): void {
                 <p>${dateStr}</p>
             </td>
             <td class="px-4 py-3">
-                <span class="whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border bg-amber-50 text-amber-700 border-amber-200/80">Menunggu QC</span>
+                <span class="whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border ${wo.catatan_rework ? 'bg-rose-50 text-rose-700 border-rose-200/80 shadow-sm' : 'bg-amber-50 text-amber-700 border-amber-200/80'}">${wo.catatan_rework ? '<span class="material-symbols-outlined text-[14px]">history</span> Kembali dari Rework' : 'Menunggu QC'}</span>
             </td>
             <td class="px-4 py-3 text-center">
                 <button class="btn-inspeksi text-slate-400 hover:text-primary hover:bg-primary-container/30 px-3 py-1.5 rounded-md transition-all font-bold tracking-wide flex items-center justify-center gap-1.5 w-full border border-transparent hover:border-primary/20" data-id="${wo.id}">
@@ -137,9 +138,8 @@ function renderData(): void {
             </td>
         `;
 
-        const btn = tr.querySelector('.btn-inspeksi');
-        btn?.addEventListener('click', () => openQCModal(wo));
-
+        // The button will also trigger the tr.onclick due to bubbling, which is perfectly fine here.
+        
         tbody.appendChild(tr);
     });
 
@@ -214,7 +214,7 @@ async function loadInvestigasiKlaim(): Promise<void> {
     if (!tbody) return;
 
     try {
-        const response = await apiFetch<{success: boolean, data: Klaim[]}>('aftersales/klaim');
+        const response = await apiFetch<{success: boolean, data: Klaim[]}>('crm/warranty');
         if (response.success) {
             masterKlaim = response.data;
             renderInvestigasiKlaim();
@@ -231,7 +231,7 @@ function renderInvestigasiKlaim(): void {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const pendingKlaim = masterKlaim.filter(k => k.status_klaim === 'SUBMITTED' || k.status_klaim === 'IN_INSPECTION');
+    const pendingKlaim = masterKlaim.filter(k => k.status === 'PENDING' || k.status === 'IN_INSPECTION');
 
     if (pendingKlaim.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500">Tidak ada antrean investigasi klaim saat ini.</td></tr>`;
@@ -240,14 +240,14 @@ function renderInvestigasiKlaim(): void {
 
     pendingKlaim.forEach(k => {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50/50 transition-colors duration-150 border-b border-slate-100 text-xs font-medium text-slate-600 last:border-b-0 group';
+        tr.className = 'hover:bg-slate-100 transition-colors duration-150 border-b border-slate-100 text-xs font-medium text-slate-600 last:border-b-0 group';
         tr.innerHTML = `
-            <td class="px-4 py-3 font-bold text-primary font-data-mono">${k.id_klaim}</td>
-            <td class="px-4 py-3 font-bold text-slate-800">${k.kode_item_fg}</td>
-            <td class="px-4 py-3 truncate max-w-[200px]" title="${k.deskripsi_keluhan}">${k.deskripsi_keluhan}</td>
-            <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200">${k.status_klaim}</span></td>
+            <td class="px-4 py-3 font-bold text-primary font-data-mono">${k.no_klaim}</td>
+            <td class="px-4 py-3 font-bold text-slate-800">INV-${k.ar_invoice_id}</td>
+            <td class="px-4 py-3 truncate max-w-[200px]" title="${k.keluhan}">${k.keluhan}</td>
+            <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200">${k.status}</span></td>
             <td class="px-4 py-3 text-center">
-                <button class="btn-investigasi text-slate-400 hover:text-primary hover:bg-primary-container/30 px-3 py-1.5 rounded-md transition-all font-bold tracking-wide flex items-center justify-center gap-1.5 w-full border border-transparent hover:border-primary/20" data-id="${k.id_klaim}">
+                <button class="btn-investigasi text-slate-400 hover:text-primary hover:bg-primary-container/30 px-3 py-1.5 rounded-md transition-all font-bold tracking-wide flex items-center justify-center gap-1.5 w-full border border-transparent hover:border-primary/20" data-id="${k.no_klaim}">
                     <span class="material-symbols-outlined text-[16px]">plumbing</span> Investigasi
                 </button>
             </td>
@@ -264,13 +264,13 @@ function openInvestigasiModal(k: Klaim): void {
     const modal = document.getElementById('modal-investigasi');
     const content = document.getElementById('modal-investigasi-content');
     
-    (document.getElementById('modal-klaim-id') as HTMLSpanElement).textContent = k.id_klaim;
-    (document.getElementById('modal-klaim-foto') as HTMLImageElement).src = k.foto_bukti_kerusakan;
-    (document.getElementById('modal-klaim-keluhan') as HTMLParagraphElement).textContent = k.deskripsi_keluhan;
+    (document.getElementById('modal-klaim-id') as HTMLSpanElement).textContent = k.no_klaim;
+    (document.getElementById('modal-klaim-foto') as HTMLImageElement).src = k.foto_kerusakan ? `/uploads/${k.foto_kerusakan}` : '';
+    (document.getElementById('modal-klaim-keluhan') as HTMLParagraphElement).textContent = k.keluhan;
     
     const form = document.getElementById('form-investigasi') as HTMLFormElement;
     form?.reset();
-    (document.getElementById('input-investigasi-id') as HTMLInputElement).value = k.id_klaim;
+    (document.getElementById('input-investigasi-id') as HTMLInputElement).value = k.no_klaim;
 
     if (modal && content) {
         modal.classList.remove('hidden');
@@ -321,7 +321,7 @@ function setupInvestigasiLogic(): void {
         if (spinner) { spinner.classList.remove('hidden'); spinner.classList.add('animate-spin'); }
 
         try {
-            const response = await apiFetch<ActionResponse>(`aftersales/klaim/${id_klaim}/investigate`, {
+            const response = await apiFetch<ActionResponse>(`crm/warranty/${id_klaim}/investigate`, {
                 method: 'PATCH',
                 body: JSON.stringify({ catatan_investigasi_qc: catatan, status_klaim: radioStatus.value })
             });
@@ -412,11 +412,14 @@ function setupModalLogic(): void {
         const defectNotes = formData.get('defectNotes')?.toString() || '';
 
         // Tentukan hasil (Jika ada SATU SAJA yang Fail, maka result = Fail)
+        // Sekaligus simpan riwayat pilihan masing-masing checklist
         let finalResult = 'Pass';
+        const qcHistory: Record<string, string> = {};
         for (let i = 1; i <= 5; i++) {
-            if (formData.get(`chk_${i}`) === 'Fail') {
+            const val = formData.get(`chk_${i}`) as string;
+            qcHistory[`chk_${i}`] = val;
+            if (val === 'Fail') {
                 finalResult = 'Fail';
-                break;
             }
         }
 
@@ -429,7 +432,8 @@ function setupModalLogic(): void {
         const payload = {
             id: woId,
             result: finalResult,
-            defectNotes: defectNotes
+            defectNotes: defectNotes,
+            qcHistory: qcHistory
         };
 
         // Loading State
@@ -479,8 +483,28 @@ function openQCModal(wo: WorkOrder): void {
     const inputWoId = document.getElementById('input-wo-id') as HTMLInputElement;
 
     if (woNumLabel) woNumLabel.textContent = wo.nomor_wo;
-    if (summaryLabel) summaryLabel.innerHTML = `Mengevaluasi <strong>${wo.jumlah_produksi} Unit</strong> sepeda model <strong>${wo.nama_sepeda || wo.kode_sepeda}</strong>.`;
+    if (summaryLabel) summaryLabel.innerHTML = `Mengevaluasi <strong>${wo.jumlah_produksi} Unit</strong> sepeda model <strong>${wo.produk || wo.kode_barang}</strong>.`;
     if (inputWoId) inputWoId.value = wo.id.toString();
+
+    // Inject Rework History if exists
+    const historyContainer = document.getElementById('qc-rework-history');
+    const historyList = document.getElementById('qc-rework-list');
+    
+    if (historyContainer && historyList) {
+        if (wo.catatan_rework) {
+            const notes = wo.catatan_rework.split('\n').filter((line: string) => line.trim().length > 0);
+            historyList.innerHTML = notes.map((note: string) => `
+                <li class="flex items-start gap-2 text-[11px] text-slate-700 leading-relaxed">
+                    <span class="material-symbols-outlined text-[14px] text-rose-400 mt-[1px]">error</span>
+                    <span>${note}</span>
+                </li>
+            `).join('');
+            historyContainer.classList.remove('hidden');
+        } else {
+            historyContainer.classList.add('hidden');
+            historyList.innerHTML = '';
+        }
+    }
 
     // Reset UI State
     const form = document.getElementById('form-qc') as HTMLFormElement;
@@ -489,6 +513,34 @@ function openQCModal(wo: WorkOrder): void {
     const inputDefect = document.getElementById('input-defect') as HTMLTextAreaElement;
     if (reworkContainer) reworkContainer.classList.add('hidden');
     if (inputDefect) inputDefect.required = false;
+
+    // Load Previous QC Pass/Fail History if exists
+    if (wo.qc_history) {
+        try {
+            const qcHistoryObj = typeof wo.qc_history === 'string' ? JSON.parse(wo.qc_history) : wo.qc_history;
+            let hasFail = false;
+            
+            for (let i = 1; i <= 5; i++) {
+                const val = qcHistoryObj[`chk_${i}`];
+                if (val) {
+                    const radio = form.querySelector(`input[name="chk_${i}"][value="${val}"]`) as HTMLInputElement;
+                    if (radio) radio.checked = true;
+                    if (val === 'Fail') hasFail = true;
+                }
+            }
+            
+            if (hasFail && reworkContainer) {
+                reworkContainer.classList.remove('hidden');
+                if (inputDefect) {
+                    // Hanya set required, jangan timpa isi lama agar inspector bisa melihat apa yang ditulis sebelumnya atau biarkan kosong jika dia ingin mengetik ulang, 
+                    // tapi sebentar, lebih baik jangan di-isi (karena riwayat ada di container atas).
+                    inputDefect.required = true;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to parse QC History', e);
+        }
+    }
 
     // Show Modal
     if (modal && modalContent) {
@@ -513,20 +565,36 @@ function setupTabs(): void {
     const activeClass = 'pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors';
     const inactiveClass = 'pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors';
 
-    tabInspeksi?.addEventListener('click', () => {
-        tabInspeksi.className = activeClass;
-        tabInvestigasi!.className = inactiveClass;
-        viewInspeksi?.classList.remove('hidden');
-        viewInvestigasi?.classList.add('hidden');
-    });
+    const switchTab = (tabName: 'inspeksi' | 'investigasi') => {
+        if (tabName === 'inspeksi') {
+            tabInspeksi!.className = activeClass;
+            tabInvestigasi!.className = inactiveClass;
+            viewInspeksi?.classList.remove('hidden');
+            viewInvestigasi?.classList.add('hidden');
+            localStorage.setItem('mutuLastTab', 'inspeksi');
+        } else {
+            tabInvestigasi!.className = activeClass;
+            tabInspeksi!.className = inactiveClass;
+            viewInvestigasi?.classList.remove('hidden');
+            viewInspeksi?.classList.add('hidden');
+            localStorage.setItem('mutuLastTab', 'investigasi');
+            loadInvestigasiKlaim();
+        }
+    };
 
-    tabInvestigasi?.addEventListener('click', () => {
-        tabInvestigasi.className = activeClass;
-        tabInspeksi!.className = inactiveClass;
-        viewInvestigasi?.classList.remove('hidden');
-        viewInspeksi?.classList.add('hidden');
-        loadInvestigasiKlaim();
-    });
+    tabInspeksi?.addEventListener('click', () => switchTab('inspeksi'));
+    tabInvestigasi?.addEventListener('click', () => switchTab('investigasi'));
+
+    const lastTab = localStorage.getItem('mutuLastTab');
+    if (lastTab === 'investigasi') {
+        switchTab('investigasi');
+    } else {
+        switchTab('inspeksi');
+    }
+
+    // Remove anti-flicker style once tabs are properly initialized
+    const antiFlicker = document.getElementById('anti-flicker');
+    if (antiFlicker) antiFlicker.remove();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -548,4 +616,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRefreshKlaim?.addEventListener('click', () => {
         loadInvestigasiKlaim();
     });
+
+    // Polling for Real-Time Experience (Every 30 seconds)
+    setInterval(() => {
+        const tab = localStorage.getItem('mutuLastTab') || 'inspeksi';
+        if (tab === 'inspeksi') loadQCQueue();
+        else if (tab === 'investigasi') loadInvestigasiKlaim();
+    }, 30000);
 });

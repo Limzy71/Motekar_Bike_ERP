@@ -59,6 +59,17 @@
         /* Right Drawer Slide Animation */
         #right-drawer { transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         #right-drawer.open { transform: translateX(0); }
+
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important;
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
 </head>
 
@@ -168,13 +179,12 @@
                                 <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Produk</th>
                                 <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Target Produksi</th>
                                 <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
-                                <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="wo-table-body" class="divide-y divide-slate-100 text-xs text-slate-700">
                             <!-- Injected -->
                             <tr>
-                                <td colspan="6" class="py-8 text-center text-slate-400 italic font-medium">Memuat data Work Order...</td>
+                                <td colspan="5" class="py-8 text-center text-slate-400 italic font-medium">Memuat data Work Order...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -227,19 +237,25 @@
                     </div>
 
                     <!-- BOM Checklist -->
-                    <div>
+                    <div class="mb-8">
                         <div class="flex justify-between items-end mb-3">
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alokasi Material (BOM)</p>
                             <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full" id="drawer-alloc-status">Soft Reserve</span>
                         </div>
-                        <div class="space-y-2" id="drawer-bom-list">
+                        <div class="space-y-2 max-h-[250px] overflow-y-auto kanban-scroll pr-2" id="drawer-bom-list">
                             <!-- Injected Material Rows -->
                         </div>
+                    </div>
+
+                    <!-- Workflow Stepper -->
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Proses Produksi</p>
+                        <div id="drawer-stepper-bay" class="flex flex-col gap-3"></div>
                     </div>
                 </div>
 
                 <!-- Execution Bay (Bottom Action Bar) -->
-                <div class="p-4 border-t border-slate-200 bg-slate-50 flex gap-3 shrink-0" id="drawer-execution-bay">
+                <div class="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2 shrink-0 empty:hidden" id="drawer-execution-bay">
                     <!-- Buttons injected based on status -->
                 </div>
             </div>
@@ -288,7 +304,7 @@
             </div>
 
             <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
-                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">Batal</button>
+                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors">Batal</button>
                 <button id="btn-submit-wo" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="material-symbols-outlined text-[18px]">publish</span> Terbitkan (DRAFT)
                 </button>
@@ -296,93 +312,9 @@
         </div>
     </div>
 
-    <!-- MODAL QC DIGITAL -->
-    <div id="modal-qc" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
-                <h3 class="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary">fact_check</span> Quality Assurance Gateway
-                </h3>
-                <button id="btn-close-qc" class="text-slate-400 hover:text-slate-800 transition-colors bg-white p-1 rounded-full shadow-sm border border-slate-200">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
-                </button>
-            </div>
-            
-            <div class="p-6 overflow-y-auto kanban-scroll space-y-6">
-                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex gap-3 text-indigo-800">
-                    <span class="material-symbols-outlined shrink-0 text-indigo-500">info</span>
-                    <p class="text-xs font-medium leading-relaxed">Pastikan seluruh parameter lulus pengujian. Jika terdapat satu kegagalan, Work Order akan diretur untuk proses rework (Sub-Assembly).</p>
-                </div>
 
-                <div class="space-y-4" id="qc-parameters">
-                    <!-- Param 1 -->
-                    <div class="border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
-                        <p class="text-sm font-bold text-slate-800 mb-3">1. Uji Kelurusan Fisik & Frame</p>
-                        <div class="flex gap-6">
-                            <label class="flex items-center gap-2 cursor-pointer group">
-                                <input type="radio" name="qc_frame" value="pass" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300">
-                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Lolos</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer group">
-                                <input type="radio" name="qc_frame" value="fail" class="w-4 h-4 text-rose-600 focus:ring-rose-500 border-slate-300">
-                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Gagal</span>
-                            </label>
-                        </div>
-                    </div>
 
-                    <!-- Param 2 -->
-                    <div class="border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
-                        <p class="text-sm font-bold text-slate-800 mb-3">2. Uji Pengereman (Braking System)</p>
-                        <div class="flex gap-6">
-                            <label class="flex items-center gap-2 cursor-pointer group">
-                                <input type="radio" name="qc_brake" value="pass" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300">
-                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Lolos</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer group">
-                                <input type="radio" name="qc_brake" value="fail" class="w-4 h-4 text-rose-600 focus:ring-rose-500 border-slate-300">
-                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Gagal</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Param 3 -->
-                    <div class="border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
-                        <p class="text-sm font-bold text-slate-800 mb-3">3. Uji Transmisi/Gigi (Drivetrain)</p>
-                        <div class="flex gap-6">
-                            <label class="flex items-center gap-2 cursor-pointer group">
-                                <input type="radio" name="qc_drive" value="pass" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300">
-                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Lolos</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer group">
-                                <input type="radio" name="qc_drive" value="fail" class="w-4 h-4 text-rose-600 focus:ring-rose-500 border-slate-300">
-                                <span class="text-sm text-slate-600 group-hover:text-slate-900 font-medium">Gagal</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Catatan -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Catatan Defect / Rework (Opsional)</label>
-                        <textarea id="qc-notes" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400" placeholder="Ketik catatan jika ada cacat atau butuh perbaikan..."></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-6 border-t border-slate-100 flex justify-end bg-slate-50 rounded-b-2xl">
-                <button id="btn-submit-qc" class="w-full py-3.5 bg-slate-200 text-slate-500 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2" disabled>
-                    <span class="material-symbols-outlined text-[20px]">rule</span> Silakan Lengkapi Form QC
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
-            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
-        </div>
-    </div>
+    {{> toast }}
 
     <script type="module" src="/src/pages/operasi.ts"></script>
 </body>

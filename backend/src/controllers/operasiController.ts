@@ -10,7 +10,7 @@ export const getAllWO = async (req: Request, res: Response): Promise<void> => {
   try {
     const [rows]: any = await pool.query(`
       SELECT 
-        wo.id, wo.nomor_wo, wo.jumlah_produksi, wo.status, wo.created_at,
+        wo.id, wo.nomor_wo, wo.jumlah_produksi, wo.status, wo.created_at, wo.catatan_rework, wo.qc_history,
         fg.nama_barang as produk, fg.kode_barang
       FROM operasi_wo_header wo
       JOIN inventory_stok fg ON wo.id_inventory_fg = fg.id
@@ -115,11 +115,6 @@ export const createWO = async (req: Request, res: Response): Promise<void> => {
 
     if (allocations.length === 0) throw new Error('BOM tidak ditemukan untuk produk ini.');
 
-    const hardDeficits = allocations.filter(a => a.is_deficit && !a.is_phantom);
-    if (hardDeficits.length > 0) {
-        throw new Error(`Defisit Stok Bahan Baku: ${hardDeficits[0].nama_barang} (Kurang ${hardDeficits[0].deficit_amount})`);
-    }
-
     const nomor_wo = `WO-${Date.now().toString().slice(-6)}`;
     const [woResult]: any = await connection.query(
       'INSERT INTO operasi_wo_header (nomor_wo, id_inventory_fg, jumlah_produksi, status) VALUES (?, ?, ?, ?)',
@@ -142,10 +137,23 @@ export const createWO = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    // [AUTO-RESTOCK INTEGRATION] Handle hard deficits by generating restock requests automatically
+    const hardDeficits = allocations.filter(a => a.is_deficit && !a.is_phantom);
+    let restockMessage = '';
+    if (hardDeficits.length > 0) {
+        for (const def of hardDeficits) {
+            await connection.query(
+                'INSERT INTO pengadaan_restock_requests (id_inventory_material, nomor_wo, jumlah_diminta, status) VALUES (?, ?, ?, ?)',
+                [def.id_inventory_material, nomor_wo, def.deficit_amount, 'Pending']
+            );
+        }
+        restockMessage = ` (Peringatan: Ada Defisit Material, Request otomatis dikirim ke Pengadaan!)`;
+    }
+
     await logAudit(userId, `Membuat WO Baru: ${nomor_wo} (Soft Reserve / Phantom BOM)`, req.ip, 'Success');
     await connection.commit();
 
-    res.status(201).json({ success: true, message: `WO ${nomor_wo} berhasil dibuat (Status DRAFT).` });
+    res.status(201).json({ success: true, message: `WO ${nomor_wo} berhasil dibuat (Status DRAFT).${restockMessage}` });
   } catch (error: any) {
     await connection.rollback();
     res.status(400).json({ success: false, message: error.message });
@@ -203,8 +211,8 @@ export const updateWOStatus = async (req: Request, res: Response): Promise<void>
       await logAudit(userId, `WO ${wo.nomor_wo}: Final Assembly`, req.ip, 'Success');
     }
     
-    // FINAL_ASSEMBLY -> TUNING_QC
-    else if (status === 'TUNING_QC' && currentStatus === 'FINAL_ASSEMBLY') {
+    // FINAL_ASSEMBLY (or SUB_ASSEMBLY Rework) -> TUNING_QC
+    else if (status === 'TUNING_QC' && (currentStatus === 'FINAL_ASSEMBLY' || currentStatus === 'SUB_ASSEMBLY')) {
       await connection.query('UPDATE operasi_wo_header SET status = ? WHERE id = ?', [status, woId]);
       await logAudit(userId, `WO ${wo.nomor_wo}: Tuning/QC`, req.ip, 'Success');
     }
@@ -247,8 +255,12 @@ export const updateWOStatus = async (req: Request, res: Response): Promise<void>
         }
       }
       await connection.query('DELETE FROM operasi_wo_material_allocation WHERE id_wo_header = ?', [woId]);
+      
+      // [MRP AUTO-RESTOCK] Delete any pending material requests related to this WO
+      await connection.query('DELETE FROM pengadaan_restock_requests WHERE nomor_wo = ?', [wo.nomor_wo]);
+      
       await connection.query('UPDATE operasi_wo_header SET status = "CANCELLED" WHERE id = ?', [woId]);
-      await logAudit(userId, `WO ${wo.nomor_wo}: Dibatalkan (Release Reserve)`, req.ip, 'Warning');
+      await logAudit(userId, `WO ${wo.nomor_wo}: Dibatalkan (Release Reserve & Auto-Restock dihapus)`, req.ip, 'Warning');
     } else {
       throw new Error(`Transisi status tidak valid: ${currentStatus} -> ${status}`);
     }

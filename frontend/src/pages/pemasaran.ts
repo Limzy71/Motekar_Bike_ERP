@@ -17,15 +17,15 @@ interface Lead {
   created_at: string;
   updated_at: string;
 }
-interface Campaign { id_campaign: number; nama_campaign: string; jenis: string; budget_alokasi: string | number; status: string; tanggal_mulai?: string; tanggal_selesai?: string; }
+interface Campaign { id_campaign: number; nama_campaign: string; jenis: string; budget_alokasi: number; tanggal_mulai: string; tanggal_selesai: string; lokasi: string; status: string; created_at: string; }
 interface Aktivitas { id_aktivitas: number; tanggal: string; jenis_interaksi: string; catatan_hasil: string; }
-interface Klaim { id_klaim: string; id_sales_order: number; nama_retailer: string; kode_item_fg: string; tanggal_klaim: string; deskripsi_keluhan: string; status_klaim: string; nomor_so: string; }
+
 interface SOHeader { id: number; nomor_so: string; nama_customer: string; status_so: string; items: any[]; }
 interface ActionRes { success: boolean; message: string; }
 
 let masterLeads: Lead[] = [];
 let masterCampaigns: Campaign[] = [];
-let masterKlaim: Klaim[] = [];
+
 let masterSO: SOHeader[] = [];
 
 let campaignCurrentPage = 1;
@@ -67,12 +67,7 @@ async function loadCampaigns(): Promise<void> {
     } catch { showToast('Gagal memuat kampanye.', true); }
 }
 
-async function loadKlaim(): Promise<void> {
-    try {
-        const r = await apiFetch<{ success: boolean; data: Klaim[] }>('aftersales/klaim');
-        if (r.success) { masterKlaim = r.data; renderKlaim(); }
-    } catch { showToast('Gagal memuat tiket klaim.', true); }
-}
+
 
 async function loadSO(): Promise<void> {
     try {
@@ -187,9 +182,10 @@ function renderCampaigns(): void {
         const jenisBadge: Record<string, string> = { 'Pameran': 'bg-violet-50 text-violet-700', 'Digital Ads': 'bg-blue-50 text-blue-700', 'Kunjungan Langsung': 'bg-teal-50 text-teal-700' };
         const statusBadge = c.status === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200';
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50/50 transition-colors text-xs font-medium text-slate-600';
+        tr.className = 'hover:bg-slate-100 transition-colors text-xs font-medium text-slate-600';
         tr.innerHTML = `
             <td class="px-4 py-3 font-bold text-slate-800">${c.nama_campaign}</td>
+            <td class="px-4 py-3 text-slate-500">${c.lokasi || '-'}</td>
             <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${jenisBadge[c.jenis] || ''}">${c.jenis}</span></td>
             <td class="px-4 py-3 text-right font-bold text-slate-900 font-data-mono">${formatRp(c.budget_alokasi)}</td>
             <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusBadge}">${c.status}</span></td>
@@ -274,41 +270,7 @@ function populateCampaignDropdown(): void {
     });
 }
 
-// ============================================================
-// KLAIM RENDERING
-// ============================================================
-function renderKlaim(): void {
-    const tbody = document.getElementById('tbody-klaim');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    if (masterKlaim.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-xs text-slate-500">Belum ada tiket klaim.</td></tr>'; 
-        return; 
-    }
 
-    masterKlaim.forEach(k => {
-        const statusColors: Record<string, string> = {
-            'SUBMITTED': 'bg-blue-50 text-blue-700 border-blue-200',
-            'IN_INSPECTION': 'bg-amber-50 text-amber-700 border-amber-200',
-            'APPROVED_REPLACE': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-            'APPROVED_REWORK': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-            'REJECTED': 'bg-rose-50 text-rose-700 border-rose-200'
-        };
-        const colorClass = statusColors[k.status_klaim] || 'bg-slate-50 text-slate-600 border-slate-200';
-        
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50/50 transition-colors text-xs font-medium text-slate-600';
-        tr.innerHTML = `
-            <td class="px-4 py-3 font-bold text-primary font-data-mono">${k.id_klaim}</td>
-            <td class="px-4 py-3">${new Date(k.tanggal_klaim).toLocaleDateString('id-ID')}</td>
-            <td class="px-4 py-3">${k.nama_retailer}</td>
-            <td class="px-4 py-3 font-data-mono font-bold">${k.kode_item_fg}</td>
-            <td class="px-4 py-3 truncate max-w-[200px]" title="${k.deskripsi_keluhan}">${k.deskripsi_keluhan}</td>
-            <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${colorClass}">${k.status_klaim}</span></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
 
 // ============================================================
 // LEAD DETAIL MODAL
@@ -411,8 +373,22 @@ function setupModals(): void {
     document.getElementById('btn-cancel-lead')?.addEventListener('click', closeLead);
     modalLead?.addEventListener('click', (e) => { if (e.target === modalLead) closeLead(); });
 
+    document.getElementById('btn-close-campaign')?.addEventListener('click', closeCampaign);
     document.getElementById('btn-cancel-campaign')?.addEventListener('click', closeCampaign);
     modalCampaign?.addEventListener('click', (e) => { if (e.target === modalCampaign) closeCampaign(); });
+
+    // Format Budget Input
+    const budgetInput = document.getElementById('input-camp-budget') as HTMLInputElement;
+    if (budgetInput) {
+        budgetInput.addEventListener('input', function(e) {
+            let val = this.value.replace(/\D/g, '');
+            if (val) {
+                this.value = parseInt(val, 10).toLocaleString('id-ID');
+            } else {
+                this.value = '';
+            }
+        });
+    }
 
     // Open Lead Modal (New)
     document.getElementById('btn-add-lead')?.addEventListener('click', () => {
@@ -567,6 +543,9 @@ function setupModals(): void {
         e.preventDefault();
         const fd = new FormData(e.target as HTMLFormElement);
         const payload = Object.fromEntries(fd.entries());
+        if (payload.budget_alokasi) {
+            payload.budget_alokasi = (payload.budget_alokasi as string).replace(/\./g, '');
+        }
         const campId = payload.id_campaign as string;
         try {
             if (campId) {
@@ -592,103 +571,7 @@ function setupModals(): void {
         } catch { showToast('Gagal mencatat aktivitas.', true); }
     });
 
-    // Klaim Garansi Modal setup
-    const modalKlaim = document.getElementById('modal-klaim');
-    const contentKlaim = document.getElementById('modal-klaim-content');
-    const closeKlaimModal = () => { 
-        if (modalKlaim && contentKlaim) { 
-            modalKlaim.classList.add('opacity-0'); 
-            contentKlaim.classList.add('scale-95'); 
-            setTimeout(() => { 
-                modalKlaim.classList.add('hidden'); 
-                (document.getElementById('form-klaim') as HTMLFormElement)?.reset(); 
-            }, 300); 
-        } 
-    };
 
-    document.getElementById('btn-close-klaim')?.addEventListener('click', closeKlaimModal);
-    document.getElementById('btn-cancel-klaim')?.addEventListener('click', closeKlaimModal);
-
-    document.getElementById('btn-add-klaim')?.addEventListener('click', () => {
-        const selectSO = document.getElementById('input-klaim-so') as HTMLSelectElement;
-        selectSO.innerHTML = '<option value="">-- Pilih SO --</option>';
-        masterSO.forEach(so => {
-            const opt = document.createElement('option');
-            opt.value = so.id.toString();
-            opt.textContent = `${so.nomor_so} - ${so.nama_customer}`;
-            selectSO.appendChild(opt);
-        });
-        if (modalKlaim && contentKlaim) { 
-            modalKlaim.classList.remove('hidden'); 
-            setTimeout(() => { 
-                modalKlaim.classList.remove('opacity-0'); 
-                contentKlaim.classList.remove('scale-95'); 
-            }, 10); 
-        }
-    });
-
-    document.getElementById('input-klaim-so')?.addEventListener('change', (e) => {
-        const id = parseInt((e.target as HTMLSelectElement).value, 10);
-        const so = masterSO.find(x => x.id === id);
-        const inputRetailer = document.getElementById('input-klaim-retailer') as HTMLInputElement;
-        const selectFG = document.getElementById('input-klaim-fg') as HTMLSelectElement;
-        selectFG.innerHTML = '<option value="">-- Pilih Produk --</option>';
-        if (so) {
-            inputRetailer.value = so.nama_customer;
-            so.items.forEach(item => {
-                const opt = document.createElement('option');
-                opt.value = item.kode_barang;
-                opt.textContent = `${item.kode_barang} (${item.qty} pcs)`;
-                selectFG.appendChild(opt);
-            });
-        } else {
-            inputRetailer.value = '';
-        }
-    });
-
-    (document.getElementById('form-klaim') as HTMLFormElement)?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id_sales_order = (document.getElementById('input-klaim-so') as HTMLSelectElement).value;
-        const nama_retailer = (document.getElementById('input-klaim-retailer') as HTMLInputElement).value;
-        const kode_item_fg = (document.getElementById('input-klaim-fg') as HTMLSelectElement).value;
-        const deskripsi_keluhan = (document.getElementById('input-klaim-keluhan') as HTMLTextAreaElement).value;
-        const fileInput = document.getElementById('input-klaim-foto') as HTMLInputElement;
-
-        if (!id_sales_order || !nama_retailer || !kode_item_fg || !deskripsi_keluhan || !fileInput.files || fileInput.files.length === 0) {
-            showToast('Form tidak lengkap atau foto belum diunggah!', true);
-            return;
-        }
-
-        const btnSubmit = document.getElementById('btn-submit-klaim') as HTMLButtonElement;
-        const spinner = document.getElementById('spinner-klaim');
-        if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.classList.add('opacity-80', 'cursor-wait'); }
-        if (spinner) { spinner.classList.remove('hidden'); spinner.classList.add('animate-spin'); }
-
-        try {
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                const base64Foto = reader.result as string;
-                try {
-                    const r = await apiFetch<ActionRes>('aftersales/klaim', {
-                        method: 'POST',
-                        body: JSON.stringify({ id_sales_order, nama_retailer, kode_item_fg, deskripsi_keluhan, foto_bukti_kerusakan: base64Foto })
-                    });
-                    if (r.success) { showToast(r.message); closeKlaimModal(); loadKlaim(); }
-                    else { showToast(r.message, true); }
-                } catch { showToast('Terjadi kesalahan koneksi API.', true); }
-                finally {
-                    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-80', 'cursor-wait'); }
-                    if (spinner) { spinner.classList.add('hidden'); spinner.classList.remove('animate-spin'); }
-                }
-            };
-        } catch {
-            showToast('Terjadi kesalahan saat memproses foto.', true);
-            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-80', 'cursor-wait'); }
-            if (spinner) { spinner.classList.add('hidden'); spinner.classList.remove('animate-spin'); }
-        }
-    });
 }
 
 // ============================================================
@@ -697,23 +580,54 @@ function setupModals(): void {
 function setupTabs(): void {
     const tabPipeline = document.getElementById('tab-pipeline');
     const tabCampaigns = document.getElementById('tab-campaigns');
-    const tabKlaim = document.getElementById('tab-klaim');
+    
     const viewPipeline = document.getElementById('view-pipeline');
     const viewCampaigns = document.getElementById('view-campaigns');
-    const viewKlaim = document.getElementById('view-klaim');
+    
     const activeClass = 'pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors';
     const inactiveClass = 'pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors';
 
-    const switchTab = (activeTab: HTMLElement, inactiveTabs: HTMLElement[], activeView: HTMLElement, inactiveViews: HTMLElement[]) => {
+    const switchTab = (tabName: 'pipeline' | 'campaigns') => {
+        let activeTab: HTMLElement;
+        let inactiveTabs: HTMLElement[];
+        let activeView: HTMLElement;
+        let inactiveViews: HTMLElement[];
+
+        if (tabName === 'pipeline') {
+            activeTab = tabPipeline!;
+            inactiveTabs = [tabCampaigns!];
+            activeView = viewPipeline!;
+            inactiveViews = [viewCampaigns!];
+        } else {
+            activeTab = tabCampaigns!;
+            inactiveTabs = [tabPipeline!];
+            activeView = viewCampaigns!;
+            inactiveViews = [viewPipeline!];
+            loadCampaigns();
+        }
+
         activeTab.className = activeClass;
         inactiveTabs.forEach(t => t.className = inactiveClass);
         activeView.classList.remove('hidden');
         inactiveViews.forEach(v => v.classList.add('hidden'));
+        
+        localStorage.setItem('pemasaranLastTab', tabName);
     };
 
-    tabPipeline?.addEventListener('click', () => switchTab(tabPipeline, [tabCampaigns!, tabKlaim!], viewPipeline!, [viewCampaigns!, viewKlaim!]));
-    tabCampaigns?.addEventListener('click', () => { switchTab(tabCampaigns, [tabPipeline!, tabKlaim!], viewCampaigns!, [viewPipeline!, viewKlaim!]); loadCampaigns(); });
-    tabKlaim?.addEventListener('click', () => { switchTab(tabKlaim, [tabPipeline!, tabCampaigns!], viewKlaim!, [viewPipeline!, viewCampaigns!]); loadKlaim(); loadSO(); });
+    tabPipeline?.addEventListener('click', () => switchTab('pipeline'));
+    tabCampaigns?.addEventListener('click', () => switchTab('campaigns'));
+    
+    const lastTab = localStorage.getItem('pemasaranLastTab');
+    if (lastTab === 'campaigns') {
+        switchTab('campaigns');
+    } else {
+
+        switchTab('pipeline');
+    }
+
+    // Remove anti-flicker style once tabs are properly initialized
+    const antiFlicker = document.getElementById('anti-flicker');
+    if (antiFlicker) antiFlicker.remove();
 }
 
 // ============================================================
@@ -786,18 +700,89 @@ document.addEventListener('DOMContentLoaded', () => {
             hargaSatuan: 16500000
         });
     });
+
+    // Polling for Real-Time Experience (Every 30 seconds)
+    setInterval(() => {
+        const tab = localStorage.getItem('pemasaranLastTab') || 'pipeline';
+        if (tab === 'pipeline') {
+            loadKPI();
+            loadLeads();
+        } else if (tab === 'campaigns') {
+            loadCampaigns();
+        }
+    }, 30000);
 });
 
-const tombolCetak = document.getElementById('btn-cetak-penawaran');
 
-if (tombolCetak) {
-    tombolCetak.addEventListener('click', () => {
-        console.log("⚡ [SISTEM]: Tombol cetak berhasil dipicu!");
-        window.print();
+// ============================================================
+// CETAK PENAWARAN MODAL
+// ============================================================
+const modalCetak = document.getElementById('modal-cetak');
+const contentCetak = document.getElementById('modal-cetak-content');
+
+const closeCetak = () => {
+    if (modalCetak && contentCetak) {
+        modalCetak.classList.add('opacity-0');
+        contentCetak.classList.add('scale-95');
+        setTimeout(() => {
+            modalCetak.classList.add('hidden');
+            (document.getElementById('form-cetak') as HTMLFormElement)?.reset();
+        }, 300);
+    }
+};
+
+document.getElementById('btn-close-cetak')?.addEventListener('click', closeCetak);
+document.getElementById('btn-cancel-cetak')?.addEventListener('click', closeCetak);
+modalCetak?.addEventListener('click', (e) => { if (e.target === modalCetak) closeCetak(); });
+
+document.getElementById('btn-cetak-penawaran')?.addEventListener('click', () => {
+    const selectLead = document.getElementById('input-cetak-lead') as HTMLSelectElement;
+    if (selectLead) {
+        selectLead.innerHTML = '<option value="">-- Pilih Lead --</option>';
+        masterLeads.forEach(lead => {
+            if (lead.status_pipeline !== 'Lost') {
+                const opt = document.createElement('option');
+                opt.value = lead.id_lead.toString();
+                opt.textContent = lead.nama_toko || 'Unknown';
+                selectLead.appendChild(opt);
+            }
+        });
+    }
+
+    if (modalCetak && contentCetak) {
+        modalCetak.classList.remove('hidden');
+        setTimeout(() => {
+            modalCetak.classList.remove('opacity-0');
+            contentCetak.classList.remove('scale-95');
+        }, 10);
+    }
+});
+
+(document.getElementById('form-cetak') as HTMLFormElement)?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const leadId = (document.getElementById('input-cetak-lead') as HTMLSelectElement).value;
+    const item = (document.getElementById('input-cetak-item') as HTMLInputElement).value;
+    const qty = parseInt((document.getElementById('input-cetak-qty') as HTMLInputElement).value, 10);
+    const harga = parseInt((document.getElementById('input-cetak-harga') as HTMLInputElement).value, 10);
+    
+    const lead = masterLeads.find(x => x.id_lead.toString() === leadId);
+    if (!lead) return;
+
+    // Generate Nomor Surat Random (atau berurutan)
+    const randomNum = Math.floor(100 + Math.random() * 900);
+    const noSurat = `PNW/MTK/2026/${randomNum}`;
+
+    cetakSuratPenawaran({
+        namaKlien: lead.nama_toko || 'Klien',
+        noSurat: noSurat,
+        item: item,
+        qty: qty,
+        hargaSatuan: harga
     });
-} else {
-    console.error("❌ [FATAL]: Browser tidak menemukan elemen dengan ID 'btn-cetak-penawaran' di HTML!");
-}
+
+    closeCetak();
+});
+
 
 (window as any).editCampaign = (id: number) => {
     const c = masterCampaigns.find(x => x.id_campaign === id);
@@ -807,8 +792,9 @@ if (tombolCetak) {
     formCamp?.reset();
     (document.getElementById('input-campaign-id') as HTMLInputElement).value = c.id_campaign.toString();
     (formCamp.querySelector('[name="nama_campaign"]') as HTMLInputElement).value = c.nama_campaign;
+    (formCamp.querySelector('[name="lokasi"]') as HTMLInputElement).value = c.lokasi || '';
     (formCamp.querySelector('[name="jenis"]') as HTMLSelectElement).value = c.jenis;
-    (formCamp.querySelector('[name="budget_alokasi"]') as HTMLInputElement).value = c.budget_alokasi.toString();
+    (formCamp.querySelector('[name="budget_alokasi"]') as HTMLInputElement).value = Number(c.budget_alokasi).toLocaleString('id-ID');
     (formCamp.querySelector('[name="tanggal_mulai"]') as HTMLInputElement).value = c.tanggal_mulai || '';
     (formCamp.querySelector('[name="tanggal_selesai"]') as HTMLInputElement).value = c.tanggal_selesai || '';
     (formCamp.querySelector('[name="status"]') as HTMLSelectElement).value = c.status;

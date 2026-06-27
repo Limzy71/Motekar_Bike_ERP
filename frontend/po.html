@@ -59,6 +59,17 @@
         /* Right Drawer Slide Animation */
         #right-drawer { transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         #right-drawer.open { transform: translateX(0); }
+
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important;
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
 </head>
 
@@ -169,6 +180,10 @@
                             <option value="Dikirim ke Vendor">Dikirim ke Vendor</option>
                             <option value="Barang Diterima">Barang Diterima</option>
                         </select>
+                        <button id="btn-bulk-issue-po"
+                            class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition-all hidden">
+                            <span class="material-symbols-outlined text-[18px]">send</span> Ajukan Semua Draf PO
+                        </button>
                         <button id="btn-bulk-approve-po"
                             class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition-all hidden">
                             <span class="material-symbols-outlined text-[18px]">done_all</span> Setujui Semua (ISSUED)
@@ -240,7 +255,7 @@
                             <p class="text-xs font-bold uppercase tracking-widest text-slate-500" id="drawer-po-status">STATUS</p>
                         </div>
                     </div>
-                    <button id="btn-close-drawer" class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors">
+                    <button id="btn-close-drawer" class="text-slate-400 hover:text-slate-600 transition-colors">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -351,7 +366,7 @@
             </div>
 
             <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0">
-                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">Batal</button>
+                <button id="btn-cancel-modal" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors">Batal</button>
                 <button id="btn-submit-po" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2">
                     <span class="material-symbols-outlined text-[18px]">save</span> Simpan (Draf)
                 </button>
@@ -359,13 +374,7 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300" id="toast">
-            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
-        </div>
-    </div>
+    {{> toast }}
 
     <script type="module" src="/src/pages/po.ts"></script>
 </body>

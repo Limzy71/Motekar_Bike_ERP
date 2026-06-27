@@ -7,6 +7,7 @@
     <title>Pengadaan - Motekar ERP</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap"
         rel="stylesheet">
@@ -58,10 +59,23 @@
             border-left: 4px solid #00288e;
         }
 
-        .custom-scroll::-webkit-scrollbar { height: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        .custom-scroll:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
+        .custom-scroll::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .custom-scroll:hover::-webkit-scrollbar-thumb {
+            background-color: #94a3b8;
+        }
 
         .toast {
             position: fixed;
@@ -117,170 +131,296 @@
             outline: none;
             box-shadow: none;
         }
+        .swal2-container {
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            background: rgba(15, 23, 42, 0.4) !important; /* Tailwind slate-900/40 */
+        }
+        
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        }
     </style>
+    <!-- Tab Persistence Anti-Flicker Script -->
+    <script>
+        (function() {
+            var lastTab = localStorage.getItem('pengadaanLastTab') || 'pr';
+            var s = document.createElement('style');
+            s.id = 'anti-flicker';
+            if (lastTab === 'srm') {
+                s.innerHTML = '#view-pr { display: none !important; } #view-srm { display: block !important; }';
+            } else {
+                s.innerHTML = '#view-srm { display: none !important; } #view-pr { display: block !important; }';
+            }
+            document.head.appendChild(s);
+        })();
+    </script>
+    <!-- Google Maps API for Address Autocomplete & Map -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
 </head>
 
 <body class="text-on-surface">
     <div class="flex h-screen overflow-hidden">
 
-        <!-- ==================== SIDEBAR ==================== -->
-        <aside id="sidebar" class="w-sidebar-width bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between shrink-0 z-20 relative transition-all duration-300">
-            <div class="flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
-                <div class="flex flex-col gap-1" id="sidebar-logo">
-                    <h1 class="text-primary text-xl font-black tracking-tight leading-tight break-words">Motekar Bike Assy</h1>
-                    <p class="text-on-surface-variant text-xs font-medium uppercase tracking-widest">Sistem ERP Terpadu</p>
-                </div>
-                <nav id="sidebar-nav" class="flex flex-col gap-1 mt-4">
-                    <!-- Nav items akan di-render oleh rbac.ts -->
-                </nav>
-            </div>
-            <div class="p-6 border-t border-outline-variant">
-                <button id="btn-logout" class="flex w-full items-center justify-center gap-2 bg-error text-on-error py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap overflow-hidden">
-                    <span class="material-symbols-outlined text-[18px] shrink-0">logout</span>
-                    <span class="menu-text">Keluar Sistem</span>
-                </button>
-            </div>
-        </aside>
+        {{> sidebar }}
 
         <!-- ==================== MAIN CONTENT ==================== -->
         <main class="flex-1 flex flex-col overflow-hidden bg-surface relative">
-            <!-- HEADER -->
-            <header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
-                <div class="flex items-center gap-4">
-                    <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-[24px]">menu</span>
-                    </button>
-                    <span class="text-headline-md text-on-surface font-bold">Manajemen Pengadaan</span>
-                </div>
-                <div class="flex items-center gap-6">
-                    <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all" title="Lihat Profil Saya">
-                        <div class="text-right">
-                            <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
-                            <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
-                        </div>
-                        <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
-                            <span id="header-inisial">--</span>
-                        </div>
-                    </a>
-                </div>
-            </header>
+            {{> navbar title="Manajemen Pengadaan" }}
+
+            <!-- TABS -->
+            <div class="flex items-center gap-6 px-8 pt-6 pb-0 border-b border-slate-200 bg-surface">
+                <button id="tab-pr"
+                    class="pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors">
+                    Permintaan Pembelian (PR)
+                </button>
+                <button id="tab-srm"
+                    class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">
+                    Supplier Relationship (SRM)
+                </button>
+            </div>
 
             <!-- SCROLLABLE CONTENT -->
-            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+            <div class="flex-1 overflow-y-auto p-8 bg-slate-50/30 relative">
 
-                <!-- DEFISIT RADAR SECTION -->
-                <div id="defisit-radar-section" class="mb-8 hidden">
-                    <div class="bg-rose-50/50 border border-rose-200 rounded-2xl p-5 shadow-sm">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-start gap-3">
-                                <div class="mt-0.5 text-rose-500">
-                                    <span class="material-symbols-outlined text-[24px] animate-pulse">radar</span>
-                                </div>
-                                <div>
-                                    <h2 class="text-[15px] font-bold text-rose-900 tracking-tight flex items-center gap-2" id="defisit-title">Peringatan Defisit Operasi</h2>
-                                    <p class="text-xs text-rose-600/80 mt-0.5">Sistem mendeteksi komponen di bawah Reorder Point.</p>
-                                </div>
+                <!-- ==================== VIEW: PENGADAAN (PR) ==================== -->
+                <div id="view-pr">
+
+                    <!-- NEW INBOX: Permintaan Restok dari Operasi Inti -->
+                    <div class="mb-8" id="mrp-inbox-section">
+                        <div class="flex items-center justify-between mb-4 border-t border-slate-200/60 pt-8">
+                            <div>
+                                <h2 class="text-[16px] font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-rose-500 text-[20px]">inbox</span>
+                                    Kotak Masuk: Material Request (Produksi)
+                                </h2>
+                                <p class="text-[11px] text-slate-500 mt-1">Permintaan otomatis dari mesin MRP karena
+                                    defisit stok pada Work Order.</p>
                             </div>
-                            <button id="btn-auto-generate-pr" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition-all shrink-0">
-                                <span class="material-symbols-outlined text-[16px]">auto_awesome</span> Auto-Generate PR
+                            <button id="btn-auto-generate-pr"
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs flex items-center gap-2 transition-all" title="Otomatis buat PR untuk semua material yang defisit">
+                                <span class="material-symbols-outlined text-[16px]">smart_toy</span> Auto-Generate PR
                             </button>
                         </div>
 
-                        <!-- Grid Cards in Scrollable Container -->
-                        <div class="max-h-[220px] overflow-y-auto pr-2">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" id="defisit-cards-container">
-                                <!-- Cards injected via TS -->
+                        <div class="bg-rose-50/50 border border-rose-100 rounded-xl p-4 shadow-sm relative overflow-hidden hidden"
+                            id="mrp-requests-container">
+                            <!-- Dekorasi Background -->
+                            <div class="absolute top-0 right-0 -mr-8 -mt-8 opacity-10 pointer-events-none">
+                                <span class="material-symbols-outlined text-[100px] text-rose-600">conveyor_belt</span>
+                            </div>
+
+                            <div class="max-h-[240px] overflow-y-auto pr-2 relative z-10 custom-scrollbar">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                                    id="mrp-requests-list">
+                                    <!-- Cards will be injected here via TS -->
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="flex items-center justify-between mb-6 border-t border-slate-200/60 pt-8" id="pr-list-header">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-900 tracking-tight">Daftar Permintaan Pembelian (PR)
-                        </h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Monitoring status pengadaan suku cadang aktif</p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <select id="filter-status-pr" class="bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer">
-                            <option value="All">Semua Status</option>
-                            <option value="Menunggu Persetujuan">Menunggu Persetujuan</option>
-                            <option value="Diproses Vendor">Diproses Vendor</option>
-                        </select>
-                        <button id="btn-bulk-approve-pr"
-                            class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs items-center gap-2 transition-all hidden flex">
-                            <span class="material-symbols-outlined text-[16px]">done_all</span> Setujui Semua PR
-                        </button>
-                        <button id="btn-bulk-delete-pr"
-                            class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs items-center gap-2 transition-all hidden flex">
-                            <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Hapus Semua PR
-                        </button>
-                        <button id="btn-create-pr"
-                            class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs flex items-center gap-2 transition-all">
-                            <span class="material-symbols-outlined text-[16px]">add</span> Buat PR Baru
-                        </button>
-                    </div>
-                </div>
-
-                <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
-                    <table class="w-full border-collapse table-auto data-table">
-                        <colgroup>
-                            <col style="width: 15%">
-                            <col style="width: 12%">
-                            <col style="width: 20%">
-                            <col style="width: 15%">
-                            <col style="width: 10%">
-                            <col style="width: 15%">
-                            <col style="width: 13%">
-                        </colgroup>
-                        <thead>
-                            <tr class="border-b border-slate-200/80">
-                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">NOMOR PR</th>
-                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">TANGGAL</th>
-                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">VENDOR</th>
-                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">ITEM BARANG</th>
-                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">JUMLAH</th>
-                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">TOTAL HARGA</th>
-                                <th class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">STATUS</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100" id="tbody-pengadaan">
-                            <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-sm text-on-surface-variant">Memuat
-                                    data...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <!-- Pagination Controls -->
-                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="pr-pagination-info">Menampilkan 0-0 dari 0 data</p>
-                    <div class="flex items-center gap-1.5">
-                        <button id="pr-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
-                        </button>
-                        <div id="pr-pagination-pages" class="flex items-center gap-1">
-                            <!-- Page buttons injected via TS -->
+                        <!-- Empty State for MRP Inbox -->
+                        <div class="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hidden"
+                            id="mrp-empty-state">
+                            <div
+                                class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3 text-slate-400">
+                                <span class="material-symbols-outlined">mark_email_read</span>
+                            </div>
+                            <p class="text-sm font-bold text-slate-600">Tidak Ada Permintaan Material</p>
+                            <p class="text-xs text-slate-500 mt-1 max-w-sm">Seluruh lini produksi saat ini memiliki stok
+                                bahan baku yang cukup untuk merakit pesanan.</p>
                         </div>
-                        <button id="pr-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-                        </button>
                     </div>
-                </div>
+
+                    <div class="flex items-center justify-between mb-6 border-t border-slate-200/60 pt-8"
+                        id="pr-list-header">
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-900 tracking-tight">Daftar Permintaan Pembelian (PR)
+                            </h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Monitoring status pengadaan suku cadang aktif</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <select id="filter-status-pr"
+                                class="bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer">
+                                <option value="All">Semua Status</option>
+                                <option value="Menunggu Persetujuan">Menunggu Persetujuan</option>
+                                <option value="Diproses Vendor">Diproses Vendor</option>
+                                <option value="Selesai">Selesai</option>
+                                <option value="Dibatalkan">Dibatalkan</option>
+                            </select>
+                            <button id="btn-bulk-approve-pr"
+                                class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs items-center gap-2 transition-all hidden">
+                                <span class="material-symbols-outlined text-[16px]">done_all</span> Setujui Semua PR
+                            </button>
+                            <button id="btn-bulk-delete-pr"
+                                class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs items-center gap-2 transition-all hidden">
+                                <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Hapus Semua PR
+                            </button>
+                            <button id="btn-create-pr"
+                                class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs flex items-center gap-2 transition-all">
+                                <span class="material-symbols-outlined text-[16px]">add</span> Buat PR Baru
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
+                        <table class="w-full border-collapse table-auto data-table">
+                            <colgroup>
+                                <col style="width: 15%">
+                                <col style="width: 12%">
+                                <col style="width: 20%">
+                                <col style="width: 15%">
+                                <col style="width: 10%">
+                                <col style="width: 15%">
+                                <col style="width: 13%">
+                            </colgroup>
+                            <thead>
+                                <tr class="border-b border-slate-200/80">
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">
+                                        NOMOR PR</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">
+                                        TANGGAL</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">
+                                        VENDOR</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">
+                                        ITEM BARANG</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">
+                                        JUMLAH</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-right">
+                                        TOTAL HARGA</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">
+                                        STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100" id="tbody-pengadaan">
+                                <tr>
+                                    <td colspan="7" class="px-6 py-8 text-center text-sm text-on-surface-variant">Memuat
+                                        data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div
+                        class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
+                        <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest"
+                            id="pr-pagination-info">Menampilkan 0-0 dari 0 data</p>
+                        <div class="flex items-center gap-1.5">
+                            <button id="pr-btn-prev"
+                                class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                            </button>
+                            <div id="pr-pagination-pages" class="flex items-center gap-1">
+                                <!-- Page buttons injected via TS -->
+                            </div>
+                            <button id="pr-btn-next"
+                                class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+                </div> <!-- End of view-pr -->
+
+                <!-- ==================== VIEW: SRM (VENDOR MANAGEMENT) ==================== -->
+                <div id="view-srm" class="hidden">
+                    <div class="flex items-center justify-between mb-6" id="srm-list-header">
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-900 tracking-tight">Master Data Vendor (SRM)</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Kelola status, skor, dan data vendor pemasok.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button id="btn-create-vendor"
+                                class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-xs flex items-center gap-2 transition-all">
+                                <span class="material-symbols-outlined text-[16px]">add</span> Tambah Vendor Baru
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden mb-8">
+                        <table class="w-full border-collapse table-auto data-table">
+                            <colgroup>
+                                <col style="width: 15%">
+                                <col style="width: 25%">
+                                <col style="width: 15%">
+                                <col style="width: 15%">
+                                <col style="width: 15%">
+                                <col style="width: 15%">
+                            </colgroup>
+                            <thead>
+                                <tr class="border-b border-slate-200/80">
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">
+                                        KODE VENDOR</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">
+                                        NAMA VENDOR</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">
+                                        KATEGORI</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">
+                                        RATING</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">
+                                        STATUS</th>
+                                    <th
+                                        class="bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">
+                                        AKSI</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100" id="tbody-srm">
+                                <tr>
+                                    <td colspan="6" class="px-6 py-8 text-center text-sm text-on-surface-variant">Memuat
+                                        data vendor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- SRM Pagination Controls -->
+                    <div
+                        class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
+                        <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest"
+                            id="srm-pagination-info">Menampilkan 0-0 dari 0 data</p>
+                        <div class="flex items-center gap-1.5">
+                            <button id="srm-btn-prev"
+                                class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                            </button>
+                            <div id="srm-pagination-pages" class="flex items-center gap-1">
+                                <!-- Page buttons injected via TS -->
+                            </div>
+                            <button id="srm-btn-next"
+                                class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+                </div> <!-- End of view-srm -->
 
             </div>
         </main>
     </div>
 
     <!-- Modal Buat PR -->
-    <div id="buat-pr-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] transform scale-95 transition-transform duration-300" id="buat-pr-modal-box">
-            
+    <div id="buat-pr-modal"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] transform scale-95 transition-transform duration-300"
+            id="buat-pr-modal-box">
+
             <!-- Modal Header -->
             <div class="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
                 <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary">post_add</span> Buat Permintaan Pembelian (PR) Baru
+                    <span class="material-symbols-outlined text-primary">post_add</span> Buat Permintaan Pembelian (PR)
+                    Baru
                 </h3>
                 <button id="btn-close-pr-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
                     <span class="material-symbols-outlined">close</span>
@@ -292,14 +432,17 @@
                 <form id="form-buat-pr">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Nomor PR</label>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Nomor
+                                PR</label>
                             <input id="input-nomor-pr" name="nomor_pr" readonly type="text"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-data-mono outline-none cursor-not-allowed">
                             <p class="text-[9px] text-slate-400 mt-1">Dibuat otomatis oleh sistem.</p>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Pilih Vendor</label>
-                            <select id="select-vendor" name="vendor" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Pilih
+                                Vendor</label>
+                            <select id="select-vendor" name="vendor" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer">
                                 <option value="" disabled selected>-- Pilih Vendor --</option>
                             </select>
                         </div>
@@ -312,19 +455,26 @@
                     <div class="space-y-3">
                         <div class="flex items-end gap-3 po-item-row">
                             <div class="flex-1">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Material</label>
-                                <select id="select-item-barang" name="item_barang" required class="item-select w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none cursor-pointer">
+                                <label
+                                    class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Material</label>
+                                <select id="select-item-barang" name="item_barang" required
+                                    class="item-select w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none cursor-pointer">
                                     <option value="" disabled selected>-- Pilih Material / Barang --</option>
                                 </select>
                             </div>
                             <div class="w-24">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Jumlah</label>
+                                <label
+                                    class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Jumlah</label>
                                 <input name="jumlah" required type="number" min="1" value="1" placeholder="0"
                                     class="item-qty w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-data-mono focus:ring-1 focus:ring-primary outline-none">
                             </div>
                             <div class="w-32">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Harga Satuan</label>
-                                <input type="text" class="item-harga w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-data-mono outline-none cursor-not-allowed" placeholder="0" readonly>
+                                <label
+                                    class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Harga
+                                    Satuan</label>
+                                <input type="text"
+                                    class="item-harga w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-data-mono outline-none cursor-not-allowed"
+                                    placeholder="0" readonly>
                             </div>
                         </div>
                     </div>
@@ -333,9 +483,11 @@
 
             <!-- Modal Footer -->
             <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0 rounded-b-2xl">
-                <button type="button" id="btn-cancel-pr" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">Batal</button>
-                <button type="submit" form="form-buat-pr" id="btn-submit-pr" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[18px]" id="btn-submit-pr-icon">save</span> 
+                <button type="button" id="btn-cancel-pr"
+                    class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors">Batal</button>
+                <button type="submit" form="form-buat-pr" id="btn-submit-pr"
+                    class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]" id="btn-submit-pr-icon">save</span>
                     <span id="btn-submit-pr-text">Simpan & Ajukan</span>
                 </button>
             </div>
@@ -344,20 +496,23 @@
 
     <!-- ZONA: RIGHT DRAWER (PR DETAIL INSPECTOR) -->
     <div id="right-drawer-backdrop" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30 hidden"></div>
-    <div id="right-drawer" class="fixed top-0 right-0 bottom-0 w-[450px] bg-white shadow-2xl z-40 flex flex-col border-l border-slate-200 transform translate-x-full transition-transform duration-300">
+    <div id="right-drawer"
+        class="fixed top-0 right-0 bottom-0 w-[450px] bg-white shadow-2xl z-40 flex flex-col border-l border-slate-200 transform translate-x-full transition-transform duration-300">
         <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div>
                 <h2 class="text-lg font-black text-slate-800 font-data-mono" id="drawer-pr-id">PR/MTK/0000/0000</h2>
                 <div class="flex items-center gap-2 mt-1">
                     <span class="w-2 h-2 rounded-full" id="drawer-status-dot"></span>
-                    <p class="text-xs font-bold uppercase tracking-widest text-slate-500" id="drawer-pr-status">STATUS</p>
+                    <p class="text-xs font-bold uppercase tracking-widest text-slate-500" id="drawer-pr-status">STATUS
+                    </p>
                 </div>
             </div>
-            <button id="btn-close-drawer" class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors">
+            <button id="btn-close-drawer"
+                class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
-        
+
         <div class="flex-1 overflow-y-auto p-6 bg-white custom-scroll">
             <!-- Vendor Info -->
             <div class="mb-6">
@@ -380,9 +535,12 @@
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
                                 <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase">Material</th>
-                                <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Jumlah</th>
-                                <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Harga</th>
-                                <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Subtotal</th>
+                                <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Jumlah
+                                </th>
+                                <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Harga
+                                </th>
+                                <th class="py-2 px-3 text-[10px] font-bold text-slate-500 uppercase text-right">Subtotal
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="drawer-items-list" class="divide-y divide-slate-100 text-xs">
@@ -390,8 +548,10 @@
                         </tbody>
                         <tfoot class="bg-slate-50">
                             <tr>
-                                <td colspan="3" class="py-3 px-3 text-right font-bold text-slate-600 text-xs">TOTAL HARGA:</td>
-                                <td class="py-3 px-3 text-right font-black text-primary font-data-mono" id="drawer-total-nilai">Rp 0</td>
+                                <td colspan="3" class="py-3 px-3 text-right font-bold text-slate-600 text-xs">TOTAL
+                                    HARGA:</td>
+                                <td class="py-3 px-3 text-right font-black text-primary font-data-mono"
+                                    id="drawer-total-nilai">Rp 0</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -405,9 +565,127 @@
         </div>
     </div>
 
+    <!-- Modal Kelola Status Vendor (SRM) -->
+    <div id="modal-srm-status"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col transform scale-95 transition-transform duration-300"
+            id="modal-srm-status-content">
+            <div class="flex items-center justify-between p-5 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">gavel</span> Kelola Status Vendor
+                </h3>
+                <button id="btn-close-srm-status" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-5">
+                <h4 class="font-bold text-slate-800 text-sm mb-1" id="srm-status-vendor-name">Nama Vendor</h4>
+                <p class="text-xs text-slate-500 mb-5">Ubah status operasional dan berikan rating untuk vendor ini.</p>
+                <form id="form-srm-status">
+                    <input type="hidden" id="srm-status-vendor-id">
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Status
+                            Vendor</label>
+                        <select id="srm-input-status" name="status_vendor" required
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer">
+                            <option value="AKTIF">AKTIF</option>
+                            <option value="INAKTIF">INAKTIF</option>
+                            <option value="BLACKLIST">BLACKLIST</option>
+                        </select>
+                    </div>
+                    <div class="mb-4 hidden" id="srm-alasan-container">
+                        <label
+                            class="block text-xs font-bold text-rose-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">warning</span> Alasan Blacklist
+                        </label>
+                        <textarea id="srm-input-alasan" name="alasan_blacklist" rows="3"
+                            class="w-full bg-rose-50 border border-rose-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all"
+                            placeholder="Tulis alasan pelanggaran atau masalah vendor..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Skor Rating
+                            (1-5)</label>
+                        <input id="srm-input-skor" name="skor_rating" type="number" step="0.1" min="1" max="5" required
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-data-mono outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    </div>
+                </form>
+            </div>
+            <div class="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
+                <button type="button" id="btn-cancel-srm-status"
+                    class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors">Batal</button>
+                <button type="submit" form="form-srm-status" id="btn-submit-srm-status"
+                    class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all">Simpan
+                    Perubahan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form Vendor (SRM) -->
+    <div id="modal-srm-vendor"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] transform scale-95 transition-transform duration-300"
+            id="modal-srm-vendor-content">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
+                <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2"
+                    id="srm-vendor-modal-title">
+                    <span class="material-symbols-outlined text-primary">domain_add</span> Tambah Vendor Baru
+                </h3>
+                <button id="btn-close-srm-vendor" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 custom-scroll">
+                <form id="form-srm-vendor">
+                    <input type="hidden" id="srm-input-id-vendor">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Kode
+                                Vendor</label>
+                            <input id="srm-input-kode" name="kode_vendor" type="text"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-data-mono outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Nama
+                                Vendor *</label>
+                            <input id="srm-input-nama" name="nama_vendor" type="text" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Kategori /
+                            Spesialisasi</label>
+                        <input id="srm-input-kategori" name="kategori" type="text"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Kontak Person
+                            / Telepon</label>
+                        <input id="srm-input-kontak" name="kontak" type="text"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Lokasi Peta (Google Maps)</label>
+                        <div id="srm-map-vendor" class="w-full h-[200px] bg-slate-200 rounded-lg mb-2 overflow-hidden border border-slate-300"></div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Alamat Lengkap</label>
+                        <textarea id="srm-input-alamat" name="alamat" rows="3" required placeholder="Ketik untuk mencari alamat..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"></textarea>
+                        <p class="text-[10px] text-slate-400 mt-1 italic">*Anda dapat mencari alamat atau paste dari Google Maps, map otomatis menyesuaikan.</p>
+                    </div>
+                </form>
+            </div>
+            <div class="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0 rounded-b-2xl">
+                <button type="button" id="btn-cancel-srm-vendor"
+                    class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors">Batal</button>
+                <button type="submit" form="form-srm-vendor" id="btn-submit-srm-vendor"
+                    class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-primary-container transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">save</span> Simpan Data
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirm Modal -->
     <div id="confirm-modal"
-        class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-6 opacity-0 transition-opacity duration-300">
+        class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm p-6 opacity-0 transition-opacity duration-300">
         <div class="w-full max-w-md rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/30 p-6 transform scale-95 transition-transform duration-300"
             id="confirm-modal-box">
             <div class="flex items-start gap-4">
@@ -430,14 +708,7 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container">
-        <div class="toast bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-outline-variant/20 min-w-[320px] opacity-0 pointer-events-none transition-opacity duration-300"
-            id="toast">
-            <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
-            <span class="text-sm font-medium" id="toast-message"></span>
-        </div>
-    </div>
+    {{> toast }}
 
     <script type="module" src="/src/pages/pengadaan.ts"></script>
 </body>

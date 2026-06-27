@@ -1,0 +1,20 @@
+<!-- HEADER -->
+<header class="h-16 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between px-6 shrink-0 z-10">
+    <div class="flex items-center gap-4">
+        <button id="btn-hamburger" class="p-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors">
+            <span class="material-symbols-outlined text-[24px]">menu</span>
+        </button>
+        <span class="text-headline-md text-on-surface font-bold">{{title}}</span>
+    </div>
+    <div class="flex items-center gap-6">
+        <a href="/profil.html" class="flex items-center gap-3 cursor-pointer select-none block group transition-all" title="Lihat Profil Saya">
+            <div class="text-right">
+                <p id="header-nama" class="text-sm font-bold leading-none text-on-surface">Memuat...</p>
+                <p id="header-role" class="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-0.5">-</p>
+            </div>
+            <div id="header-avatar-container" class="w-10 h-10 rounded-full border-2 border-amber-400 bg-slate-800 flex items-center justify-center text-amber-400 font-bold shadow-sm overflow-hidden">
+                <span id="header-inisial">--</span>
+            </div>
+        </a>
+    </div>
+</header>
