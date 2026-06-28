@@ -28,6 +28,7 @@ interface KPIData {
     pendapatan_kotor: number;
     total_hpp: number;
     laba_bersih: number;
+    total_kas_bank: number;
 }
 
 interface KPIResponse {
@@ -66,10 +67,12 @@ async function loadKPI(): Promise<void> {
         if (response.success) {
             const d = response.data;
 
+            const elKas = document.getElementById('kpi-kas');
             const elAset = document.getElementById('kpi-aset');
             const elPendapatan = document.getElementById('kpi-pendapatan');
             const elLaba = document.getElementById('kpi-laba');
 
+            if (elKas) elKas.textContent = formatRupiah(d.total_kas_bank);
             if (elAset) elAset.textContent = formatRupiah(d.total_aset_persediaan);
             if (elPendapatan) elPendapatan.textContent = formatRupiah(d.pendapatan_kotor);
             if (elLaba) {
