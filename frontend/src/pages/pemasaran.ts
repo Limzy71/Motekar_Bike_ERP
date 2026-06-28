@@ -842,9 +842,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (tab === 'campaigns') {
             loadCampaigns();
         }
-    }, 3000);
+    }, 30000);
 });
-
 
 // ============================================================
 // CETAK PENAWARAN MODAL
