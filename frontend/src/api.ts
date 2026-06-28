@@ -8,7 +8,8 @@
  * - Type-safe getUserData helper
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5050/api';
+const API_BASE = import.meta.env.VITE_API_URL || 
+  (import.meta.env.MODE === 'production' ? '/api' : 'http://127.0.0.1:5050/api');
 
 /** Struktur data user yang disimpan di localStorage setelah login */
 export interface UserData {
