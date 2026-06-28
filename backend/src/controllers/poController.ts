@@ -33,9 +33,10 @@ export async function generatePONumber(connection: any): Promise<string> {
 export const getAllPO = async (req: Request, res: Response): Promise<void> => {
     try {
         const [headers]: any = await pool.query(`
-            SELECT p.*, v.nama_vendor 
+            SELECT p.*, v.nama_vendor, pb.surat_jalan_vendor 
             FROM pengadaan_po_header p
             LEFT JOIN master_vendor v ON p.id_vendor = v.id
+            LEFT JOIN penerimaan_barang pb ON pb.id_po_header = p.id
             ORDER BY p.created_at DESC
         `);
 
@@ -166,13 +167,24 @@ export const updatePOStatus = async (req: Request, res: Response): Promise<void>
         } else if (status === 'COMPLETED' && currentStatus === 'SENT_TO_VENDOR') {
             if (role !== 'Gudang' && role !== 'Owner' && role !== 'General Manager' && role !== 'Pengadaan') throw new Error('Akses ditolak: Hanya Gudang/Executive yang bisa menerima barang (GRN).');
             
-            // Execute GRN (Goods Receipt Note): Update inventory_stok
+            // Execute GRN (Goods Receipt Note): Update inventory_stok & create penerimaan record
             const [details]: any = await connection.query('SELECT id_inventory_material, qty FROM pengadaan_po_detail WHERE id_po_header = ?', [poId]);
             
+            const [grInsert]: any = await connection.query(
+                'INSERT INTO penerimaan_barang (id_po_header, penerima, surat_jalan_vendor, catatan) VALUES (?, ?, ?, ?)',
+                [poId, user.nama || user.username || 'System', `SJ-${po.nomor_po.split('-').pop()}`, 'Auto-generated GRN via Sistem']
+            );
+            const grId = grInsert.insertId;
+
             for (const item of details) {
                 await connection.query(
                     'UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE id = ?',
                     [item.qty, item.id_inventory_material]
+                );
+                
+                await connection.query(
+                    'INSERT INTO detail_penerimaan (id_penerimaan, id_inventory_material, qty_diterima, kondisi) VALUES (?, ?, ?, ?)',
+                    [grId, item.id_inventory_material, item.qty, 'BAIK']
                 );
             }
 
@@ -433,13 +445,24 @@ export const bulkReceivePO = async (req: Request, res: Response): Promise<void> 
 
         let count = 0;
         for (const po of pos) {
-            // Execute GRN: Update inventory_stok
+            // Execute GRN: Update inventory_stok & create penerimaan record
             const [details]: any = await connection.query('SELECT id_inventory_material, qty FROM pengadaan_po_detail WHERE id_po_header = ?', [po.id]);
             
+            const [grInsert]: any = await connection.query(
+                'INSERT INTO penerimaan_barang (id_po_header, penerima, surat_jalan_vendor, catatan) VALUES (?, ?, ?, ?)',
+                [po.id, user.nama || user.username || 'System', `SJ-${po.nomor_po.split('-').pop()}`, 'Auto-generated Bulk GRN via Sistem']
+            );
+            const grId = grInsert.insertId;
+
             for (const item of details) {
                 await connection.query(
                     'UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE id = ?',
                     [item.qty, item.id_inventory_material]
+                );
+                
+                await connection.query(
+                    'INSERT INTO detail_penerimaan (id_penerimaan, id_inventory_material, qty_diterima, kondisi) VALUES (?, ?, ?, ?)',
+                    [grId, item.id_inventory_material, item.qty, 'BAIK']
                 );
             }
 

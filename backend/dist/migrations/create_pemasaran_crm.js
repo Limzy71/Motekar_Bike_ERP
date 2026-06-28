@@ -18,6 +18,7 @@ async function migrate() {
       kontak_person VARCHAR(100) NOT NULL,
       no_telepon VARCHAR(30) NOT NULL,
       id_campaign INT,
+      alamat TEXT,
       estimasi_nilai_deal DECIMAL(15, 2) NOT NULL DEFAULT 0,
       status_pipeline ENUM('New Lead', 'Follow Up', 'Negosiasi', 'Won_Deal', 'Lost') NOT NULL DEFAULT 'New Lead',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

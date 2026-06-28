@@ -3,13 +3,13 @@ import { login, refreshToken, logout } from './controllers/authController.js';
 import { validateRequest } from './middlewares/validateRequest.js';
 import { loginSchema } from './schemas/authSchema.js';
 import { authenticate, requireRole } from './middlewares/authMiddleware.js';
+import { upload } from './middlewares/upload.js';
 import { getDashboard } from './controllers/dashboardController.js';
 import { getAllPR, createPR, approvePR, bulkApprovePR, deletePR, bulkDeletePR, getVendors, getItems, createRestockRequest, getPendingRequests, completeRequest, getReorderAlerts, autoGeneratePR } from './controllers/pengadaanController.js';
-import { generatePO, updatePOStatus, getAllPO, getPODetails, bulkGeneratePO, createDirectPO, deletePO, bulkReceivePO, bulkApprovePO } from './controllers/poController.js';
-import { getAllStok, stokMasuk, opnameStok, getPendingPO, getPendingPODetails, receiveGoods } from './controllers/gudangController.js';
+import { generatePO, updatePOStatus, getAllPO, getPODetails, bulkGeneratePO, createDirectPO, deletePO, bulkReceivePO, bulkApprovePO, bulkIssuePO } from './controllers/poController.js';
+import { getAllStok, stokMasuk, opnameStok, getPendingPO, getPendingPODetails, receiveGoods, getReceiptHistory } from './controllers/gudangController.js';
 import { getVendorsSRM, createVendor, updateVendor, updateVendorStatus } from './controllers/vendorController.js';
 import { createVendorSchema, updateVendorStatusSchema } from './schemas/vendorSchema.js';
-import { goodsReceiptSchema } from './schemas/inventorySchema.js';
 const router = Router();
 // Alias Auth untuk Jenderal
 const executiveAuth = [authenticate, requireRole('Owner', 'General Manager')];
@@ -44,6 +44,7 @@ const poGeneralAuth = [authenticate]; // Actually handled in controller based on
 const poReadAuth = [authenticate, requireRole('Owner', 'General Manager', 'Pengadaan', 'Operasi Inti', 'Gudang')];
 router.get('/pengadaan/po', poReadAuth, getAllPO);
 router.post('/pengadaan/po/direct', pengadaanWriteAuth, createDirectPO);
+router.post('/pengadaan/po/bulk-issue', poGeneralAuth, bulkIssuePO);
 router.post('/pengadaan/po/bulk-receive', poGeneralAuth, bulkReceivePO); // Handled by controller logic
 router.post('/pengadaan/po/bulk-approve', poApprovalAuth, bulkApprovePO); // Executive Action
 router.delete('/pengadaan/po/:id', pengadaanWriteAuth, deletePO);
@@ -73,9 +74,10 @@ router.get('/gudang', gudangReadAuth, getAllStok);
 router.post('/gudang/masuk', gudangAuth, stokMasuk);
 router.patch('/gudang/opname/:id', gudangAuth, opnameStok);
 // Goods Receipt Endpoints
+router.get('/gudang/receipts', gudangReadAuth, getReceiptHistory);
 router.get('/gudang/po-pending', gudangAuth, getPendingPO);
 router.get('/gudang/po-pending/:id', gudangAuth, getPendingPODetails);
-router.post('/gudang/receive', gudangAuth, validateRequest(goodsReceiptSchema), receiveGoods);
+router.post('/gudang/receive', gudangAuth, upload.fields([{ name: 'foto_barang' }, { name: 'foto_surat_jalan' }, { name: 'foto_packaging' }]), receiveGoods);
 // ============================================================
 // MODUL OPERASI INTI (Manufaktur & Perakitan)
 // Akses: Owner, General Manager, Operasi Inti
@@ -99,13 +101,14 @@ router.post('/mutu/inspeksi', mutuAuth, submitInspeksi);
 import { getAllSO, createSO, triggerWO, fulfillSO, shipSO, deliverSO, getProducts } from './controllers/penjualanController.js';
 import { calculateShipping } from './controllers/mapsController.js';
 const penjualanAuth = [authenticate, requireRole('Owner', 'General Manager', 'Penjualan & Penagihan')];
+const penjualanGudangAuth = [authenticate, requireRole('Owner', 'General Manager', 'Penjualan & Penagihan', 'Gudang')];
 router.post('/maps/calculate-shipping', penjualanAuth, calculateShipping);
-router.get('/penjualan/so', penjualanAuth, getAllSO);
+router.get('/penjualan/so', penjualanGudangAuth, getAllSO);
 router.post('/penjualan/so', penjualanAuth, createSO);
 router.post('/penjualan/so/detail/:idDetail/trigger-wo', penjualanAuth, triggerWO);
 router.patch('/penjualan/so/:id/fulfill', penjualanAuth, fulfillSO);
-router.patch('/penjualan/so/:id/ship', penjualanAuth, shipSO);
-router.patch('/penjualan/so/:id/deliver', penjualanAuth, deliverSO);
+router.patch('/penjualan/so/:id/ship', penjualanGudangAuth, shipSO);
+router.patch('/penjualan/so/:id/deliver', penjualanAuth, upload.single('foto_bukti_terima'), deliverSO);
 router.get('/penjualan/products', penjualanAuth, getProducts);
 // ============================================================
 // MODUL MRP (Material Requirements Planning & BOM)
@@ -134,13 +137,15 @@ router.post('/finance/ap/pay', keuanganAuth, validateRequest(paymentSchema), pay
 // ============================================================
 // MODUL PENJUALAN (Order-to-Cash)
 // ============================================================
-import { getSalesOrders, createSalesOrder, shipSalesOrder } from './controllers/salesController.js';
+import { getSalesOrders, createSalesOrder, shipSalesOrder, deliverSalesOrder } from './controllers/salesController.js';
 import { createSOSchema } from './schemas/salesSchema.js';
 const salesAuth = [authenticate, requireRole('Owner', 'General Manager', 'Pemasaran & Penjualan')];
+const salesReadAuth = [authenticate, requireRole('Owner', 'General Manager', 'Pemasaran & Penjualan', 'Gudang')];
 const logistikOutboundAuth = [authenticate, requireRole('Owner', 'General Manager', 'Gudang')];
-router.get('/sales/orders', salesAuth, getSalesOrders);
+router.get('/sales/orders', salesReadAuth, getSalesOrders);
 router.post('/sales/orders', salesAuth, validateRequest(createSOSchema), createSalesOrder);
 router.patch('/sales/orders/:id/ship', logistikOutboundAuth, shipSalesOrder);
+router.post('/sales/deliver/:id', logistikOutboundAuth, upload.single('foto_bukti_terima'), deliverSalesOrder);
 // ============================================================
 // MODUL PROFIL & USER MANAGEMENT
 // IT Support hanya ada di sini.
@@ -195,13 +200,28 @@ router.patch('/aftersales/klaim/:id/investigate', klaimInvestigateAuth, investig
 // ============================================================
 // MODUL EXCEPTION HANDLING & KENDALI DARURAT
 // ============================================================
-import { submitRTV, reportFailedDelivery, rescheduleDelivery, submitWriteOff, approveWriteOff, getWriteOffs } from './controllers/exceptionController.js';
+import { submitRTV, reportFailedDelivery, rescheduleDelivery, submitWriteOff, approveWriteOff, rejectWriteOff, getWriteOffs, getFailedDeliveries } from './controllers/exceptionController.js';
 const exceptionAuth = [authenticate, requireRole('Owner', 'General Manager', 'Gudang', 'Kendali Mutu')];
 const logistikAuth = [authenticate, requireRole('Owner', 'General Manager', 'Gudang', 'Pemasaran & Penjualan')];
 router.post('/exception/rtv', exceptionAuth, submitRTV);
 router.patch('/exception/so/:id/failed-delivery', logistikAuth, reportFailedDelivery);
 router.patch('/exception/so/:id/reschedule', logistikAuth, rescheduleDelivery);
-router.post('/exception/writeoff', exceptionAuth, submitWriteOff);
+router.post('/exception/writeoff', exceptionAuth, upload.single('bukti_berita_acara'), submitWriteOff);
 router.patch('/exception/writeoff/:id/approve', executiveAuth, approveWriteOff);
+router.patch('/exception/writeoff/:id/reject', executiveAuth, rejectWriteOff);
 router.get('/exception/writeoff', exceptionAuth, getWriteOffs);
+router.get('/exception/failed-deliveries', exceptionAuth, getFailedDeliveries);
+// ============================================================
+// MODUL CRM & AFTER-SALES
+// ============================================================
+import { submitOnboarding, verifyProspect, getProspects, submitWarrantyClaim, getWarrantyClaims, investigateWarrantyClaim } from './controllers/crmController.js';
+const crmAuth = [authenticate, requireRole('Owner', 'General Manager', 'Pemasaran & Penjualan')];
+// Onboarding
+router.get('/crm/onboarding', crmAuth, getProspects);
+router.post('/crm/onboarding', upload.single('dokumen_nib'), crmAuth, submitOnboarding);
+router.post('/crm/onboarding/:id/verify', crmAuth, verifyProspect);
+// Warranty
+router.get('/crm/warranty', [authenticate, requireRole('Owner', 'General Manager', 'Pemasaran & Penjualan', 'Kendali Mutu')], getWarrantyClaims);
+router.post('/crm/warranty/claim', upload.single('foto_kerusakan'), crmAuth, submitWarrantyClaim);
+router.patch('/crm/warranty/:id/investigate', [authenticate, requireRole('Owner', 'Kendali Mutu')], investigateWarrantyClaim);
 export default router;

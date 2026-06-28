@@ -5,6 +5,7 @@
 
 import { apiFetch } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
+import { renderPaginationUI } from '../utils/pagination.js';
 
 interface InventoryItem {
   id: number;
@@ -97,7 +98,7 @@ function renderTable(): void {
 
   if (filteredData.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">Tidak ada data stok yang sesuai.</td></tr>`;
-    updatePaginationUI();
+    renderPaginationUI('gudang-pagination-pagination', 'gudang-pagination-info', 1, 10, 0, () => {});
     return;
   }
 
@@ -155,68 +156,20 @@ function renderTable(): void {
     `;
     tbody.appendChild(tr);
   });
-
-  updatePaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+    renderPaginationUI(
+        'gudang-pagination-pagination',
+        'gudang-pagination-info',
+        currentPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentPage = newPage;
+            renderTable();
+        }
+    );
 }
 
-function updatePaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
-    const infoText = document.getElementById('gudang-pagination-info');
-    const btnPrev = document.getElementById('gudang-btn-prev') as HTMLButtonElement;
-    const btnNext = document.getElementById('gudang-btn-next') as HTMLButtonElement;
-    const pagesContainer = document.getElementById('gudang-pagination-pages');
 
-    if (infoText) {
-        if (total === 0) {
-            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
-        } else {
-            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
-        }
-    }
-
-    if (btnPrev) {
-        btnPrev.disabled = currentPage <= 1;
-        btnPrev.onclick = () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderTable();
-            }
-        };
-    }
-
-    if (btnNext) {
-        btnNext.disabled = currentPage >= totalPages;
-        btnNext.onclick = () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderTable();
-            }
-        };
-    }
-
-    if (pagesContainer) {
-        pagesContainer.innerHTML = '';
-        if (totalPages > 1) {
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                const btn = document.createElement('button');
-                btn.className = `w-7 h-7 rounded-lg text-xs font-bold transition-colors ${i === currentPage ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`;
-                btn.textContent = i.toString();
-                btn.onclick = () => {
-                    currentPage = i;
-                    renderTable();
-                };
-                pagesContainer.appendChild(btn);
-            }
-        }
-    }
-}
 
 // ============================================================
 // FILTER & SEARCH HANDLERS
@@ -788,6 +741,13 @@ async function loadWriteOffs() {
                     <td class="px-4 py-3 text-center font-data-mono font-bold">${wo.qty_hilang}</td>
                     <td class="px-4 py-3 text-slate-600 max-w-[200px] truncate" title="${wo.alasan_hilang}">${wo.alasan_hilang}</td>
                     <td class="px-4 py-3 text-center">${badge}</td>
+                    <td class="px-4 py-3 text-center">
+                        ${wo.status_approval === 'PENDING' && (localStorage.getItem('userRole') === 'Owner' || localStorage.getItem('userRole') === 'General Manager') ? 
+                            `<button onclick="window.approveWriteoff(${wo.id_writeoff})" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold hover:bg-emerald-600 hover:text-white transition-colors mr-1">Approve</button>
+                             <button onclick="window.rejectWriteoff(${wo.id_writeoff})" class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold hover:bg-rose-600 hover:text-white transition-colors">Reject</button>`
+                        : ''}
+                        <button onclick="window.open('http://localhost:3000/uploads/${wo.bukti_berita_acara}', '_blank')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors ml-1">Cetak / Lihat</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -944,9 +904,13 @@ function renderReceiptTable() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
+    const btnBulk = document.getElementById('btn-bulk-receipt');
     if (pendingPOs.length === 0) {
+        if (btnBulk) btnBulk.classList.add('hidden');
         tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada Purchase Order yang menunggu penerimaan.</td></tr>`;
         return;
+    } else {
+        if (btnBulk) btnBulk.classList.remove('hidden');
     }
 
     pendingPOs.forEach(po => {
@@ -1135,3 +1099,18 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (tab === 'receipt') loadPendingPO();
   }, 30000);
 });
+
+(window as any).approveWriteoff = async (id: number) => {
+            if (confirm('Approve write-off ini?')) {
+                const res = await apiFetch<any>(`exception/writeoff/${id}/approve`, { method: 'PATCH' });
+                showToast(res.message, !res.success);
+                if (res.success) loadWriteOffs();
+            }
+        };
+(window as any).rejectWriteoff = async (id: number) => {
+            if (confirm('Reject write-off ini?')) {
+                const res = await apiFetch<any>(`exception/writeoff/${id}/reject`, { method: 'PATCH' });
+                showToast(res.message, !res.success);
+                if (res.success) loadWriteOffs();
+            }
+        };

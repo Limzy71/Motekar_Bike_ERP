@@ -140,13 +140,27 @@
                     </div>
 
                 <!-- KPI Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <!-- Kas & Bank -->
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-5 flex flex-col justify-between hover:shadow-sm transition-shadow border-l-4 border-l-violet-500 relative overflow-hidden">
+                        <div class="absolute -top-4 -right-4 w-20 h-20 bg-violet-500/5 rounded-full"></div>
+                        <div>
+                            <p class="text-[11px] font-bold text-violet-600 uppercase tracking-wider mb-1">Saldo Kas & Bank</p>
+                            <p class="text-lg xl:text-xl font-black text-violet-700 font-data-mono leading-tight truncate" id="kpi-kas" title="Saldo Kas & Bank">Rp 0</p>
+                            <p class="text-[10px] text-slate-400 mt-1">Total aset likuid perusahaan</p>
+                        </div>
+                        <div class="flex items-center gap-1 mt-3 text-[11px] text-violet-600 font-semibold">
+                            <span class="material-symbols-outlined text-[16px]">account_balance_wallet</span>
+                            <span>Cash on Hand</span>
+                        </div>
+                    </div>
+
                     <!-- Total Aset Persediaan -->
                     <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs p-6 flex flex-col justify-between hover:shadow-sm transition-shadow border-l-4 border-l-primary relative overflow-hidden">
                         <div class="absolute -top-4 -right-4 w-20 h-20 bg-primary/5 rounded-full"></div>
                         <div>
                             <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Aset Persediaan</p>
-                            <p class="text-2xl font-black text-slate-900 font-data-mono leading-tight" id="kpi-aset">Rp 0</p>
+                            <p class="text-lg xl:text-xl font-black text-slate-900 font-data-mono leading-tight truncate" id="kpi-aset" title="Total Aset Persediaan">Rp 0</p>
                             <p class="text-[10px] text-slate-400 mt-1">Nilai kumulatif barang di gudang (HPP)</p>
                         </div>
                         <div class="flex items-center gap-1 mt-3 text-[11px] text-primary font-semibold">
@@ -160,7 +174,7 @@
                         <div class="absolute -top-4 -right-4 w-20 h-20 bg-emerald-500/5 rounded-full"></div>
                         <div>
                             <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Pendapatan Kotor Bulan Ini</p>
-                            <p class="text-2xl font-black text-emerald-700 font-data-mono leading-tight" id="kpi-pendapatan">Rp 0</p>
+                            <p class="text-lg xl:text-xl font-black text-emerald-700 font-data-mono leading-tight truncate" id="kpi-pendapatan" title="Pendapatan Kotor">Rp 0</p>
                             <p class="text-[10px] text-slate-400 mt-1">Akumulasi revenue bulan berjalan</p>
                         </div>
                         <div class="flex items-center gap-1 mt-3 text-[11px] text-emerald-600 font-semibold">
@@ -174,7 +188,7 @@
                         <div class="absolute -top-4 -right-4 w-20 h-20 bg-amber-500/5 rounded-full"></div>
                         <div>
                             <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">Laba Bersih (Profit)</p>
-                            <p class="text-2xl font-black font-data-mono leading-tight" id="kpi-laba">Rp 0</p>
+                            <p class="text-lg xl:text-xl font-black font-data-mono leading-tight truncate" id="kpi-laba" title="Laba Bersih">Rp 0</p>
                             <p class="text-[10px] text-slate-400 mt-1">Pendapatan − HPP (Bulan Berjalan)</p>
                         </div>
                         <div class="flex items-center gap-1 mt-3 text-[11px] text-amber-600 font-semibold">
@@ -217,20 +231,10 @@
                 </div>
                 
                 <!-- Pagination Controls -->
-                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="keuangan-pagination-info">Menampilkan 0-0 dari 0 data</p>
-                    <div class="flex items-center gap-1.5">
-                        <button id="keuangan-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
-                        </button>
-                        <div id="keuangan-pagination-pages" class="flex items-center gap-1">
-                            <!-- Page buttons injected via TS -->
-                        </div>
-                        <button id="keuangan-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-                        </button>
+                <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="keuangan-pagination-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="keuangan-pagination-pagination"></div>
                     </div>
-                </div>
 
                 </div> <!-- End of section-dashboard -->
 
@@ -247,7 +251,7 @@
                     <!-- Sub-section: Un-invoiced Receipts -->
                     <div class="mb-8">
                         <h3 class="font-bold text-slate-800 text-sm mb-4">Antrean Tagihan (Un-Invoiced Receipts)</h3>
-                        <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                        <div class="bg-white border border-b-0 border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
                             <table class="w-full border-collapse table-auto">
                                 <thead>
                                     <tr class="bg-slate-50/75 border-b border-slate-200/80">
@@ -261,12 +265,18 @@
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- Pagination Controls: Pending Receipts -->
+                        <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="ap-pending-pagination-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="ap-pending-pagination-pagination"></div>
+                    </div>
                     </div>
 
                     <!-- Sub-section: Invoices -->
                     <div>
                         <h3 class="font-bold text-slate-800 text-sm mb-4">Daftar Hutang (Invoices)</h3>
-                        <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                        <div class="bg-white border border-b-0 border-slate-200/80 rounded-t-xl shadow-2xs overflow-hidden">
                             <table class="w-full border-collapse table-auto">
                                 <thead>
                                     <tr class="bg-slate-50/75 border-b border-slate-200/80">
@@ -282,6 +292,12 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Pagination Controls: Invoices -->
+                        <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="ap-invoice-pagination-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="ap-invoice-pagination-pagination"></div>
+                    </div>
                     </div>
                 </div> <!-- End Section AP -->
             </div>
@@ -289,11 +305,11 @@
     </div>
 
     <!-- Modal Create Invoice -->
-    <div id="modal-invoice" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+    <div id="modal-invoice" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
         <div id="modal-invoice-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-rose-50">
                 <h3 class="text-lg font-bold text-rose-900">Buat Tagihan AP (3-Way Match)</h3>
-                <button id="btn-close-invoice" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
+                <button id="btn-close-invoice" class="text-slate-400 hover:text-slate-600 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
             </div>
             <div class="p-6">
                 <form id="form-invoice" class="space-y-4">
@@ -307,7 +323,7 @@
 
                     <div>
                         <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Nomor Tagihan Vendor</label>
-                        <input type="text" name="no_tagihan_vendor" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none uppercase focus:border-rose-400">
+                        <input type="text" name="no_tagihan_vendor" required readonly class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none uppercase bg-slate-100 text-slate-500 cursor-not-allowed font-medium">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -321,7 +337,8 @@
                     </div>
                     <div>
                         <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Total Nominal di Tagihan</label>
-                        <input type="number" name="total_tagihan" id="inv-total-input" required class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none font-data-mono">
+                        <input type="text" name="total_tagihan_formatted" id="inv-total-input" required readonly class="w-full text-sm border-slate-200 rounded-lg px-3 py-2 outline-none font-data-mono bg-slate-100 text-slate-500 cursor-not-allowed font-bold" oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')">
+                        <input type="hidden" name="total_tagihan" id="inv-total-hidden">
                     </div>
                 </form>
             </div>
@@ -335,11 +352,11 @@
     </div>
 
     <!-- Modal Pay Invoice -->
-    <div id="modal-pay" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+    <div id="modal-pay" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
         <div id="modal-pay-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-blue-50">
                 <h3 class="text-lg font-bold text-blue-900">Pembayaran Tagihan</h3>
-                <button id="btn-close-pay" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
+                <button id="btn-close-pay" class="text-slate-400 hover:text-slate-600 p-1 rounded-full"><span class="material-symbols-outlined text-[20px]">close</span></button>
             </div>
             <div class="p-6">
                 <form id="form-pay" class="space-y-4">

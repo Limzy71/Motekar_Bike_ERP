@@ -7,6 +7,7 @@
     <title>Gudang & Inventori - Motekar ERP</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
@@ -56,7 +57,7 @@
             position: fixed;
             bottom: 1.5rem;
             right: 1.5rem;
-            z-index: 60;
+            z-index: 9999;
             pointer-events: none;
             transform: translateY(24px);
             opacity: 0;
@@ -178,20 +179,10 @@
                 </div>
 
                 <!-- Pagination Controls -->
-                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="gudang-pagination-info">Menampilkan 0-0 dari 0 data</p>
-                    <div class="flex items-center gap-1.5">
-                        <button id="gudang-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
-                        </button>
-                        <div id="gudang-pagination-pages" class="flex items-center gap-1">
-                            <!-- Page buttons injected via TS -->
-                        </div>
-                        <button id="gudang-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-                        </button>
+                <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="gudang-pagination-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="gudang-pagination-pagination"></div>
                     </div>
-                </div>
                 </div> <!-- End Section Master -->
 
                 <!-- SECTION 2: OUTBOUND LOGISTICS -->
@@ -228,6 +219,10 @@
                             <p class="text-sm font-bold text-slate-800">Daftar Purchase Order Menunggu Penerimaan</p>
                             <p class="text-xs text-slate-500">Pilih PO dari Vendor yang sudah tiba untuk melakukan validasi kualitas dan kuantitas barang.</p>
                         </div>
+                        <button id="btn-bulk-receipt" onclick="window.openBulkReceiptModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">fact_check</span>
+                            Terima Barang Massal
+                        </button>
                     </div>
 
                     <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
@@ -247,15 +242,80 @@
                                 </tr>
                             </tbody>
                         </table>
+
+                        <!-- Pagination Pending PO -->
+                        <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="pending-pagination-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="pending-pagination-pagination"></div>
                     </div>
+                    </div>
+
+                    <!-- RIWAYAT PENERIMAAN BARANG -->
+                    <div class="mt-8 mb-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-bold text-slate-800">Riwayat Penerimaan (Goods Receipt History)</p>
+                            <p class="text-xs text-slate-500">Daftar Purchase Order yang sudah selesai divalidasi dan masuk ke Master Stok.</p>
+                        </div>
+                        <button onclick="window.loadReceiptHistory()" class="text-xs font-semibold text-primary hover:text-primary-dark flex items-center gap-1 transition-colors">
+                            <span class="material-symbols-outlined text-[16px]">refresh</span>
+                            Perbarui Data
+                        </button>
+                    </div>
+
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
+                        <table class="w-full border-collapse table-auto data-table">
+                            <thead>
+                                <tr class="border-b border-slate-200/80 bg-slate-50/75">
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">TANGGAL (GR)</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">REFERENSI PO</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">SURAT JALAN</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">PENERIMA</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">CATATAN</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-receipt-history" class="divide-y divide-slate-100 text-xs">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-slate-500">Memuat riwayat...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Pagination History -->
+                        <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="history-pagination-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="history-pagination-pagination"></div>
+                    </div>
+                    </div>
+
                 </div> <!-- End Section Receipt -->
 
                 <!-- SECTION EXCEPTION / WRITE-OFF -->
                 <div id="section-exception" class="hidden">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-base font-bold text-slate-800">Antrean Write-Off & Karantina</h3>
-                        <button id="btn-ajukan-writeoff" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow flex items-center gap-2 transition-colors">
-                            <span class="material-symbols-outlined text-[18px]">warning</span> Ajukan Write-Off Kehilangan
+                        <h3 class="text-base font-bold text-slate-800">Antrean Pesanan Gagal Kirim (Karantina)</h3>
+                    </div>
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden mb-6">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-4 py-3 font-bold text-slate-600">NOMOR SO</th>
+                                    <th class="px-4 py-3 font-bold text-slate-600">CUSTOMER</th>
+                                    <th class="px-4 py-3 font-bold text-slate-600">TANGGAL GAGAL</th>
+                                    <th class="px-4 py-3 font-bold text-slate-600 text-center">AKSI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-failed-deliveries" class="divide-y divide-slate-100">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-8 text-center text-slate-500">Memuat data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-bold text-slate-800">Pengajuan Write-Off (Barang Hilang/Rusak)</h3>
+                        <button id="btn-ajukan-writeoff" class="px-4 py-2 bg-rose-600 text-white rounded-lg font-bold text-sm hover:bg-rose-700 transition-colors shadow-sm flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">add_circle</span> Ajukan Kehilangan
                         </button>
                     </div>
                     <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden">
@@ -266,7 +326,7 @@
                                     <th class="px-4 py-3 font-bold text-slate-600">KODE BARANG</th>
                                     <th class="px-4 py-3 font-bold text-slate-600 text-center">QTY HILANG</th>
                                     <th class="px-4 py-3 font-bold text-slate-600">ALASAN</th>
-                                    <th class="px-4 py-3 font-bold text-slate-600 text-center">STATUS</th>
+                                    <th class="px-4 py-3 font-bold text-slate-600 text-center">STATUS</th><th class="px-4 py-3 font-bold text-slate-600 text-center">AKSI</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-writeoff" class="divide-y divide-slate-100">
@@ -282,11 +342,11 @@
     </div>
 
     <!-- Backdrop Modal Form (Barang Masuk) -->
-    <div id="modal-inbound" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+    <div id="modal-inbound" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
         <div id="modal-inbound-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <h3 class="text-lg font-bold text-slate-900">Catat Barang Masuk</h3>
-                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-full transition-colors">
+                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition-colors">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -362,13 +422,13 @@
     </div>
 
     <!-- Modal Goods Receipt -->
-    <div id="modal-receipt" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+    <div id="modal-receipt" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
         <div id="modal-receipt-content" class="bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-emerald-50">
                 <h3 class="text-lg font-bold text-emerald-900 flex items-center gap-2">
                     <span class="material-symbols-outlined">inventory</span> Form Penerimaan Barang
                 </h3>
-                <button id="btn-close-receipt" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full transition-colors">
+                <button id="btn-close-receipt" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition-colors">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -383,8 +443,8 @@
                             <input type="text" id="input-receipt-po-no" disabled class="w-full text-sm border-slate-200 bg-slate-50 text-slate-500 rounded-lg px-3 py-2 outline-none font-bold">
                         </div>
                         <div>
-                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Surat Jalan Vendor (Opsional)</label>
-                            <input type="text" name="surat_jalan_vendor" id="input-receipt-sj" placeholder="SJ-XXXXX" class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all uppercase">
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Surat Jalan Vendor</label>
+                            <input type="text" name="surat_jalan_vendor" id="input-receipt-sj" readonly placeholder="SJ-XXXXX" class="w-full text-sm border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium rounded-lg px-3 py-2 outline-none uppercase">
                         </div>
                     </div>
 
@@ -436,12 +496,82 @@
         </div>
     </div>
 
+    <!-- Modal Bulk Receipt -->
+    <div id="modal-bulk-receipt" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
+        <div id="modal-bulk-receipt-content" class="bg-white rounded-2xl shadow-xl w-full max-w-5xl mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-emerald-50">
+                <h3 class="text-lg font-bold text-emerald-900 flex items-center gap-2">
+                    <span class="material-symbols-outlined">fact_check</span> Form Penerimaan Barang Massal
+                </h3>
+                <button id="btn-close-bulk-receipt" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto">
+                <form id="form-bulk-receipt" class="space-y-5">
+                    
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Foto Fisik Barang (e-POD)</label>
+                            <input type="file" name="foto_barang" accept="image/*" required class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all border border-slate-200 rounded-lg p-1 bg-white">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Foto Surat Jalan (e-POD)</label>
+                            <input type="file" name="foto_surat_jalan" accept="image/*" required class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all border border-slate-200 rounded-lg p-1 bg-white">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Foto Packaging (e-POD)</label>
+                            <input type="file" name="foto_packaging" accept="image/*" required class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all border border-slate-200 rounded-lg p-1 bg-white">
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-lg overflow-hidden">
+                        <div class="max-h-64 overflow-y-auto">
+                            <table class="w-full text-xs">
+                                <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="py-2 px-3 text-left font-bold text-slate-600">NOMOR PO</th>
+                                        <th class="py-2 px-3 text-left font-bold text-slate-600">KODE</th>
+                                        <th class="py-2 px-3 text-left font-bold text-slate-600">NAMA BARANG</th>
+                                        <th class="py-2 px-3 text-center font-bold text-slate-600">QTY PO</th>
+                                        <th class="py-2 px-3 text-center font-bold text-slate-600 w-24">QTY TERIMA</th>
+                                        <th class="py-2 px-3 text-center font-bold text-slate-600 w-28">KONDISI</th>
+                                        <th class="py-2 px-3 text-left font-bold text-slate-600 w-32">SURAT JALAN</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-bulk-receipt-items" class="divide-y divide-slate-100">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Catatan Penerimaan (Global)</label>
+                        <textarea name="catatan" rows="2" placeholder="Catatan tambahan (opsional)..." class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all"></textarea>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+                <p class="text-xs text-slate-500 font-medium" id="bulk-receipt-info">Memuat data...</p>
+                <div class="flex gap-3">
+                    <button type="button" id="btn-cancel-bulk-receipt" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors">Batal</button>
+                    <button type="submit" form="form-bulk-receipt" id="btn-submit-bulk-receipt" class="px-5 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px] hidden" id="spinner-bulk-receipt">sync</span>
+                        Terima Semua & Update Stok
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Opname -->
-    <div id="modal-opname" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+    <div id="modal-opname" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
         <div id="modal-opname-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <h3 class="text-lg font-bold text-slate-900">Penyesuaian Stock Opname</h3>
-                <button id="btn-close-opname" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-full transition-colors">
+                <button id="btn-close-opname" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition-colors">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -484,23 +614,24 @@
 
 
     <!-- MODAL WRITE-OFF -->
-    <div id="modal-writeoff" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
+    <div id="modal-writeoff" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
         <div id="modal-writeoff-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-rose-50">
                 <h3 class="text-lg font-bold text-rose-900 flex items-center gap-2">
                     <span class="material-symbols-outlined">warning</span> Form Write-Off Kehilangan
                 </h3>
-                <button id="btn-close-writeoff" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full transition-colors">
+                <button id="btn-close-writeoff" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition-colors">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
             
-            <div class="p-6">
+            <div class="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 <form id="form-writeoff" class="space-y-4">
                     <div>
-                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Barang / Komponen</label>
+                        <label id="wo-label-item" class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Barang / Komponen</label>
                         <select id="wo-kode-item" class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 transition-all">
                         </select>
+                        <input type="text" id="wo-kode-item-readonly" readonly class="hidden w-full text-sm border-slate-200 bg-slate-50 text-slate-600 rounded-lg px-3 py-2 outline-none">
                     </div>
 
                     <div>
@@ -519,6 +650,11 @@
                         </label>
                         <input type="file" id="wo-bukti" accept="image/*,application/pdf" required class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-rose-100 file:text-rose-700 hover:file:bg-rose-200 cursor-pointer border border-slate-200 p-1 bg-white rounded-lg" name="bukti_berita_acara">
                         <p class="text-[10px] text-slate-400 mt-2 italic">*Format PDF atau Foto Berita Acara tertanda tangan.</p>
+                        <div id="wo-preview-container" class="mt-3 hidden">
+                            <p class="text-[11px] font-semibold text-slate-600 mb-1">Preview Dokumen:</p>
+                            <img id="wo-preview-img" class="hidden max-h-48 rounded-lg border border-slate-200 object-contain w-full bg-white p-1" />
+                            <iframe id="wo-preview-pdf" class="hidden w-full h-64 border border-slate-200 rounded-lg bg-white"></iframe>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -536,18 +672,18 @@
     {{> toast }}
 
     <!-- MODAL DISPATCH 3PL -->
-    <div id="modal-dispatch-3pl" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-2xs opacity-0 transition-all duration-300">
-        <div id="modal-dispatch-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col">
+    <div id="modal-dispatch-3pl" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-all duration-300">
+        <div id="modal-dispatch-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-blue-50">
                 <h3 class="text-lg font-bold text-blue-900 flex items-center gap-2">
                     <span class="material-symbols-outlined">local_shipping</span> Dispatch 3PL
                 </h3>
-                <button id="btn-close-dispatch" class="text-slate-400 hover:text-slate-600 hover:bg-white/50 p-1 rounded-full transition-colors">
+                <button id="btn-close-dispatch" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition-colors">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
             
-            <div class="p-6">
+            <div class="p-6 overflow-y-auto flex-1">
                 <p class="text-xs text-slate-500 mb-4">Lengkapi form manifes dan <strong class="text-rose-600">unggah foto bukti fisik serah terima</strong> unit dengan kurir 3PL.</p>
                 <form id="form-dispatch" class="space-y-4">
                     <input type="hidden" id="input-dispatch-so-id">
@@ -560,19 +696,45 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Vendor Logistik (3PL)</label>
-                            <input type="text" id="input-vendor-3pl" required placeholder="mis: Dakota Cargo" class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all">
+                            <select id="input-vendor-3pl" required class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all">
+                                <option value="">-- Pilih Ekspedisi --</option>
+                                <option value="Dakota Cargo">Dakota Cargo</option>
+                                <option value="Indah Logistik Cargo">Indah Logistik Cargo</option>
+                                <option value="JNE Trucking (JTR)">JNE Trucking (JTR)</option>
+                                <option value="Deliveree">Deliveree</option>
+                                <option value="Lalamove">Lalamove</option>
+                            </select>
                         </div>
                         <div>
                             <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Nomor Resi / Manifes</label>
-                            <input type="text" id="input-resi-3pl" required placeholder="DKT-XXXXX" class="w-full text-sm border-slate-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all uppercase">
+                            <input type="text" id="input-resi-3pl" required placeholder="Otomatis diisi..." readonly class="w-full text-sm border-slate-200 bg-slate-50 text-slate-600 rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-data-mono font-bold">
                         </div>
                     </div>
 
-                    <div class="mt-4 p-3 border border-dashed border-slate-300 rounded-xl bg-slate-50">
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Nama Supir / Kurir</label>
+                            <input type="text" id="input-supir-3pl" required placeholder="Otomatis diisi..." readonly class="w-full text-sm border-slate-200 bg-slate-50 text-slate-600 rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-data-mono font-bold">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Plat Nomor Kendaraan</label>
+                            <input type="text" id="input-plat-3pl" required placeholder="Otomatis diisi..." readonly class="w-full text-sm border-slate-200 bg-slate-50 text-slate-600 rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-data-mono font-bold uppercase">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1 block">Nomor Telepon Supir</label>
+                        <input type="text" id="input-telepon-3pl" required placeholder="Otomatis diisi..." readonly class="w-full text-sm border-slate-200 bg-slate-50 text-slate-600 rounded-lg px-3 py-2 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-data-mono font-bold">
+                    </div>
+
+                    <div class="mt-4 p-3 border border-dashed border-slate-300 rounded-xl bg-slate-50 relative">
                         <label class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1">
                             <span class="material-symbols-outlined text-[16px]">photo_camera</span> Bukti Foto Serah Terima (Wajib)
                         </label>
                         <input type="file" id="input-foto-3pl" required accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                        <div id="preview-container-3pl" class="hidden mt-3 border border-slate-200 rounded-lg overflow-hidden bg-white flex justify-center p-2 h-40">
+                            <img id="preview-foto-3pl" src="" alt="Preview" class="h-full object-contain">
+                        </div>
                         <p class="text-[10px] text-slate-400 mt-2 italic">*Foto unit yang sudah dipacking diserahkan ke kurir / bukti resi fisik.</p>
                     </div>
                 </form>
@@ -589,6 +751,7 @@
     </div>
 
     <script type="module" src="/src/pages/gudang.ts"></script>
+    <!-- Force Vite Reload -->
 </body>
 
 </html>

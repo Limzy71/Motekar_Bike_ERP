@@ -19,7 +19,7 @@ export const submitInspeksi = async (req, res) => {
             return;
         }
         // Ambil data WO saat ini (dari arsitektur Header-Detail)
-        const [woData] = await connection.query(`SELECT w.id, w.jumlah_produksi, w.status, i.kode_barang as kode_sepeda, i.nama_barang
+        const [woData] = await connection.query(`SELECT w.id, w.jumlah_produksi, w.status, w.id_inventory_fg, i.kode_barang as kode_sepeda, i.nama_barang
        FROM operasi_wo_header w
        JOIN inventory_stok i ON w.id_inventory_fg = i.id
        WHERE w.id = ?`, [woId]);
@@ -40,12 +40,28 @@ export const submitInspeksi = async (req, res) => {
             // SKENARIO A: LOLOS QC
             // 1. Ubah status menjadi 'COMPLETED' dan bersihkan data rework/qc
             await connection.query("UPDATE operasi_wo_header SET status = 'COMPLETED', catatan_rework = NULL, qc_history = NULL WHERE id = ?", [woId]);
-            // 2. Tambah stok gudang
+            // 2. BACKFLUSHING ENGINE: Ambil resep komponen dari master_bom
+            const [bomRows] = await connection.query('SELECT komponen_id, qty_dibutuhkan FROM master_bom WHERE barang_jadi_id = ?', [wo.id_inventory_fg]);
+            for (const bom of bomRows) {
+                const totalKebutuhan = bom.qty_dibutuhkan * wo.jumlah_produksi;
+                // Cek stok komponen di WIP dengan Pessimistic Lock
+                const [kompRows] = await connection.query('SELECT jumlah_stok, nama_barang, lokasi FROM inventory_stok WHERE id = ? FOR UPDATE', [bom.komponen_id]);
+                if (kompRows.length === 0) {
+                    throw new Error(`Komponen dengan ID ${bom.komponen_id} tidak ditemukan di gudang.`);
+                }
+                const komponen = kompRows[0];
+                if (komponen.jumlah_stok < totalKebutuhan) {
+                    throw new Error(`Stok komponen ${komponen.nama_barang} tidak mencukupi di ${komponen.lokasi}! Butuh: ${totalKebutuhan}, Tersedia: ${komponen.jumlah_stok}`);
+                }
+                // Kurangi stok (Backflush)
+                await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE id = ?', [totalKebutuhan, bom.komponen_id]);
+            }
+            // 3. Tambah stok gudang (Barang Jadi)
             const [stokUpdateResult] = await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE kode_barang = ?', [wo.jumlah_produksi, wo.kode_sepeda]);
             if (stokUpdateResult.affectedRows === 0) {
                 throw new Error(`Kode Sepeda ${wo.kode_sepeda} tidak ditemukan di master gudang.`);
             }
-            // 3. AUTOMATED FINANCIAL LEDGER — Catat jurnal HPP masuk ke Aset Persediaan
+            // 4. AUTOMATED FINANCIAL LEDGER — Catat jurnal HPP masuk ke Aset Persediaan
             const hppPerUnit = await calculateHPP(connection, wo.kode_sepeda);
             const totalNilaiHPP = hppPerUnit * wo.jumlah_produksi;
             // Ambil nomor WO untuk referensi dokumen

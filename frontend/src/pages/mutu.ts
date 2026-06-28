@@ -5,6 +5,7 @@
 
 import { apiFetch } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
+import { renderPaginationUI } from '../utils/pagination.js';
 
 interface WorkOrder {
     id: number;
@@ -94,7 +95,7 @@ function renderData(): void {
 
     if (queueSelesai.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Tidak ada antrean Work Order yang menunggu inspeksi QC.</td></tr>`;
-        updatePaginationUI();
+    renderPaginationUI('mutu-pagination-pagination', 'mutu-pagination-info', 1, 10, 0, () => {});
         return;
     }
 
@@ -133,6 +134,9 @@ function renderData(): void {
             </td>
             <td class="px-4 py-3 text-center">
                 <button class="btn-inspeksi text-slate-400 hover:text-primary hover:bg-primary-container/30 px-3 py-1.5 rounded-md transition-all font-bold tracking-wide flex items-center justify-center gap-1.5 w-full border border-transparent hover:border-primary/20" data-id="${wo.id}">
+                <button class="btn-cetak-qc text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-md transition-all font-bold tracking-wide flex items-center justify-center gap-1.5 w-full mt-1 border border-transparent hover:border-emerald-200" onclick="window.print()">
+                    <span class="material-symbols-outlined text-[16px]">print</span> Cetak Label QC
+                </button>
                     <span class="material-symbols-outlined text-[16px]">search</span> Inspeksi
                 </button>
             </td>
@@ -142,68 +146,20 @@ function renderData(): void {
         
         tbody.appendChild(tr);
     });
-
-    updatePaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+    renderPaginationUI(
+        'mutu-pagination-pagination',
+        'mutu-pagination-info',
+        currentPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentPage = newPage;
+            renderData();
+        }
+    );
 }
 
-function updatePaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
-    const infoText = document.getElementById('mutu-pagination-info');
-    const btnPrev = document.getElementById('mutu-btn-prev') as HTMLButtonElement;
-    const btnNext = document.getElementById('mutu-btn-next') as HTMLButtonElement;
-    const pagesContainer = document.getElementById('mutu-pagination-pages');
 
-    if (infoText) {
-        if (total === 0) {
-            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
-        } else {
-            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
-        }
-    }
-
-    if (btnPrev) {
-        btnPrev.disabled = currentPage <= 1;
-        btnPrev.onclick = () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderData();
-            }
-        };
-    }
-
-    if (btnNext) {
-        btnNext.disabled = currentPage >= totalPages;
-        btnNext.onclick = () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderData();
-            }
-        };
-    }
-
-    if (pagesContainer) {
-        pagesContainer.innerHTML = '';
-        if (totalPages > 1) {
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                const btn = document.createElement('button');
-                btn.className = `w-7 h-7 rounded-lg text-xs font-bold transition-colors ${i === currentPage ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`;
-                btn.textContent = i.toString();
-                btn.onclick = () => {
-                    currentPage = i;
-                    renderData();
-                };
-                pagesContainer.appendChild(btn);
-            }
-        }
-    }
-}
 
 // ============================================================
 // INVESTIGASI KLAIM GARANSI

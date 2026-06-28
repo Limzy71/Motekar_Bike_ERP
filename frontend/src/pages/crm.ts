@@ -1,9 +1,18 @@
 import { apiFetch } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
+import { renderPaginationUI } from '../utils/pagination.js';
 
 let masterSO: any[] = [];
 let currentUser: any = null;
 let currentKlaimId: string | null = null;
+
+let allOnboarding: any[] = [];
+let onboardingCurrentPage = 1;
+const onboardingPerPage = 10;
+
+let allWarranty: any[] = [];
+let warrantyCurrentPage = 1;
+const warrantyPerPage = 10;
 
 // ─── HELPERS ────────────────────────────────────────────────
 function toast(msg: string, isError = false) {
@@ -74,43 +83,75 @@ async function loadOnboarding() {
     tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-10 text-center text-sm text-slate-400">Memuat...</td></tr>`;
     try {
         const res = await apiFetch<any>('crm/onboarding');
-        if (!res.success || !res.data?.length) {
+        if (res.success) {
+            allOnboarding = res.data || [];
+            onboardingCurrentPage = 1;
+            renderOnboarding();
+        } else {
             tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-10 text-center text-sm text-slate-400 italic">Belum ada data prospek.</td></tr>`;
-            return;
+            renderPaginationUI('onboarding-pagination', 'onboarding-page-info', 1, 10, 0, () => {});
         }
-        tbody.innerHTML = '';
-        res.data.forEach((item: any) => {
-            const statusMap: Record<string, string> = {
-                'PROSPEK': 'bg-amber-50 text-amber-700 border-amber-200',
-                'VERIFIED': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                'REJECTED': 'bg-rose-50 text-rose-700 border-rose-200',
-            };
-            const badge = statusMap[item.status] || 'bg-slate-50 text-slate-600 border-slate-200';
-            const canVerify = item.status === 'PROSPEK';
-            const tr = document.createElement('tr');
-            tr.className = `hover:bg-slate-50 transition-colors text-xs ${canVerify ? 'cursor-pointer' : ''}`;
-            if (canVerify) tr.onclick = () => (window as any).verifyProspect(item.id);
-            tr.innerHTML = `
-                <td class="py-3 px-4 font-data-mono font-bold text-primary">PROS-${item.id}</td>
-                <td class="py-3 px-4 font-semibold text-slate-800">${item.nama_toko}</td>
-                <td class="py-3 px-4 text-slate-600">${item.pic}</td>
-                <td class="py-3 px-4 text-slate-600">${item.kontak}</td>
-                <td class="py-3 px-4 text-center">
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${badge}">${item.status}</span>
-                </td>
-                <td class="py-3 px-4 text-center">
-                    ${canVerify
-                        ? `<button onclick="event.stopPropagation(); window.verifyProspect(${item.id})"
-                            class="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-[11px] font-bold transition-colors">
-                            Verifikasi
-                           </button>`
-                        : `<span class="text-slate-300 text-[11px]">—</span>`}
-                </td>`;
-            tbody.appendChild(tr);
-        });
     } catch {
         tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-500">Gagal memuat data.</td></tr>`;
     }
+}
+
+function renderOnboarding() {
+    const tbody = document.getElementById('onboarding-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (allOnboarding.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-10 text-center text-sm text-slate-400 italic">Belum ada data prospek.</td></tr>`;
+        renderPaginationUI('onboarding-pagination', 'onboarding-page-info', 1, 10, 0, () => {});
+        return;
+    }
+    
+    const totalItems = allOnboarding.length;
+    const totalPages = Math.ceil(totalItems / onboardingPerPage);
+    if (onboardingCurrentPage < 1) onboardingCurrentPage = 1;
+    if (onboardingCurrentPage > totalPages) onboardingCurrentPage = totalPages;
+    
+    const startIndex = (onboardingCurrentPage - 1) * onboardingPerPage;
+    const currentItems = allOnboarding.slice(startIndex, startIndex + onboardingPerPage);
+    
+    currentItems.forEach((item: any) => {
+        const statusMap: Record<string, string> = {
+            'PROSPEK': 'bg-amber-50 text-amber-700 border-amber-200',
+            'VERIFIED': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            'REJECTED': 'bg-rose-50 text-rose-700 border-rose-200',
+        };
+        const badge = statusMap[item.status] || 'bg-slate-50 text-slate-600 border-slate-200';
+        const canVerify = item.status === 'PROSPEK';
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-50 transition-colors text-xs ${canVerify ? 'cursor-pointer' : ''}`;
+        if (canVerify) tr.onclick = () => (window as any).verifyProspect(item.id);
+        tr.innerHTML = `
+            <td class="py-3 px-4 font-data-mono font-bold text-primary">PROS-${item.id}</td>
+            <td class="py-3 px-4 font-semibold text-slate-800">${item.nama_toko}</td>
+            <td class="py-3 px-4 text-slate-600">${item.pic}</td>
+            <td class="py-3 px-4 text-slate-600">${item.kontak}</td>
+            <td class="py-3 px-4 text-center">
+                <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${badge}">${item.status}</span>
+            </td>
+            <td class="py-3 px-4 text-center">
+                ${canVerify
+                    ? `<button onclick="event.stopPropagation(); window.verifyProspect(${item.id})"
+                        class="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-[11px] font-bold transition-colors">
+                        Verifikasi
+                       </button>`
+                    : `<span class="text-slate-300 text-[11px]">—</span>`}
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    
+    renderPaginationUI(
+        'onboarding-pagination',
+        'onboarding-page-info',
+        onboardingCurrentPage,
+        onboardingPerPage,
+        totalItems,
+        (newPage) => { onboardingCurrentPage = newPage; renderOnboarding(); }
+    );
 }
 
 // ─── WARRANTY / KLAIM ────────────────────────────────────────
@@ -121,56 +162,88 @@ async function loadWarranty() {
     tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-10 text-center text-sm text-slate-400">Memuat...</td></tr>`;
     try {
         const res = await apiFetch<any>('aftersales/klaim');
-        if (!res.success || !res.data?.length) {
+        if (res.success) {
+            allWarranty = res.data || [];
+            warrantyCurrentPage = 1;
+            renderWarrantyStats(allWarranty);
+            renderWarranty();
+            
+            // Badge count for pending
+            const pending = allWarranty.filter((k: any) => k.status_klaim === 'SUBMITTED').length;
+            const badge = document.getElementById('badge-warranty');
+            if (badge) {
+                if (pending > 0) { badge.textContent = pending.toString(); badge.classList.remove('hidden'); }
+                else badge.classList.add('hidden');
+            }
+        } else {
             tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-10 text-center text-sm text-slate-400 italic">Belum ada tiket klaim garansi.</td></tr>`;
             renderWarrantyStats([]);
-            return;
-        }
-        renderWarrantyStats(res.data);
-        tbody.innerHTML = '';
-        res.data.forEach((k: any) => {
-            const statusMap: Record<string, { cls: string; label: string }> = {
-                'SUBMITTED':       { cls: 'bg-blue-50 text-blue-700 border-blue-200',    label: 'Submitted' },
-                'IN_INSPECTION':   { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Inspeksi' },
-                'APPROVED_REPLACE':{ cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Ganti Unit' },
-                'APPROVED_REWORK': { cls: 'bg-teal-50 text-teal-700 border-teal-200',    label: 'Rework' },
-                'REJECTED':        { cls: 'bg-rose-50 text-rose-700 border-rose-200',    label: 'Ditolak' },
-            };
-            const s = statusMap[k.status_klaim] || { cls: 'bg-slate-100 text-slate-600 border-slate-200', label: k.status_klaim };
-            const tgl = k.tanggal_klaim ? new Date(k.tanggal_klaim).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-            const keluhan = k.deskripsi_keluhan || '—';
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-50 transition-colors text-xs cursor-pointer';
-            tr.onclick = () => (window as any).openInvestigasi(k);
-            tr.innerHTML = `
-                <td class="py-3 px-4 font-data-mono font-bold text-primary">${k.id_klaim}</td>
-                <td class="py-3 px-4 font-semibold text-slate-800">${k.nama_retailer || '—'}</td>
-                <td class="py-3 px-4 font-data-mono text-slate-700">${k.kode_item_fg || '—'}</td>
-                <td class="py-3 px-4 text-slate-500">${k.nomor_so || '—'}</td>
-                <td class="py-3 px-4 text-slate-500">${tgl}</td>
-                <td class="py-3 px-4 text-slate-600 max-w-[160px] truncate" title="${keluhan}">${keluhan}</td>
-                <td class="py-3 px-4 text-center">
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${s.cls}">${s.label}</span>
-                </td>
-                <td class="py-3 px-4 text-center">
-                    <button onclick="event.stopPropagation(); window.openInvestigasi(${JSON.stringify(k).replace(/"/g, '&quot;')})"
-                        class="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors">
-                        <span class="material-symbols-outlined text-[16px]">manage_search</span>
-                    </button>
-                </td>`;
-            tbody.appendChild(tr);
-        });
-
-        // Badge count for pending
-        const pending = res.data.filter((k: any) => k.status_klaim === 'SUBMITTED').length;
-        const badge = document.getElementById('badge-warranty');
-        if (badge) {
-            if (pending > 0) { badge.textContent = pending.toString(); badge.classList.remove('hidden'); }
-            else badge.classList.add('hidden');
+            renderPaginationUI('warranty-pagination', 'warranty-page-info', 1, 10, 0, () => {});
         }
     } catch {
         tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-sm text-rose-500">Gagal memuat data klaim.</td></tr>`;
     }
+}
+
+function renderWarranty() {
+    const tbody = document.getElementById('warranty-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (allWarranty.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-10 text-center text-sm text-slate-400 italic">Belum ada tiket klaim garansi.</td></tr>`;
+        renderPaginationUI('warranty-pagination', 'warranty-page-info', 1, 10, 0, () => {});
+        return;
+    }
+    
+    const totalItems = allWarranty.length;
+    const totalPages = Math.ceil(totalItems / warrantyPerPage);
+    if (warrantyCurrentPage < 1) warrantyCurrentPage = 1;
+    if (warrantyCurrentPage > totalPages) warrantyCurrentPage = totalPages;
+    
+    const startIndex = (warrantyCurrentPage - 1) * warrantyPerPage;
+    const currentItems = allWarranty.slice(startIndex, startIndex + warrantyPerPage);
+    
+    currentItems.forEach((k: any) => {
+        const statusMap: Record<string, { cls: string; label: string }> = {
+            'SUBMITTED':       { cls: 'bg-blue-50 text-blue-700 border-blue-200',    label: 'Submitted' },
+            'IN_INSPECTION':   { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Inspeksi' },
+            'APPROVED_REPLACE':{ cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Ganti Unit' },
+            'APPROVED_REWORK': { cls: 'bg-teal-50 text-teal-700 border-teal-200',    label: 'Rework' },
+            'REJECTED':        { cls: 'bg-rose-50 text-rose-700 border-rose-200',    label: 'Ditolak' },
+        };
+        const s = statusMap[k.status_klaim] || { cls: 'bg-slate-100 text-slate-600 border-slate-200', label: k.status_klaim };
+        const tgl = k.tanggal_klaim ? new Date(k.tanggal_klaim).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+        const keluhan = k.deskripsi_keluhan || '—';
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition-colors text-xs cursor-pointer';
+        tr.onclick = () => (window as any).openInvestigasi(k);
+        tr.innerHTML = `
+            <td class="py-3 px-4 font-data-mono font-bold text-primary">${k.id_klaim}</td>
+            <td class="py-3 px-4 font-semibold text-slate-800">${k.nama_retailer || '—'}</td>
+            <td class="py-3 px-4 font-data-mono text-slate-700">${k.kode_item_fg || '—'}</td>
+            <td class="py-3 px-4 text-slate-500">${k.nomor_so || '—'}</td>
+            <td class="py-3 px-4 text-slate-500">${tgl}</td>
+            <td class="py-3 px-4 text-slate-600 max-w-[160px] truncate" title="${keluhan}">${keluhan}</td>
+            <td class="py-3 px-4 text-center">
+                <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${s.cls}">${s.label}</span>
+            </td>
+            <td class="py-3 px-4 text-center">
+                <button onclick="event.stopPropagation(); window.openInvestigasi(${JSON.stringify(k).replace(/"/g, '&quot;')})"
+                    class="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">manage_search</span>
+                </button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    
+    renderPaginationUI(
+        'warranty-pagination',
+        'warranty-page-info',
+        warrantyCurrentPage,
+        warrantyPerPage,
+        totalItems,
+        (newPage) => { warrantyCurrentPage = newPage; renderWarranty(); }
+    );
 }
 
 function renderWarrantyStats(data: any[]) {
@@ -261,15 +334,69 @@ async function submitInvestigasi() {
 }
 
 // ─── VERIFY PROSPECT ─────────────────────────────────────────
-(window as any).verifyProspect = async (id: number) => {
-    if (!confirm('Verifikasi prospek ini? Akun Retailer akan dibuat secara otomatis.')) return;
-    try {
-        const res = await apiFetch<any>(`crm/onboarding/${id}/verify`, { method: 'POST' });
-        if (res.success) {
-            toast(`✅ Terverifikasi! Username: ${res.data?.username}`);
-            await loadOnboarding();
-        } else toast(res.message, true);
-    } catch { toast('Gagal memverifikasi prospek.', true); }
+(window as any).verifyProspect = (id: number) => {
+    const prospek = allOnboarding.find((p: any) => p.id === id);
+    if (!prospek) return;
+
+    const modal = document.getElementById('modal-verifikasi-prospek');
+    const content = document.getElementById('modal-verifikasi-prospek-content');
+    
+    const elToko = document.getElementById('detail-nama-toko');
+    if (elToko) elToko.textContent = prospek.nama_toko;
+    
+    const elPic = document.getElementById('detail-pic');
+    if (elPic) elPic.textContent = prospek.pic;
+    
+    const elKontak = document.getElementById('detail-kontak');
+    if (elKontak) elKontak.textContent = prospek.kontak;
+    
+    const elAlamat = document.getElementById('detail-alamat');
+    if (elAlamat) elAlamat.textContent = prospek.alamat || '—';
+
+    const elDokumen = document.getElementById('detail-dokumen-nib') as HTMLAnchorElement;
+    if (elDokumen) {
+        if (prospek.dokumen_nib) {
+            const apiBase = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5050/api';
+            const uploadBase = apiBase.replace('/api', '/uploads/crm/onboarding/');
+            elDokumen.href = uploadBase + prospek.dokumen_nib;
+            elDokumen.classList.remove('hidden');
+        } else {
+            elDokumen.removeAttribute('href');
+            elDokumen.classList.add('hidden');
+        }
+    }
+
+    const oldBtn = document.getElementById('btn-submit-verifikasi');
+    if (oldBtn) {
+        const newBtn = oldBtn.cloneNode(true);
+        oldBtn.parentNode?.replaceChild(newBtn, oldBtn);
+        newBtn.addEventListener('click', async () => {
+            const spinner = document.getElementById('spinner-verifikasi');
+            if (spinner) spinner.classList.remove('hidden');
+            (newBtn as HTMLButtonElement).disabled = true;
+
+            try {
+                const res = await apiFetch<any>(`crm/onboarding/${id}/verify`, { method: 'POST' });
+                if (res.success) {
+                    toast(`✅ Terverifikasi! Username: ${res.data?.username}`);
+                    closeModal('modal-verifikasi-prospek');
+                    await loadOnboarding();
+                } else {
+                    toast(res.message, true);
+                }
+            } catch {
+                toast('Gagal memverifikasi prospek.', true);
+            } finally {
+                if (spinner) spinner.classList.add('hidden');
+                (newBtn as HTMLButtonElement).disabled = false;
+            }
+        });
+    }
+
+    if (modal && content) {
+        modal.classList.remove('hidden');
+        setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+    }
 };
 
 // ─── MODAL SETUP ─────────────────────────────────────────────
@@ -280,6 +407,8 @@ function setupModals() {
     document.getElementById('btn-close-klaim')?.addEventListener('click', () => closeModal('modal-klaim'));
     document.getElementById('btn-cancel-klaim')?.addEventListener('click', () => closeModal('modal-klaim'));
     document.getElementById('btn-close-investigasi')?.addEventListener('click', () => closeModal('modal-investigasi'));
+    document.getElementById('btn-close-verifikasi')?.addEventListener('click', () => closeModal('modal-verifikasi-prospek'));
+    document.getElementById('btn-cancel-verifikasi')?.addEventListener('click', () => closeModal('modal-verifikasi-prospek'));
 
     // Open prospek modal
     document.getElementById('btn-add-prospek')?.addEventListener('click', () => {

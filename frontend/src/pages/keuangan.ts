@@ -5,6 +5,7 @@
 
 import { apiFetch } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
+import { renderPaginationUI } from '../utils/pagination.js';
 
 interface JurnalEntry {
     id_jurnal: number;
@@ -38,6 +39,13 @@ interface KPIResponse {
 let allJurnal: JurnalEntry[] = [];
 let currentPage = 1;
 const itemsPerPage = 10;
+
+let allPendingReceipts: any[] = [];
+let pendingReceiptsCurrentPage = 1;
+const apItemsPerPage = 10;
+
+let allInvoices: any[] = [];
+let invoicesCurrentPage = 1;
 
 // ============================================================
 // FORMATTERS
@@ -109,7 +117,7 @@ function renderTable(): void {
 
     if (allJurnal.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Buku Besar masih kosong. Jurnal akan terisi otomatis saat terjadi transaksi QC atau Penjualan.</td></tr>`;
-        updatePaginationUI();
+    renderPaginationUI('keuangan-pagination-pagination', 'keuangan-pagination-info', 1, 10, 0, () => {});
         return;
     }
 
@@ -178,68 +186,9 @@ function renderTable(): void {
         `;
         tbody.appendChild(tr);
     });
-
-    updatePaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+    renderPaginationUI('keuangan-pagination-pagination', 'keuangan-pagination-info', currentPage, itemsPerPage, totalItems, (newPage) => { currentPage = newPage; renderTable(); });
 }
 
-function updatePaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
-    const infoText = document.getElementById('keuangan-pagination-info');
-    const btnPrev = document.getElementById('keuangan-btn-prev') as HTMLButtonElement;
-    const btnNext = document.getElementById('keuangan-btn-next') as HTMLButtonElement;
-    const pagesContainer = document.getElementById('keuangan-pagination-pages');
-
-    if (infoText) {
-        if (total === 0) {
-            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
-        } else {
-            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
-        }
-    }
-
-    if (btnPrev) {
-        btnPrev.disabled = currentPage <= 1;
-        btnPrev.onclick = () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderTable();
-            }
-        };
-    }
-
-    if (btnNext) {
-        btnNext.disabled = currentPage >= totalPages;
-        btnNext.onclick = () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderTable();
-            }
-        };
-    }
-
-    if (pagesContainer) {
-        pagesContainer.innerHTML = '';
-        if (totalPages > 1) {
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                const btn = document.createElement('button');
-                btn.className = `w-7 h-7 rounded-lg text-xs font-bold transition-colors ${i === currentPage ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`;
-                btn.textContent = i.toString();
-                btn.onclick = () => {
-                    currentPage = i;
-                    renderTable();
-                };
-                pagesContainer.appendChild(btn);
-            }
-        }
-    }
-}
 
 // ============================================================
 // INIT
@@ -320,94 +269,118 @@ function switchTab(tab: 'dashboard' | 'ap') {
 async function loadPendingReceipts() {
     const tbody = document.getElementById('tbody-pending-receipts');
     if (!tbody) return;
-
     try {
         const res = await apiFetch<any>('finance/ap/pending-receipts');
         if (res.success) {
-            tbody.innerHTML = '';
-            const data = res.data;
+            allPendingReceipts = res.data;
+            pendingReceiptsCurrentPage = 1;
+            renderPendingReceipts();
             const badge = document.getElementById('badge-ap');
             if (badge) {
-                if (data.length > 0) {
-                    badge.textContent = data.length.toString();
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.classList.add('hidden');
-                }
+                if (allPendingReceipts.length > 0) { badge.textContent = allPendingReceipts.length.toString(); badge.classList.remove('hidden'); }
+                else { badge.classList.add('hidden'); }
             }
-
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-slate-500">Tidak ada antrean tagihan.</td></tr>`;
-                return;
-            }
-
-            data.forEach((item: any) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-4 py-3 font-semibold text-slate-700">${new Date(item.tanggal_terima).toLocaleDateString('id-ID')}</td>
-                    <td class="px-4 py-3">
-                        <p class="font-data-mono font-bold text-primary">${item.nomor_po}</p>
-                        <p class="text-[10px] text-slate-500 uppercase font-bold">${item.nama_vendor}</p>
-                    </td>
-                    <td class="px-4 py-3 text-center font-data-mono font-bold">${item.total_qty_terima} item</td>
-                    <td class="px-4 py-3 text-center">
-                        <button class="px-3 py-1 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded text-[11px] font-bold border border-rose-200 transition-colors" onclick="window.openInvoiceModal(${item.id_po_header}, ${item.id_penerimaan}, '${item.nomor_po}')">Buat Tagihan</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
         }
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-rose-500">Gagal memuat antrean tagihan.</td></tr>`;
     }
 }
 
+function renderPendingReceipts() {
+    const tbody = document.getElementById('tbody-pending-receipts');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (allPendingReceipts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-slate-500">Tidak ada antrean tagihan.</td></tr>`;
+        renderPaginationUI('ap-pending-pagination-pagination', 'ap-pending-pagination-info', 1, 10, 0, () => {});
+        return;
+    }
+    const totalItems = allPendingReceipts.length;
+    const totalPages = Math.ceil(totalItems / apItemsPerPage);
+    if (pendingReceiptsCurrentPage < 1) pendingReceiptsCurrentPage = 1;
+    if (pendingReceiptsCurrentPage > totalPages) pendingReceiptsCurrentPage = totalPages;
+    const startIndex = (pendingReceiptsCurrentPage - 1) * apItemsPerPage;
+    const currentItems = allPendingReceipts.slice(startIndex, startIndex + apItemsPerPage);
+    currentItems.forEach((item: any) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-rose-50/50 transition-colors cursor-pointer';
+        tr.onclick = (e) => {
+            // only trigger if not clicking the button directly
+            if ((e.target as HTMLElement).tagName !== 'BUTTON') {
+                (window as any).openInvoiceModal(item.id_po_header, item.id_penerimaan, item.nomor_po);
+            }
+        };
+        tr.innerHTML = `
+            <td class="px-4 py-3 font-semibold text-slate-700">${new Date(item.tanggal_terima).toLocaleDateString('id-ID')}</td>
+            <td class="px-4 py-3">
+                <p class="font-data-mono font-bold text-primary">${item.nomor_po}</p>
+                <p class="text-[10px] text-slate-500 uppercase font-bold">${item.nama_vendor}</p>
+            </td>
+            <td class="px-4 py-3 text-center font-data-mono font-bold">${item.total_qty_terima} item</td>
+            <td class="px-4 py-3 text-center">
+                <button class="px-3 py-1 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded text-[11px] font-bold border border-rose-200 transition-colors" onclick="window.openInvoiceModal(${item.id_po_header}, ${item.id_penerimaan}, '${item.nomor_po}')">Buat Tagihan</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    renderPaginationUI('ap-pending-pagination-pagination', 'ap-pending-pagination-info', pendingReceiptsCurrentPage, apItemsPerPage, totalItems, (newPage) => { pendingReceiptsCurrentPage = newPage; renderPendingReceipts(); });
+}
+
 async function loadInvoices() {
     const tbody = document.getElementById('tbody-invoices');
     if (!tbody) return;
-
     try {
         const res = await apiFetch<any>('finance/ap/invoices');
         if (res.success) {
-            tbody.innerHTML = '';
-            const data = res.data;
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Belum ada invoice/tagihan yang tercatat.</td></tr>`;
-                return;
-            }
-
-            data.forEach((inv: any) => {
-                let badgeClass = '';
-                if (inv.status === 'UNPAID') badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
-                else if (inv.status === 'PARTIAL') badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
-                else if (inv.status === 'PAID') badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-
-                const sisa = parseFloat(inv.total_tagihan) - parseFloat(inv.total_dibayar);
-                
-                let btnBayar = '';
-                if (inv.status !== 'PAID') {
-                    btnBayar = `<button class="px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded text-[11px] font-bold border border-blue-200 transition-colors" onclick="window.openPayModal(${inv.id}, '${inv.no_tagihan_vendor}', ${sisa})">Bayar</button>`;
-                } else {
-                    btnBayar = `<span class="text-[10px] text-emerald-600 font-bold"><span class="material-symbols-outlined text-[14px] align-middle">check_circle</span> Lunas</span>`;
-                }
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-4 py-3 font-data-mono font-bold text-slate-800">${inv.no_tagihan_vendor}</td>
-                    <td class="px-4 py-3 text-slate-700">${inv.nama_vendor}</td>
-                    <td class="px-4 py-3 text-right font-data-mono font-bold">${formatRupiah(inv.total_tagihan)}</td>
-                    <td class="px-4 py-3 text-right font-data-mono font-bold text-rose-600">${formatRupiah(sisa)}</td>
-                    <td class="px-4 py-3 text-center">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${inv.status}</span>
-                    </td>
-                    <td class="px-4 py-3 text-center">${btnBayar}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            allInvoices = res.data;
+            invoicesCurrentPage = 1;
+            renderInvoices();
         }
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-500">Gagal memuat daftar tagihan.</td></tr>`;
     }
+}
+
+function renderInvoices() {
+    const tbody = document.getElementById('tbody-invoices');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (allInvoices.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Belum ada invoice/tagihan yang tercatat.</td></tr>`;
+        renderPaginationUI('ap-invoice-pagination-pagination', 'ap-invoice-pagination-info', 1, 10, 0, () => {});
+        return;
+    }
+    const totalItems = allInvoices.length;
+    const totalPages = Math.ceil(totalItems / apItemsPerPage);
+    if (invoicesCurrentPage < 1) invoicesCurrentPage = 1;
+    if (invoicesCurrentPage > totalPages) invoicesCurrentPage = totalPages;
+    const startIndex = (invoicesCurrentPage - 1) * apItemsPerPage;
+    const currentItems = allInvoices.slice(startIndex, startIndex + apItemsPerPage);
+    currentItems.forEach((inv: any) => {
+        let badgeClass = '';
+        if (inv.status === 'UNPAID') badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+        else if (inv.status === 'PARTIAL') badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+        else if (inv.status === 'PAID') badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        const sisa = parseFloat(inv.total_tagihan) - parseFloat(inv.total_dibayar);
+        let btnBayar = '';
+        if (inv.status !== 'PAID') {
+            btnBayar = `<button class="px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded text-[11px] font-bold border border-blue-200 transition-colors" onclick="window.openPayModal(${inv.id}, '${inv.no_tagihan_vendor}', ${sisa})">Bayar</button>`;
+        } else {
+            btnBayar = `<span class="text-[10px] text-emerald-600 font-bold"><span class="material-symbols-outlined text-[14px] align-middle">check_circle</span> Lunas</span>`;
+        }
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-blue-50/40 transition-colors';
+        tr.innerHTML = `
+            <td class="px-4 py-3 font-data-mono font-bold text-slate-800">${inv.no_tagihan_vendor}</td>
+            <td class="px-4 py-3 text-slate-700">${inv.nama_vendor}</td>
+            <td class="px-4 py-3 text-right font-data-mono font-bold">${formatRupiah(inv.total_tagihan)}</td>
+            <td class="px-4 py-3 text-right font-data-mono font-bold text-rose-600">${formatRupiah(sisa)}</td>
+            <td class="px-4 py-3 text-center"><span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${inv.status}</span></td>
+            <td class="px-4 py-3 text-center">${btnBayar}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    renderPaginationUI('ap-invoice-pagination-pagination', 'ap-invoice-pagination-info', invoicesCurrentPage, apItemsPerPage, totalItems, (newPage) => { invoicesCurrentPage = newPage; renderInvoices(); });
 }
 
 // ============================================================

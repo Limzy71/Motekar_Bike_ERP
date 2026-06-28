@@ -1,5 +1,21 @@
 import pool from '../config/database.js';
 import { generatePONumber } from './poController.js';
+// ============================================================
+// HELPER: Generate PR Number (Format: PR/MTK/YYYY/XXXX)
+// ============================================================
+export async function generatePRNumber(connection) {
+    const year = new Date().getFullYear();
+    const prefix = `PR/MTK/${year}/`;
+    const [rows] = await connection.query(`SELECT nomor_pr FROM pengadaan_pr_header WHERE nomor_pr LIKE ? ORDER BY id DESC LIMIT 1`, [`${prefix}%`]);
+    let nextNum = 1;
+    if (rows.length > 0) {
+        const lastPR = rows[0].nomor_pr;
+        const lastSequence = parseInt(lastPR.split('/').pop() || '0', 10);
+        nextNum = lastSequence + 1;
+    }
+    const sequence = nextNum.toString().padStart(4, '0');
+    return `${prefix}${sequence}`;
+}
 /**
  * Controller untuk Modul Pengadaan (Purchase Requisition).
  * Endpoint ini dilindungi oleh authMiddleware + requireRole('Owner', 'Admin', 'Pengadaan').
@@ -64,8 +80,8 @@ export const getAllPR = async (req, res) => {
 export const createPR = async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const { nomor_pr, id_vendor, pr_items } = req.body;
-        if (!nomor_pr || !id_vendor || !Array.isArray(pr_items) || pr_items.length === 0) {
+        const { id_vendor, pr_items } = req.body;
+        if (!id_vendor || !Array.isArray(pr_items) || pr_items.length === 0) {
             res.status(400).json({ success: false, message: 'Data PR tidak lengkap.' });
             connection.release();
             return;
@@ -77,7 +93,8 @@ export const createPR = async (req, res) => {
             return;
         }
         await connection.beginTransaction();
-        const [headerResult] = await connection.query('INSERT INTO pengadaan_pr_header (nomor_pr, id_vendor, status_pr) VALUES (?, ?, ?)', [nomor_pr.trim(), id_vendor, 'Menunggu Persetujuan']);
+        const generated_nomor_pr = await generatePRNumber(connection);
+        const [headerResult] = await connection.query('INSERT INTO pengadaan_pr_header (nomor_pr, id_vendor, status_pr) VALUES (?, ?, ?)', [generated_nomor_pr, id_vendor, 'Menunggu Persetujuan']);
         const prHeaderId = headerResult.insertId;
         for (const item of pr_items) {
             const qty = parseInt(item.jumlah, 10);
@@ -134,7 +151,7 @@ export const approvePR = async (req, res) => {
             }
             const [prDetails] = await connection.query('SELECT * FROM pengadaan_pr_detail WHERE id_pr_header = ?', [prId]);
             const nomor_po = await generatePONumber(connection);
-            const [poInsert] = await connection.query('INSERT INTO pengadaan_po_header (nomor_po, id_vendor, status, catatan, id_pr) VALUES (?, ?, ?, ?, ?)', [nomor_po, pr.id_vendor, 'ISSUED', `Generated from PR ${pr.nomor_pr}`, prId]);
+            const [poInsert] = await connection.query('INSERT INTO pengadaan_po_header (nomor_po, id_vendor, status, catatan, id_pr) VALUES (?, ?, ?, ?, ?)', [nomor_po, pr.id_vendor, 'DRAFT', `Generated from PR ${pr.nomor_pr}`, prId]);
             const poId = poInsert.insertId;
             let total_nilai = 0;
             for (const detail of prDetails) {
@@ -149,7 +166,7 @@ export const approvePR = async (req, res) => {
             }
             await connection.query('UPDATE pengadaan_po_header SET total_nilai = ? WHERE id = ?', [total_nilai, poId]);
             await connection.commit();
-            res.json({ success: true, message: 'PR berhasil disetujui dan PO otomatis terbuat (Status: ISSUED).' });
+            res.json({ success: true, message: 'PR berhasil disetujui dan PO otomatis terbuat (Status: DRAFT).' });
         }
         else {
             await connection.rollback();
@@ -190,7 +207,7 @@ export const bulkApprovePR = async (req, res) => {
             if (prDetails.length === 0)
                 continue;
             const nomor_po = await generatePONumber(connection);
-            const [poInsert] = await connection.query('INSERT INTO pengadaan_po_header (nomor_po, id_vendor, status, catatan, id_pr) VALUES (?, ?, ?, ?, ?)', [nomor_po, pr.id_vendor, 'ISSUED', `Generated from PR ${pr.nomor_pr}`, pr.id]);
+            const [poInsert] = await connection.query('INSERT INTO pengadaan_po_header (nomor_po, id_vendor, status, catatan, id_pr) VALUES (?, ?, ?, ?, ?)', [nomor_po, pr.id_vendor, 'DRAFT', `Generated from PR ${pr.nomor_pr}`, pr.id]);
             const poId = poInsert.insertId;
             let total_nilai = 0;
             for (const detail of prDetails) {
@@ -207,7 +224,7 @@ export const bulkApprovePR = async (req, res) => {
             generatedCount++;
         }
         await connection.commit();
-        res.json({ success: true, message: `${generatedCount} PR berhasil disetujui dan PO otomatis terbuat (Status: ISSUED).` });
+        res.json({ success: true, message: `${generatedCount} PR berhasil disetujui dan PO otomatis terbuat (Status: DRAFT).` });
     }
     catch (error) {
         await connection.rollback();
@@ -237,11 +254,24 @@ export const deletePR = async (req, res) => {
             res.status(403).json({ success: false, message: 'PR yang sudah diproses tidak dapat dihapus.' });
             return;
         }
+        // Revert restock requests linked to this PR's materials back to 'Pending'
+        await pool.query(`
+      UPDATE pengadaan_restock_requests r
+      JOIN operasi_wo_header w ON r.nomor_wo = w.nomor_wo
+      SET r.status = 'Pending'
+      WHERE r.status = 'Selesai' 
+      AND w.status NOT IN ('COMPLETED', 'CANCELLED')
+      AND r.id_inventory_material IN (
+         SELECT i.id FROM inventory_stok i 
+         JOIN pengadaan_pr_detail d ON i.kode_barang = d.kode_barang
+         WHERE d.id_pr_header = ?
+      )
+    `, [prId]);
         // Hapus detail terlebih dahulu untuk menghindari foreign key constraint
         await pool.query('DELETE FROM pengadaan_pr_detail WHERE id_pr_header = ?', [prId]);
         const [result] = await pool.query('DELETE FROM pengadaan_pr_header WHERE id = ?', [prId]);
         if (result.affectedRows > 0) {
-            res.json({ success: true, message: 'Data PR berhasil dihapus.' });
+            res.json({ success: true, message: 'Data PR berhasil dihapus dan permintaan material dikembalikan ke kotak masuk.' });
         }
         else {
             res.status(404).json({ success: false, message: 'PR tidak ditemukan.' });
@@ -256,6 +286,20 @@ export const deletePR = async (req, res) => {
 // ============================================================
 export const bulkDeletePR = async (req, res) => {
     try {
+        // Revert restock requests for all deletable PRs back to 'Pending'
+        await pool.query(`
+      UPDATE pengadaan_restock_requests r
+      JOIN operasi_wo_header w ON r.nomor_wo = w.nomor_wo
+      SET r.status = 'Pending'
+      WHERE r.status = 'Selesai' 
+      AND w.status NOT IN ('COMPLETED', 'CANCELLED')
+      AND r.id_inventory_material IN (
+         SELECT i.id FROM inventory_stok i 
+         JOIN pengadaan_pr_detail d ON i.kode_barang = d.kode_barang
+         JOIN pengadaan_pr_header h ON d.id_pr_header = h.id
+         WHERE h.status_pr NOT IN ('Diproses Vendor', 'Selesai')
+      )
+    `);
         await pool.query(`
       DELETE FROM pengadaan_pr_detail 
       WHERE id_pr_header IN (
@@ -265,7 +309,7 @@ export const bulkDeletePR = async (req, res) => {
         const [result] = await pool.query(`
       DELETE FROM pengadaan_pr_header WHERE status_pr NOT IN ('Diproses Vendor', 'Selesai')
     `);
-        res.json({ success: true, message: `Berhasil menghapus ${result.affectedRows} PR yang bisa dihapus.` });
+        res.json({ success: true, message: `Berhasil menghapus ${result.affectedRows} PR dan mengembalikan request material ke kotak masuk.` });
     }
     catch (error) {
         res.status(500).json({ success: false, message: `Error menghapus semua PR: ${error.message}` });
@@ -351,15 +395,19 @@ export const autoGeneratePR = async (req, res) => {
           JOIN pengadaan_po_header ph ON pd.id_po_header = ph.id
           WHERE pd.id_inventory_material = i.id 
             AND ph.status IN ('DRAFT', 'ISSUED', 'APPROVED', 'SENT_TO_VENDOR')
-        ), 0) AS incoming_po
+        ), 0) AS incoming_po,
+        COALESCE((
+          SELECT SUM(r.jumlah_diminta)
+          FROM pengadaan_restock_requests r
+          WHERE r.id_inventory_material = i.id AND r.status = 'Pending'
+        ), 0) AS wo_deficit
       FROM inventory_stok i
       LEFT JOIN master_vendor v ON i.id_vendor = v.id
-      WHERE i.reorder_point > 0 AND i.id_vendor IS NOT NULL
-      HAVING (jumlah_stok + incoming_pr + incoming_po) <= reorder_point
+      WHERE i.id_vendor IS NOT NULL AND i.tipe_item = 'RM'
+      HAVING (jumlah_stok + incoming_pr + incoming_po) <= reorder_point OR wo_deficit > 0
     `);
         if (deficitItems.length === 0) {
             res.status(400).json({ success: false, message: 'Tidak ada barang defisit yang perlu di-restok.' });
-            connection.release();
             return;
         }
         // 2. Group by Vendor
@@ -373,24 +421,33 @@ export const autoGeneratePR = async (req, res) => {
         }
         await connection.beginTransaction();
         let prCreatedCount = 0;
+        const orderedItemIds = [];
         // 3. Create PR per Vendor
         for (const vendorIdStr in groupedByVendor) {
             const items = groupedByVendor[vendorIdStr];
             const vendorId = parseInt(vendorIdStr, 10);
             // Generate PR Number
-            const year = new Date().getFullYear();
-            const rand = Math.floor(1000 + Math.random() * 9000);
-            const nomor_pr = `PR/MTK/${year}/${rand}`;
+            const nomor_pr = await generatePRNumber(connection);
             const [headerResult] = await connection.query('INSERT INTO pengadaan_pr_header (nomor_pr, id_vendor, status_pr) VALUES (?, ?, ?)', [nomor_pr, vendorId, 'Menunggu Persetujuan']);
             const prHeaderId = headerResult.insertId;
             for (const item of items) {
+                orderedItemIds.push(item.id);
                 // Calculate Qty
                 const effectiveStock = (parseInt(item.jumlah_stok) || 0) + (parseInt(item.incoming_pr) || 0) + (parseInt(item.incoming_po) || 0);
-                const qtySaranPesan = ((item.reorder_point * 2) - effectiveStock) * item.bom_ratio;
+                let qtySaranPesan = 0;
+                if (effectiveStock <= item.reorder_point) {
+                    qtySaranPesan = ((item.reorder_point * 2) - effectiveStock) * (item.bom_ratio || 1);
+                }
+                if (item.wo_deficit > qtySaranPesan) {
+                    qtySaranPesan = item.wo_deficit;
+                }
                 const qty = qtySaranPesan > 0 ? qtySaranPesan : 1;
                 await connection.query('INSERT INTO pengadaan_pr_detail (id_pr_header, kode_barang, jumlah, satuan) VALUES (?, ?, ?, ?)', [prHeaderId, item.kode_barang, qty, item.satuan]);
             }
             prCreatedCount++;
+        }
+        if (orderedItemIds.length > 0) {
+            await connection.query("UPDATE pengadaan_restock_requests SET status = 'Selesai' WHERE status = 'Pending' AND id_inventory_material IN (?)", [orderedItemIds]);
         }
         await connection.commit();
         res.status(201).json({
@@ -444,7 +501,7 @@ export const createRestockRequest = async (req, res) => {
 // ============================================================
 export const getPendingRequests = async (req, res) => {
     try {
-        const [rows] = await pool.query(`
+        const [manualRequests] = await pool.query(`
       SELECT 
         r.id, 
         r.id_inventory_material, 
@@ -460,7 +517,51 @@ export const getPendingRequests = async (req, res) => {
       WHERE r.status = 'Pending'
       ORDER BY r.created_at ASC
     `);
-        res.json({ success: true, data: rows });
+        // Auto-Alerts (Safety Stock)
+        const [autoAlerts] = await pool.query(`
+      SELECT 
+        i.id as id_inventory_material, 
+        i.kode_barang,
+        i.nama_barang,
+        i.satuan,
+        i.reorder_point,
+        i.jumlah_stok,
+        COALESCE((
+          SELECT SUM(d.jumlah) 
+          FROM pengadaan_pr_detail d
+          JOIN pengadaan_pr_header h ON d.id_pr_header = h.id
+          WHERE d.kode_barang = i.kode_barang 
+            AND h.status_pr IN ('Menunggu Persetujuan', 'Diproses Vendor', 'Draft')
+        ), 0) AS incoming_pr,
+        COALESCE((
+          SELECT SUM(pd.qty) 
+          FROM pengadaan_po_detail pd
+          JOIN pengadaan_po_header ph ON pd.id_po_header = ph.id
+          WHERE pd.id_inventory_material = i.id 
+            AND ph.status IN ('DRAFT', 'ISSUED', 'APPROVED', 'SENT_TO_VENDOR')
+        ), 0) AS incoming_po
+      FROM inventory_stok i
+      WHERE i.reorder_point > 0 AND i.tipe_item = 'RM'
+      HAVING (jumlah_stok + incoming_pr + incoming_po) < reorder_point
+    `);
+        const combined = [
+            ...manualRequests,
+            ...autoAlerts.map((a) => {
+                const effectiveStock = (parseInt(a.jumlah_stok) || 0) + (parseInt(a.incoming_pr) || 0) + (parseInt(a.incoming_po) || 0);
+                return {
+                    id: -a.id_inventory_material,
+                    id_inventory_material: a.id_inventory_material,
+                    nomor_wo: `⚠️ MRP ALARM (Batas Min: ${a.reorder_point})`,
+                    jumlah_diminta: a.reorder_point - effectiveStock,
+                    status: 'Defisit',
+                    created_at: new Date().toISOString(),
+                    kode_barang: a.kode_barang,
+                    nama_barang: a.nama_barang,
+                    satuan: a.satuan
+                };
+            })
+        ];
+        res.json({ success: true, data: combined });
     }
     catch (error) {
         console.error('[getPendingRequests] Error:', error);
@@ -473,7 +574,12 @@ export const getPendingRequests = async (req, res) => {
 export const completeRequest = async (req, res) => {
     try {
         const { id } = req.params;
-        const [result] = await pool.query("UPDATE pengadaan_restock_requests SET status = 'Selesai' WHERE id = ?", [id]);
+        const numericId = parseInt(id, 10);
+        if (numericId < 0) {
+            res.json({ success: true, message: 'Ini adalah alarm otomatis dari sistem MRP. Alarm akan hilang dengan sendirinya ketika stok gudang bertambah.' });
+            return;
+        }
+        const [result] = await pool.query("UPDATE pengadaan_restock_requests SET status = 'Selesai' WHERE id = ?", [numericId]);
         if (result.affectedRows > 0) {
             res.json({ success: true, message: 'Permintaan restok berhasil ditandai selesai.' });
         }

@@ -2,7 +2,7 @@ import pool from '../config/database.js';
 import { insertJurnal } from './keuanganController.js';
 /**
  * Controller untuk Modul Penjualan & Penagihan (Order-to-Cash & Dual-Track Engine).
- * Architecture: sales_order_header + sales_order_detail
+ * Architecture: penjualan_so_header + penjualan_so_detail
  */
 // ============================================================
 // [GET] /api/penjualan/products — FG items for Dropdown
@@ -22,19 +22,17 @@ export const getProducts = async (req, res) => {
 export const getAllSO = async (req, res) => {
     try {
         const [headers] = await pool.query(`
-      SELECT id, nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, 
-             foto_bukti_terima_retailer, vendor_3pl, nomor_resi_3pl, foto_serah_terima_3pl,
-             status_so, total_nilai, catatan, created_at
-             status_so, total_nilai, catatan, created_at, biaya_pengiriman
-      FROM sales_order_header
+      SELECT id, nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, catatan, biaya_pengiriman, status_so, total_nilai, foto_bukti_terima_retailer, created_at,
+             vendor_3pl, nomor_resi_3pl, nama_supir, plat_nomor, no_telepon_supir
+      FROM penjualan_so_header
       ORDER BY id DESC
     `);
         const [details] = await pool.query(`
-      SELECT d.id, d.id_so_header, d.id_inventory_barang_jadi, d.qty, 
-             d.harga_satuan, d.subtotal, d.status_item, d.id_wo_terkait, d.hpp_satuan_tercatat,
-             i.nama_barang, i.kode_barang, i.satuan
-      FROM sales_order_detail d
-      JOIN inventory_stok i ON d.id_inventory_barang_jadi = i.id
+      SELECT d.id, d.id_so_header, d.id_inventory_barang_jadi, d.qty,
+             d.harga_satuan, d.subtotal, d.status_item, d.hpp_satuan_tercatat, d.id_wo_terkait,
+             i.kode_barang, i.nama_barang, i.satuan
+      FROM penjualan_so_detail d
+      LEFT JOIN inventory_stok i ON d.id_inventory_barang_jadi = i.id
     `);
         const result = headers.map((h) => {
             const items = details.filter((d) => d.id_so_header === h.id);
@@ -80,10 +78,10 @@ export const createSO = async (req, res) => {
         }
         await connection.beginTransaction();
         // Generate SO Number
-        const [countRows] = await connection.query('SELECT COUNT(*) as count FROM sales_order_header');
+        const [countRows] = await connection.query('SELECT COUNT(*) as count FROM penjualan_so_header');
         const soNumber = `SO-MTK-${new Date().getFullYear()}-${String(countRows[0].count + 1).padStart(4, '0')}`;
         // 1. Insert Header Draft first to get ID
-        const [headerResult] = await connection.query('INSERT INTO sales_order_header (nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, status_so, total_nilai, catatan, biaya_pengiriman, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [soNumber, nama_customer, alamat_pengiriman, tanggal_target_kirim, 'DRAFT', 0, catatan || null, ongkir, latitude || null, longitude || null]);
+        const [headerResult] = await connection.query('INSERT INTO penjualan_so_header (nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, status_so, total_nilai, catatan, biaya_pengiriman, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [soNumber, nama_customer, alamat_pengiriman, tanggal_target_kirim, 'DRAFT', 0, catatan || null, ongkir, latitude || null, longitude || null]);
         const soHeaderId = headerResult.insertId;
         let hasDefisit = false;
         let grandTotal = ongkir;
@@ -96,15 +94,15 @@ export const createSO = async (req, res) => {
             if (isNaN(id_inventory))
                 throw new Error('ID Inventory tidak valid.');
             // Cek Stok Fisik & HPP
-            const [stokData] = await connection.query('SELECT jumlah_stok, stok_committed, harga_standar, harga_jual_standar, hpp_satuan FROM inventory_stok WHERE id = ? FOR UPDATE', [id_inventory]);
+            const [stokData] = await connection.query('SELECT jumlah_stok, stok_committed, harga_standar, harga_jual FROM inventory_stok WHERE id = ? FOR UPDATE', [id_inventory]);
             if (stokData.length === 0)
                 throw new Error(`Barang FG dengan ID ${id_inventory} tidak ditemukan.`);
             const stokFisik = stokData[0].jumlah_stok;
             const stokCommitted = stokData[0].stok_committed || 0;
             const stokAvailable = stokFisik - stokCommitted;
-            const hppSatuan = parseFloat(stokData[0].hpp_satuan || 0);
-            // Jika Sales menginput harga custom, kita pakai. Jika tidak, pakai harga_jual_standar dari master
-            const hargaSatuan = parseFloat(item.harga_satuan) || parseFloat(stokData[0].harga_jual_standar || stokData[0].harga_standar || 0);
+            const hppSatuan = parseFloat(stokData[0].harga_standar || 0);
+            // Jika Sales menginput harga custom, kita pakai. Jika tidak, pakai harga_jual dari master
+            const hargaSatuan = parseFloat(item.harga_satuan) || parseFloat(stokData[0].harga_jual || stokData[0].harga_standar || 0);
             // --- PROFITABILITY GUARD (Hukum Besi Akuntansi) ---
             if (hargaSatuan < hppSatuan) {
                 throw new Error(`Harga jual (Rp ${hargaSatuan.toLocaleString('id-ID')}) di bawah HPP (Rp ${hppSatuan.toLocaleString('id-ID')})! Transaksi berpotensi merugikan perusahaan.`);
@@ -120,11 +118,11 @@ export const createSO = async (req, res) => {
                 // [OPTION A] Reservasi Stok: Tambahkan ke stok_committed
                 await connection.query('UPDATE inventory_stok SET stok_committed = stok_committed + ? WHERE id = ?', [qty, id_inventory]);
             }
-            await connection.query('INSERT INTO sales_order_detail (id_so_header, id_inventory_barang_jadi, qty, harga_satuan, subtotal, status_item, hpp_satuan_tercatat) VALUES (?, ?, ?, ?, ?, ?, ?)', [soHeaderId, id_inventory, qty, hargaSatuan, subtotal, statusItem, hppSatuan]);
+            await connection.query('INSERT INTO penjualan_so_detail (id_so_header, id_inventory_barang_jadi, qty, harga_satuan, subtotal, status_item, hpp_satuan_tercatat) VALUES (?, ?, ?, ?, ?, ?, ?)', [soHeaderId, id_inventory, qty, hargaSatuan, subtotal, statusItem, hppSatuan]);
         }
         // 3. Update Status Header (RESERVED vs BACKORDER) & Total Nilai
         const finalStatus = hasDefisit ? 'BACKORDER' : 'RESERVED';
-        await connection.query('UPDATE sales_order_header SET status_so = ?, total_nilai = ? WHERE id = ?', [finalStatus, grandTotal, soHeaderId]);
+        await connection.query('UPDATE penjualan_so_header SET status_so = ?, total_nilai = ? WHERE id = ?', [finalStatus, grandTotal, soHeaderId]);
         await connection.commit();
         res.status(201).json({
             success: true,
@@ -156,9 +154,9 @@ export const triggerWO = async (req, res) => {
       SELECT d.id_so_header, d.id_inventory_barang_jadi, d.qty, d.status_item, d.id_wo_terkait,
              i.kode_barang, i.jumlah_stok,
              h.nomor_so
-      FROM sales_order_detail d
+      FROM penjualan_so_detail d
       JOIN inventory_stok i ON d.id_inventory_barang_jadi = i.id
-      JOIN sales_order_header h ON d.id_so_header = h.id
+      JOIN penjualan_so_header h ON d.id_so_header = h.id
       WHERE d.id = ? FOR UPDATE
     `, [idDetail]);
         if (detailRows.length === 0)
@@ -180,7 +178,7 @@ export const triggerWO = async (req, res) => {
         const [woResult] = await connection.query('INSERT INTO operasi_wo_header (nomor_wo, kode_sepeda, target_qty, status_wo, catatan) VALUES (?, ?, ?, ?, ?)', [woNumber, detail.kode_barang, selisihDefisit, 'DRAFT', catatanWO]);
         const woId = woResult.insertId;
         // 4. Link WO to SO Detail
-        await connection.query('UPDATE sales_order_detail SET id_wo_terkait = ? WHERE id = ?', [woId, idDetail]);
+        await connection.query('UPDATE penjualan_so_detail SET id_wo_terkait = ? WHERE id = ?', [woId, idDetail]);
         await connection.commit();
         res.json({ success: true, message: `Work Order Perakitan ${woNumber} berhasil diterbitkan ke MES.` });
     }
@@ -205,7 +203,7 @@ export const fulfillSO = async (req, res) => {
             throw new Error('ID SO tidak valid.');
         await connection.beginTransaction();
         // 1. Get SO Header
-        const [headerRows] = await connection.query('SELECT nomor_so, total_nilai, status_so, foto_bukti_terima_retailer FROM sales_order_header WHERE id = ? FOR UPDATE', [soId]);
+        const [headerRows] = await connection.query('SELECT nomor_so, total_nilai, status_so, foto_bukti_terima_retailer FROM penjualan_so_header WHERE id = ? FOR UPDATE', [soId]);
         if (headerRows.length === 0)
             throw new Error('SO tidak ditemukan.');
         const soHeader = headerRows[0];
@@ -215,7 +213,7 @@ export const fulfillSO = async (req, res) => {
                 throw new Error('Hanya pesanan yang sedang SHIPPED yang bisa dilaporkan FAILED_DELIVERY.');
             }
             // Update Status SO
-            await connection.query('UPDATE sales_order_header SET status_so = ? WHERE id = ?', ['FAILED_DELIVERY', soId]);
+            await connection.query('UPDATE penjualan_so_header SET status_so = ? WHERE id = ?', ['FAILED_DELIVERY', soId]);
             // Note: Karena sistem Make-to-Stock/Order kita belum memotong stok fisik saat RESERVED (hanya status di SO),
             // Jika ingin melepaskan kuncian, kita asumsikan barang fisik dikembalikan ke 'Gudang Karantina'
             // Di sini kita catat logika pelepasan kuncian (soft-release):
@@ -235,7 +233,7 @@ export const fulfillSO = async (req, res) => {
             return;
         }
         // 2. Check Detail Items "All-or-Nothing"
-        const [detailRows] = await connection.query('SELECT id, id_inventory_barang_jadi, qty, status_item, hpp_satuan_tercatat FROM sales_order_detail WHERE id_so_header = ?', [soId]);
+        const [detailRows] = await connection.query('SELECT id, id_inventory_barang_jadi, qty, status_item, hpp_satuan_tercatat FROM penjualan_so_detail WHERE id_so_header = ?', [soId]);
         const isDefisit = detailRows.some((d) => d.status_item === 'DEFISIT');
         if (isDefisit) {
             throw new Error('All-or-Nothing Fulfillment Error: Masih ada baris detail yang berstatus DEFISIT. Harap tunggu WO diselesaikan.');
@@ -249,7 +247,7 @@ export const fulfillSO = async (req, res) => {
             await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE id = ?', [item.qty, item.id_inventory_barang_jadi]);
         }
         // 4. Update Status SO
-        await connection.query('UPDATE sales_order_header SET status_so = ? WHERE id = ?', ['PAID', soId] // After paid, eventually to COMPLETED. Here we set to PAID to reflect money received.
+        await connection.query('UPDATE penjualan_so_header SET status_so = ? WHERE id = ?', ['PAID', soId] // After paid, eventually to COMPLETED. Here we set to PAID to reflect money received.
         );
         // 5. JURNAL AKUNTANSI PENJUALAN (4 Baris: Kas vs Pendapatan, HPP vs Persediaan)
         const totalPendapatan = parseFloat(soHeader.total_nilai || 0);
@@ -283,15 +281,15 @@ export const fulfillSO = async (req, res) => {
 export const shipSO = async (req, res) => {
     try {
         const soId = parseInt(req.params.id, 10);
-        const { vendor, resi, foto } = req.body;
+        const { vendor, resi, foto, supir, plat, no_telepon } = req.body;
         if (isNaN(soId))
             throw new Error('ID SO tidak valid.');
-        const [headerRows] = await pool.query('SELECT status_so FROM sales_order_header WHERE id = ?', [soId]);
+        const [headerRows] = await pool.query('SELECT status_so FROM penjualan_so_header WHERE id = ?', [soId]);
         if (headerRows.length === 0)
             throw new Error('SO tidak ditemukan.');
         if (headerRows[0].status_so !== 'RESERVED')
             throw new Error('Hanya pesanan berstatus RESERVED yang bisa di-dispatch.');
-        await pool.query('UPDATE sales_order_header SET status_so = ?, vendor_3pl = ?, nomor_resi_3pl = ?, foto_serah_terima_3pl = ? WHERE id = ?', ['SHIPPED', vendor, resi, foto, soId]);
+        await pool.query('UPDATE penjualan_so_header SET status_so = ?, vendor_3pl = ?, nomor_resi_3pl = ?, foto_serah_terima_3pl = ?, nama_supir = ?, plat_nomor = ?, no_telepon_supir = ? WHERE id = ?', ['SHIPPED', vendor, resi, foto, supir, plat, no_telepon, soId]);
         res.json({ success: true, message: `Berhasil di-dispatch via ${vendor}. Status menjadi SHIPPED.` });
     }
     catch (error) {
@@ -304,15 +302,18 @@ export const shipSO = async (req, res) => {
 export const deliverSO = async (req, res) => {
     try {
         const soId = parseInt(req.params.id, 10);
-        const { foto_pod } = req.body;
+        const file = req.file;
         if (isNaN(soId))
             throw new Error('ID SO tidak valid.');
-        const [headerRows] = await pool.query('SELECT status_so FROM sales_order_header WHERE id = ?', [soId]);
+        if (!file)
+            throw new Error('Foto bukti terima (POD) wajib diunggah!');
+        const foto_pod = file.filename;
+        const [headerRows] = await pool.query('SELECT status_so FROM penjualan_so_header WHERE id = ?', [soId]);
         if (headerRows.length === 0)
             throw new Error('SO tidak ditemukan.');
         if (headerRows[0].status_so !== 'SHIPPED')
             throw new Error('Hanya pesanan berstatus SHIPPED yang bisa dikonfirmasi DELIVERED.');
-        await pool.query('UPDATE sales_order_header SET status_so = ?, foto_bukti_terima_retailer = ? WHERE id = ?', ['DELIVERED', foto_pod, soId]);
+        await pool.query('UPDATE penjualan_so_header SET status_so = ?, foto_bukti_terima_retailer = ? WHERE id = ?', ['DELIVERED', foto_pod, soId]);
         res.json({ success: true, message: `POD Retailer diunggah. Status menjadi DELIVERED.` });
     }
     catch (error) {

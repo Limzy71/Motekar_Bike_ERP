@@ -1,5 +1,6 @@
 import { initRBAC } from '../components/rbac.js';
 import { apiFetch, getUserData } from '../api.js';
+import { renderPaginationUI } from '../utils/pagination.js';
 
 interface MaterialAllocation {
     qty_kebutuhan: number;
@@ -106,7 +107,7 @@ function renderTable() {
 
     if (allWorkOrders.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 italic font-medium">Belum ada data Work Order.</td></tr>`;
-        updatePaginationUI();
+    renderPaginationUI('operasi-pagination-pagination', 'operasi-pagination-info', 1, 10, 0, () => {});
         return;
     }
 
@@ -152,68 +153,20 @@ function renderTable() {
         `;
         tbody.appendChild(tr);
     });
-    
-    updatePaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+    renderPaginationUI(
+        'operasi-pagination-pagination',
+        'operasi-pagination-info',
+        currentPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentPage = newPage;
+            renderTable();
+        }
+    );
 }
 
-function updatePaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
-    const infoText = document.getElementById('operasi-pagination-info');
-    const btnPrev = document.getElementById('operasi-btn-prev') as HTMLButtonElement;
-    const btnNext = document.getElementById('operasi-btn-next') as HTMLButtonElement;
-    const pagesContainer = document.getElementById('operasi-pagination-pages');
 
-    if (infoText) {
-        if (total === 0) {
-            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
-        } else {
-            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
-        }
-    }
-
-    if (btnPrev) {
-        btnPrev.disabled = currentPage <= 1;
-        btnPrev.onclick = () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderTable();
-            }
-        };
-    }
-
-    if (btnNext) {
-        btnNext.disabled = currentPage >= totalPages;
-        btnNext.onclick = () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderTable();
-            }
-        };
-    }
-
-    if (pagesContainer) {
-        pagesContainer.innerHTML = '';
-        if (totalPages > 1) {
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                const btn = document.createElement('button');
-                btn.className = `w-7 h-7 rounded-lg text-xs font-bold transition-colors ${i === currentPage ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`;
-                btn.textContent = i.toString();
-                btn.onclick = () => {
-                    currentPage = i;
-                    renderTable();
-                };
-                pagesContainer.appendChild(btn);
-            }
-        }
-    }
-}
 
 // ============================================================
 // 2. THE DEEP-DIVE TRIGGER & STATE SHIFTER (Drawer)

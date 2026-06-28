@@ -10,7 +10,7 @@ import { asyncHandler } from '../helpers/asyncHandler.js';
 // ============================================================
 export const getAllStok = async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT id, kode_barang, nama_barang, kategori, jumlah_stok, stok_committed, (jumlah_stok - stok_committed) as stok_available, satuan, last_updated FROM inventory_stok ORDER BY jumlah_stok ASC, nama_barang ASC');
+        const [rows] = await pool.query('SELECT id, kode_barang, nama_barang, kategori, tipe_item, jumlah_stok, stok_committed, (jumlah_stok - stok_committed) as stok_available, satuan, last_updated FROM inventory_stok ORDER BY jumlah_stok ASC, nama_barang ASC');
         res.json({
             success: true,
             data: rows
@@ -113,12 +113,43 @@ export const getPendingPODetails = asyncHandler(async (req, res) => {
     res.json({ success: true, data: rows });
 });
 // ============================================================
+// [GET] /api/gudang/receipts - Ambil riwayat penerimaan barang (Goods Receipt History)
+// ============================================================
+export const getReceiptHistory = asyncHandler(async (req, res) => {
+    const [rows] = await pool.query(`
+    SELECT pb.id, pb.tanggal_terima as tanggal_penerimaan, pb.surat_jalan_vendor as no_surat_jalan, pb.penerima, pb.catatan,
+           po.nomor_po, po.catatan as catatan_po, v.nama_vendor
+    FROM penerimaan_barang pb
+    JOIN pengadaan_po_header po ON pb.id_po_header = po.id
+    LEFT JOIN master_vendor v ON po.id_vendor = v.id
+    ORDER BY pb.tanggal_terima DESC
+    LIMIT 100
+  `);
+    res.json({ success: true, data: rows });
+});
+// ============================================================
 // [POST] /api/gudang/receive — Proses Penerimaan Barang (GR)
 // ============================================================
 export const receiveGoods = asyncHandler(async (req, res) => {
-    const { id_po_header, penerima, surat_jalan_vendor, catatan, items } = req.body;
     const connection = await pool.getConnection();
     try {
+        const id_po_header = parseInt(req.body.id_po_header, 10);
+        const penerima = req.body.penerima;
+        const surat_jalan_vendor = req.body.surat_jalan_vendor || null;
+        const catatan = req.body.catatan || null;
+        let items = [];
+        if (typeof req.body.items === 'string') {
+            items = JSON.parse(req.body.items);
+        }
+        else {
+            items = req.body.items;
+        }
+        const files = req.files;
+        const foto_barang = files?.['foto_barang']?.[0]?.filename || null;
+        const foto_surat_jalan = files?.['foto_surat_jalan']?.[0]?.filename || null;
+        const foto_packaging = files?.['foto_packaging']?.[0]?.filename || null;
+        if (!items || items.length === 0)
+            throw new AppError('Minimal satu barang harus diterima!', 400);
         await connection.beginTransaction();
         // 1. Validasi PO Exist
         const [poRows] = await connection.query('SELECT status FROM pengadaan_po_header WHERE id = ? FOR UPDATE', [id_po_header]);
@@ -126,27 +157,41 @@ export const receiveGoods = asyncHandler(async (req, res) => {
             throw new AppError('Purchase Order tidak ditemukan.', 404);
         if (poRows[0].status === 'COMPLETED')
             throw new AppError('Purchase Order sudah selesai diterima.', 400);
-        // 2. Insert ke penerimaan_barang
-        const [receiptResult] = await connection.query('INSERT INTO penerimaan_barang (id_po_header, penerima, surat_jalan_vendor, catatan) VALUES (?, ?, ?, ?)', [id_po_header, penerima, surat_jalan_vendor || null, catatan || null]);
+        // 2. Insert ke penerimaan_barang beserta foto e-POD
+        const [receiptResult] = await connection.query('INSERT INTO penerimaan_barang (id_po_header, penerima, surat_jalan_vendor, catatan, foto_barang, foto_surat_jalan, foto_packaging) VALUES (?, ?, ?, ?, ?, ?, ?)', [id_po_header, penerima, surat_jalan_vendor, catatan, foto_barang, foto_surat_jalan, foto_packaging]);
         const receiptId = receiptResult.insertId;
+        let allBaik = true;
+        let hasRTV = false;
         // 3. Proses setiap item (Detail & Update Stok)
         for (const item of items) {
             // Insert detail penerimaan
             await connection.query('INSERT INTO detail_penerimaan (id_penerimaan, id_inventory_material, qty_diterima, kondisi) VALUES (?, ?, ?, ?)', [receiptId, item.id_inventory_material, item.qty_diterima, item.kondisi]);
-            // Tambah stok hanya jika kondisi 'BAIK'
             if (item.kondisi === 'BAIK') {
-                const [updateStok] = await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ?, last_updated = CURRENT_TIMESTAMP WHERE id = ?', [item.qty_diterima, item.id_inventory_material]);
+                await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ?, last_updated = CURRENT_TIMESTAMP WHERE id = ?', [item.qty_diterima, item.id_inventory_material]);
+            }
+            else {
+                // RTV Flow untuk kondisi RUSAK
+                allBaik = false;
+                hasRTV = true;
+                const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                const randomNum = Math.floor(100 + Math.random() * 900);
+                const no_rtv = `RTV-${dateStr}-${randomNum}`;
+                await connection.query('INSERT INTO rtv_dokumen (no_rtv, penerimaan_id, barang_id, qty_retur, alasan, status) VALUES (?, ?, ?, ?, ?, ?)', [no_rtv, receiptId, item.id_inventory_material, item.qty_diterima, 'Gagal Incoming QC (Rusak saat datang)', 'PENDING']);
             }
         }
-        // 4. Update status PO menjadi COMPLETED (Asumsi Full Receipt)
-        // Di sistem ERP riil, ada kalkulasi parsial. Untuk kesederhanaan BRD saat ini, kita set COMPLETED.
-        await connection.query('UPDATE pengadaan_po_header SET status = ? WHERE id = ?', ['COMPLETED', id_po_header]);
+        // 4. Update status PO
+        const newStatus = allBaik ? 'COMPLETED' : 'PARTIAL_RECEIVED_WITH_DEFECT';
+        await connection.query('UPDATE pengadaan_po_header SET status = ? WHERE id = ?', [newStatus, id_po_header]);
         await connection.commit();
-        res.status(201).json({ success: true, message: 'Penerimaan barang berhasil diproses dan stok telah ditambahkan.' });
+        let message = 'Penerimaan barang berhasil diproses dan e-POD telah disimpan.';
+        if (hasRTV) {
+            message += ' Perhatian: Terdapat barang yang gagal QC (RUSAK) dan telah masuk antrean Return to Vendor (RTV).';
+        }
+        res.status(201).json({ success: true, message, data: { hasRTV, newStatus } });
     }
     catch (error) {
         await connection.rollback();
-        throw error; // Biarkan AppError/Error biasa ditangkap oleh errorHandler
+        throw error;
     }
     finally {
         connection.release();

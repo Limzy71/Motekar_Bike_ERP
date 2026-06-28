@@ -45,7 +45,7 @@ interface MenuConfig {
 
 const MENU_ITEMS: MenuConfig[] = [
   { id: 'nav-pengadaan',  label: 'Pengadaan',              icon: 'shopping_cart',    href: '/pengadaan.html', allowedRoles: ['Owner', 'General Manager', 'Pengadaan'] },
-  { id: 'nav-po',         label: 'Purchase Order (PO)',    icon: 'request_quote',    href: '/po.html',        allowedRoles: ['Owner', 'General Manager', 'Pengadaan', 'Gudang'] },
+  { id: 'nav-po',         label: 'Purchase Order (PO)',    icon: 'request_quote',    href: '/po.html',        allowedRoles: ['Owner', 'General Manager', 'Pengadaan'] },
   { id: 'nav-mutu',       label: 'Kendali Mutu',           icon: 'fact_check',       href: '/mutu.html',      allowedRoles: ['Owner', 'General Manager', 'Kendali Mutu'] },
   { id: 'nav-penjualan',  label: 'Penjualan & Penagihan',  icon: 'receipt_long',     href: '/penjualan.html', allowedRoles: ['Owner', 'General Manager', 'Pemasaran & Penjualan'] },
   { id: 'nav-keuangan',   label: 'Buku Besar Keuangan',    icon: 'account_balance',  href: '/keuangan.html',  allowedRoles: ['Owner', 'General Manager', 'Keuangan & Akuntansi'] },
@@ -318,20 +318,34 @@ export function showToast(message: string, isError: boolean = false): void {
  * @param message Pesan konfirmasi
  * @param onConfirm Callback jika tombol Konfirmasi diklik
  */
-export function showConfirm(title: string, message: string, onConfirm: () => void): void {
+export function showConfirm(title: string, message: string, onConfirm: () => void, type: 'danger' | 'success' | 'warning' = 'danger'): void {
   // Buat element container
   const container = document.createElement('div');
   container.id = 'custom-confirm-modal';
   container.className = 'fixed inset-0 z-[100] flex items-center justify-center';
   
+  let icon = 'warning';
+  let iconBg = 'bg-rose-50 text-rose-500';
+  let btnColor = 'bg-rose-600 hover:bg-rose-700';
+
+  if (type === 'success') {
+      icon = 'check_circle';
+      iconBg = 'bg-emerald-50 text-emerald-500';
+      btnColor = 'bg-emerald-600 hover:bg-emerald-700';
+  } else if (type === 'warning') {
+      icon = 'info';
+      iconBg = 'bg-amber-50 text-amber-500';
+      btnColor = 'bg-amber-600 hover:bg-amber-700';
+  }
+
   container.innerHTML = `
     <!-- Backdrop -->
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0" id="cc-backdrop"></div>
     
     <!-- Modal Dialog -->
     <div class="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 flex flex-col items-center transform scale-95 opacity-0 transition-all duration-300" id="cc-dialog">
-      <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-4 text-rose-500">
-        <span class="material-symbols-outlined text-[28px]">warning</span>
+      <div class="w-12 h-12 rounded-full ${iconBg} flex items-center justify-center mb-4">
+        <span class="material-symbols-outlined text-[28px]">${icon}</span>
       </div>
       <h3 class="text-lg font-bold text-slate-800 mb-2 text-center">${title}</h3>
       <p class="text-sm text-slate-500 text-center mb-6">${message}</p>
@@ -340,7 +354,7 @@ export function showConfirm(title: string, message: string, onConfirm: () => voi
         <button id="cc-btn-cancel" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors">
           Batal
         </button>
-        <button id="cc-btn-confirm" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors">
+        <button id="cc-btn-confirm" class="flex-1 ${btnColor} text-white px-4 py-2.5 rounded-lg font-bold text-sm shadow-sm transition-colors">
           Ya, Lanjutkan
         </button>
       </div>

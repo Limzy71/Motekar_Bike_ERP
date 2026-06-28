@@ -15,7 +15,11 @@ export const getPendingReceipts = asyncHandler(async (req: Request, res: Respons
   const [rows] = await pool.query(`
     SELECT pb.id as id_penerimaan, pb.id_po_header, po.nomor_po, po.status as po_status, 
            v.nama_vendor, pb.tanggal_terima, pb.surat_jalan_vendor,
-           (SELECT SUM(dp.qty_diterima) FROM detail_penerimaan dp WHERE dp.id_penerimaan = pb.id) as total_qty_terima
+           (SELECT SUM(dp.qty_diterima) FROM detail_penerimaan dp WHERE dp.id_penerimaan = pb.id) as total_qty_terima,
+           (SELECT SUM(dp.qty_diterima * pd.harga_satuan) 
+            FROM detail_penerimaan dp 
+            JOIN pengadaan_po_detail pd ON pd.id_po_header = pb.id_po_header AND pd.id_inventory_material = dp.id_inventory_material 
+            WHERE dp.id_penerimaan = pb.id) as expected_total
     FROM penerimaan_barang pb
     JOIN pengadaan_po_header po ON pb.id_po_header = po.id
     JOIN master_vendor v ON po.id_vendor = v.id

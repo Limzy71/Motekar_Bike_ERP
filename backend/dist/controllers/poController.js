@@ -24,9 +24,10 @@ export async function generatePONumber(connection) {
 export const getAllPO = async (req, res) => {
     try {
         const [headers] = await pool.query(`
-            SELECT p.*, v.nama_vendor 
+            SELECT p.*, v.nama_vendor, pb.surat_jalan_vendor 
             FROM pengadaan_po_header p
             LEFT JOIN master_vendor v ON p.id_vendor = v.id
+            LEFT JOIN penerimaan_barang pb ON pb.id_po_header = p.id
             ORDER BY p.created_at DESC
         `);
         for (const header of headers) {
@@ -141,10 +142,13 @@ export const updatePOStatus = async (req, res) => {
         else if (status === 'COMPLETED' && currentStatus === 'SENT_TO_VENDOR') {
             if (role !== 'Gudang' && role !== 'Owner' && role !== 'General Manager' && role !== 'Pengadaan')
                 throw new Error('Akses ditolak: Hanya Gudang/Executive yang bisa menerima barang (GRN).');
-            // Execute GRN (Goods Receipt Note): Update inventory_stok
+            // Execute GRN (Goods Receipt Note): Update inventory_stok & create penerimaan record
             const [details] = await connection.query('SELECT id_inventory_material, qty FROM pengadaan_po_detail WHERE id_po_header = ?', [poId]);
+            const [grInsert] = await connection.query('INSERT INTO penerimaan_barang (id_po_header, penerima, surat_jalan_vendor, catatan) VALUES (?, ?, ?, ?)', [poId, user.nama || user.username || 'System', `SJ-${po.nomor_po.split('-').pop()}`, 'Auto-generated GRN via Sistem']);
+            const grId = grInsert.insertId;
             for (const item of details) {
                 await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE id = ?', [item.qty, item.id_inventory_material]);
+                await connection.query('INSERT INTO detail_penerimaan (id_penerimaan, id_inventory_material, qty_diterima, kondisi) VALUES (?, ?, ?, ?)', [grId, item.id_inventory_material, item.qty, 'BAIK']);
             }
             await connection.query('UPDATE pengadaan_po_header SET status = "COMPLETED" WHERE id = ?', [poId]);
             // Mark source PR as Selesai if linked
@@ -353,10 +357,13 @@ export const bulkReceivePO = async (req, res) => {
         }
         let count = 0;
         for (const po of pos) {
-            // Execute GRN: Update inventory_stok
+            // Execute GRN: Update inventory_stok & create penerimaan record
             const [details] = await connection.query('SELECT id_inventory_material, qty FROM pengadaan_po_detail WHERE id_po_header = ?', [po.id]);
+            const [grInsert] = await connection.query('INSERT INTO penerimaan_barang (id_po_header, penerima, surat_jalan_vendor, catatan) VALUES (?, ?, ?, ?)', [po.id, user.nama || user.username || 'System', `SJ-${po.nomor_po.split('-').pop()}`, 'Auto-generated Bulk GRN via Sistem']);
+            const grId = grInsert.insertId;
             for (const item of details) {
                 await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE id = ?', [item.qty, item.id_inventory_material]);
+                await connection.query('INSERT INTO detail_penerimaan (id_penerimaan, id_inventory_material, qty_diterima, kondisi) VALUES (?, ?, ?, ?)', [grId, item.id_inventory_material, item.qty, 'BAIK']);
             }
             await connection.query('UPDATE pengadaan_po_header SET status = "COMPLETED" WHERE id = ?', [po.id]);
             // Mark source PR as Selesai if linked
@@ -372,6 +379,42 @@ export const bulkReceivePO = async (req, res) => {
     catch (error) {
         await connection.rollback();
         console.error('[bulkReceivePO] Error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+    finally {
+        connection.release();
+    }
+};
+// ============================================================
+// [POST] /api/pengadaan/po/bulk-issue — Bulk Issue PO (DRAFT -> ISSUED)
+// ============================================================
+export const bulkIssuePO = async (req, res) => {
+    const connection = await pool.getConnection();
+    const user = req.user;
+    const role = user?.divisi_role;
+    try {
+        if (role !== 'Pengadaan' && role !== 'Owner' && role !== 'General Manager') {
+            throw new Error('Akses ditolak: Hanya Pengadaan atau Executive yang bisa mengajukan PO massal.');
+        }
+        await connection.beginTransaction();
+        const [pos] = await connection.query('SELECT id, nomor_po FROM pengadaan_po_header WHERE status = "DRAFT"');
+        if (pos.length === 0) {
+            await connection.rollback();
+            res.json({ success: false, message: 'Tidak ada Purchase Order (Draft) yang menunggu untuk diajukan.' });
+            return;
+        }
+        let count = 0;
+        for (const po of pos) {
+            await connection.query('UPDATE pengadaan_po_header SET status = "ISSUED" WHERE id = ?', [po.id]);
+            await logAudit(user.id, `PO ${po.nomor_po}: Diajukan Massal (ISSUED)`, req.ip, 'Success');
+            count++;
+        }
+        await connection.commit();
+        res.json({ success: true, message: `${count} Purchase Order berhasil diajukan secara massal (Status: ISSUED).` });
+    }
+    catch (error) {
+        await connection.rollback();
+        console.error('[bulkIssuePO] Error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
     finally {

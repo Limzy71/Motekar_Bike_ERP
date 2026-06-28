@@ -138,6 +138,11 @@
                             <tr><td colspan="6" class="px-4 py-8 text-center text-xs text-slate-500">Memuat data...</td></tr>
                         </tbody>
                     </table>
+                    <!-- Pagination Onboarding -->
+                    <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="onboarding-page-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="onboarding-pagination"></div>
+                    </div>
                 </div>
             </div>
 
@@ -177,6 +182,11 @@
                             <tr><td colspan="8" class="px-4 py-8 text-center text-xs text-slate-500">Memuat data...</td></tr>
                         </tbody>
                     </table>
+                    <!-- Pagination Warranty -->
+                    <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="warranty-page-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="warranty-pagination"></div>
+                    </div>
                 </div>
             </div>
 
@@ -185,17 +195,70 @@
 </div>
 
 <!-- ============================================ -->
+<!-- MODAL: VERIFIKASI PROSPEK -->
+<!-- ============================================ -->
+<div id="modal-verifikasi-prospek" class="fixed inset-0 z-50 hidden opacity-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-all duration-300">
+    <div id="modal-verifikasi-prospek-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 transform scale-95 transition-all duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+            <h3 class="text-base font-bold text-slate-900">Detail & Verifikasi Prospek</h3>
+            <button id="btn-close-verifikasi" class="text-slate-400 hover:text-slate-600 p-1 rounded-full">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-4 text-sm text-slate-700">
+            <div class="grid grid-cols-2 gap-4 border-b border-slate-100 pb-4">
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Nama Toko</p>
+                    <p id="detail-nama-toko" class="font-semibold text-slate-800"></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">PIC</p>
+                    <p id="detail-pic" class="font-semibold text-slate-800"></p>
+                </div>
+                <div class="col-span-2">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Kontak</p>
+                    <p id="detail-kontak" class="font-semibold text-slate-800"></p>
+                </div>
+                <div class="col-span-2">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Alamat Retailer</p>
+                    <p id="detail-alamat" class="font-semibold text-slate-800 mb-2"></p>
+                    <div id="detail-map-preview" class="w-full h-40 bg-slate-100 rounded-lg border border-slate-200 overflow-hidden hidden"></div>
+                </div>
+                <div class="col-span-2 mt-2">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Dokumen NIB</p>
+                    <a id="detail-dokumen-nib" href="#" target="_blank" class="inline-flex items-center gap-2 text-primary hover:text-primary-container font-semibold transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">visibility</span> Lihat Dokumen
+                    </a>
+                </div>
+            </div>
+            
+            <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex gap-3 mt-4">
+                <span class="material-symbols-outlined text-amber-600">info</span>
+                <p class="text-xs text-amber-800">Menyetujui prospek ini akan secara otomatis memverifikasi profil dan membuat akun Login (Username & Password) untuk Retailer tersebut.</p>
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+            <button type="button" id="btn-cancel-verifikasi" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
+            <button type="button" id="btn-submit-verifikasi" class="px-5 py-2 text-sm font-bold bg-primary hover:bg-primary/90 text-white rounded-lg shadow-sm flex items-center gap-2 transition-colors">
+                <span id="spinner-verifikasi" class="material-symbols-outlined text-[16px] hidden animate-spin">progress_activity</span>
+                <span class="material-symbols-outlined text-[16px]">how_to_reg</span> Verifikasi & Buat Akun
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
 <!-- MODAL: REGISTRASI PROSPEK -->
 <!-- ============================================ -->
 <div id="modal-onboarding" class="fixed inset-0 z-50 hidden opacity-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-all duration-300">
-    <div id="modal-onboarding-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300 overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+    <div id="modal-onboarding-content" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
             <h3 class="text-base font-bold text-slate-900">Registrasi Retailer Baru</h3>
             <button id="btn-close-onboarding" class="text-slate-400 hover:text-slate-600 p-1 rounded-full">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
-        <div class="p-6">
+        <div class="p-6 overflow-y-auto">
             <form id="form-onboarding" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Nama Toko <span class="text-rose-500">*</span></label>
@@ -207,7 +270,14 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">No. Telepon / WhatsApp <span class="text-rose-500">*</span></label>
-                    <input type="text" name="kontak" required placeholder="08123456789" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                    <input type="text" name="kontak" id="input-kontak" required placeholder="08123456789" class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Retailer (Peta) <span class="text-rose-500">*</span></label>
+                    <input type="text" name="alamat" id="input-alamat" autocomplete="off" style="background-image: none !important;" required placeholder="Ketik nama jalan / lokasi..." class="w-full text-sm border-slate-300 rounded-lg focus:ring-primary focus:border-primary">
+                    <input type="hidden" name="latitude" id="input-latitude">
+                    <input type="hidden" name="longitude" id="input-longitude">
+                    <div id="map-preview" class="w-full h-40 bg-slate-100 rounded-lg border border-slate-200 mt-2 overflow-hidden shadow-inner hidden"></div>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Dokumen NIB <span class="text-rose-500">*</span></label>
@@ -216,7 +286,7 @@
                 </div>
             </form>
         </div>
-        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
             <button type="button" id="btn-cancel-onboarding" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200/50 rounded-lg">Batal</button>
             <button type="submit" form="form-onboarding" class="px-5 py-2 text-sm font-bold bg-slate-900 hover:bg-slate-700 text-white rounded-lg shadow-sm flex items-center gap-2 transition-colors">
                 <span class="material-symbols-outlined text-[16px]">send</span> Kirim Registrasi
@@ -326,7 +396,7 @@
 </div>
 
 <script type="module" src="/src/pages/crm.ts"></script>
-
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBxqANMcQNlNG3wRVLBxWXxrXf9Hd4yAQY&libraries=places"></script>
 <script>
     const ACTIVE_TAB = "pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors flex items-center gap-2 mr-4";
     const INACTIVE_TAB = "pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-colors flex items-center gap-2";

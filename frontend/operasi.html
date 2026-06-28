@@ -191,20 +191,10 @@
                 </div>
 
                 <!-- Pagination Controls -->
-                <div class="flex items-center justify-between px-6 py-4 bg-white border border-t-0 border-slate-200/80 rounded-b-xl shadow-2xs mb-8">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="operasi-pagination-info">Menampilkan 0-0 dari 0 data</p>
-                    <div class="flex items-center gap-1.5">
-                        <button id="operasi-btn-prev" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">chevron_left</span>
-                        </button>
-                        <div id="operasi-pagination-pages" class="flex items-center gap-1">
-                            <!-- Page buttons injected via TS -->
-                        </div>
-                        <button id="operasi-btn-next" class="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-                        </button>
+                <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="operasi-pagination-info">Menampilkan 0-0 dari 0 data</span>
+                        <div class="flex items-center gap-1.5" id="operasi-pagination-pagination"></div>
                     </div>
-                </div>
             </div>
             
             <!-- ZONA 3: RIGHT DRAWER (DEEP DIVE INSPECTOR) -->
@@ -216,7 +206,7 @@
                         <h2 class="text-lg font-black text-slate-800" id="drawer-wo-id">WO-123456</h2>
                         <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5" id="drawer-wo-status">STATUS</p>
                     </div>
-                    <button id="btn-close-drawer" class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors">
+                    <button id="btn-close-drawer" class="p-2 text-slate-400 hover:text-slate-800 rounded-full transition-colors">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>

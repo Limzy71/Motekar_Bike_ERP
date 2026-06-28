@@ -17,7 +17,7 @@ export const getAllWO = async (req: Request, res: Response): Promise<void> => {
       ORDER BY wo.created_at DESC
     `);
     
-    // Get allocations for BOM Checklist
+    // Get allocations for BOM Checklist and check pending deficits
     for (const wo of rows) {
         const [allocations]: any = await pool.query(`
             SELECT 
@@ -29,6 +29,13 @@ export const getAllWO = async (req: Request, res: Response): Promise<void> => {
             WHERE a.id_wo_header = ?
         `, [wo.id]);
         wo.materials = allocations;
+
+        const [pendingReqs]: any = await pool.query(`
+            SELECT id FROM pengadaan_restock_requests 
+            WHERE nomor_wo = ? AND status = 'Pending'
+        `, [wo.nomor_wo]);
+        
+        wo.has_pending_deficit = pendingReqs.length > 0;
     }
 
     res.json({ success: true, data: rows });
@@ -183,6 +190,16 @@ export const updateWOStatus = async (req: Request, res: Response): Promise<void>
 
     // DRAFT -> KITTING_RELEASED
     if (status === 'KITTING_RELEASED' && currentStatus === 'DRAFT') {
+      // Block kitting if there are unresolved material deficits (pending restock requests)
+      const [pendingRequests]: any = await connection.query(
+        "SELECT id FROM pengadaan_restock_requests WHERE nomor_wo = ? AND status = 'Pending'", 
+        [wo.nomor_wo]
+      );
+      
+      if (pendingRequests.length > 0) {
+        throw new Error('Gagal Release Kitting! Masih ada defisit material. Harap selesaikan pengadaan material (PR/PO) terlebih dahulu.');
+      }
+
       await connection.query('UPDATE operasi_wo_header SET status = ? WHERE id = ?', [status, woId]);
       await logAudit(userId, `WO ${wo.nomor_wo}: Kitting Released`, req.ip, 'Success');
     }

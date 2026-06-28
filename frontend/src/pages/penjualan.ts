@@ -1,5 +1,6 @@
 import { initRBAC } from '../components/rbac.js';
 import { apiFetch, getUserData } from '../api.js';
+import { renderPaginationUI } from '../utils/pagination.js';
 
 interface SODetail {
     id: number;
@@ -87,6 +88,39 @@ const formatIndoNumber = (numStr: string | number) => {
     return new Intl.NumberFormat('id-ID').format(num);
 };
 
+
+function fillPrintSO(so: any) {
+    const elMitra = document.getElementById('pdf-so-mitra');
+    const elAlamat = document.getElementById('pdf-so-alamat');
+    const elNo = document.getElementById('pdf-so-no');
+    const elTgl = document.getElementById('pdf-so-tgl');
+    const elStatus = document.getElementById('pdf-so-status');
+    const elTbody = document.getElementById('pdf-so-tbody');
+    const elGrandTotal = document.getElementById('pdf-so-grand-total');
+
+    if (elMitra) elMitra.textContent = so.nama_customer || '-';
+    if (elAlamat) elAlamat.textContent = so.alamat_pengiriman || '-';
+    if (elNo) elNo.textContent = so.nomor_so;
+    if (elTgl) elTgl.textContent = new Date(so.created_at).toLocaleDateString('id-ID');
+    if (elStatus) elStatus.textContent = so.status_so;
+    if (elGrandTotal) elGrandTotal.textContent = formatRupiah(parseFloat(so.total_nilai));
+
+    if (elTbody && so.items) {
+        elTbody.innerHTML = '';
+        so.items.forEach((item: any, idx: number) => {
+            elTbody.innerHTML += `
+                <tr>
+                    <td class="py-4 px-2 font-medium">${idx + 1}</td>
+                    <td class="py-4 px-2 font-bold text-slate-900">${item.nama_barang}</td>
+                    <td class="py-4 px-2 text-center font-bold">${item.qty} ${item.satuan}</td>
+                    <td class="py-4 px-2 text-right font-data-mono">${formatRupiah(parseFloat(item.harga_satuan))}</td>
+                    <td class="py-4 px-2 text-right font-data-mono font-bold text-slate-900">${formatRupiah(parseFloat(item.total_harga))}</td>
+                </tr>
+            `;
+        });
+    }
+}
+
 // ============================================================
 // 1. DATA TABLE & DISPENSER
 // ============================================================
@@ -136,7 +170,7 @@ function renderTable() {
 
     if (allSOs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 italic font-medium">Belum ada Sales Order</td></tr>`;
-        updatePaginationUI();
+    renderPaginationUI('penjualan-pagination-pagination', 'penjualan-pagination-info', 1, 10, 0, () => {});
         return;
     }
 
@@ -204,68 +238,20 @@ function renderTable() {
         `;
         tbody.appendChild(tr);
     });
-
-    updatePaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+    renderPaginationUI(
+        'penjualan-pagination-pagination',
+        'penjualan-pagination-info',
+        currentPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentPage = newPage;
+            renderTable();
+        }
+    );
 }
 
-function updatePaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
-    const infoText = document.getElementById('penjualan-pagination-info');
-    const btnPrev = document.getElementById('penjualan-btn-prev') as HTMLButtonElement;
-    const btnNext = document.getElementById('penjualan-btn-next') as HTMLButtonElement;
-    const pagesContainer = document.getElementById('penjualan-pagination-pages');
 
-    if (infoText) {
-        if (total === 0) {
-            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
-        } else {
-            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
-        }
-    }
-
-    if (btnPrev) {
-        btnPrev.disabled = currentPage <= 1;
-        btnPrev.onclick = () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderTable();
-            }
-        };
-    }
-
-    if (btnNext) {
-        btnNext.disabled = currentPage >= totalPages;
-        btnNext.onclick = () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderTable();
-            }
-        };
-    }
-
-    if (pagesContainer) {
-        pagesContainer.innerHTML = '';
-        if (totalPages > 1) {
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                const btn = document.createElement('button');
-                btn.className = `w-7 h-7 rounded-lg text-xs font-bold transition-colors ${i === currentPage ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`;
-                btn.textContent = i.toString();
-                btn.onclick = () => {
-                    currentPage = i;
-                    renderTable();
-                };
-                pagesContainer.appendChild(btn);
-            }
-        }
-    }
-}
 
 // ============================================================
 // 2. RIGHT DRAWER (DEEP DIVE INSPECTOR)

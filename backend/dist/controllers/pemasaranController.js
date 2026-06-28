@@ -8,7 +8,7 @@ import pool from '../config/database.js';
 // [GET] /api/pemasaran/campaigns
 export const getAllCampaigns = async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT id_campaign, nama_campaign, jenis, budget_alokasi, status, DATE_FORMAT(tanggal_mulai, "%Y-%m-%d") as tanggal_mulai, DATE_FORMAT(tanggal_selesai, "%Y-%m-%d") as tanggal_selesai, created_at FROM pemasaran_campaigns ORDER BY created_at DESC');
+        const [rows] = await pool.query('SELECT id_campaign, nama_campaign, jenis, budget_alokasi, status, lokasi, DATE_FORMAT(tanggal_mulai, "%Y-%m-%d") as tanggal_mulai, DATE_FORMAT(tanggal_selesai, "%Y-%m-%d") as tanggal_selesai, created_at FROM pemasaran_campaigns ORDER BY created_at DESC');
         res.json({ success: true, data: rows });
     }
     catch (error) {
@@ -19,12 +19,12 @@ export const getAllCampaigns = async (req, res) => {
 // [POST] /api/pemasaran/campaigns
 export const createCampaign = async (req, res) => {
     try {
-        const { nama_campaign, jenis, budget_alokasi, tanggal_mulai, tanggal_selesai } = req.body;
+        const { nama_campaign, jenis, budget_alokasi, tanggal_mulai, tanggal_selesai, lokasi } = req.body;
         if (!nama_campaign || !jenis || budget_alokasi === undefined) {
             res.status(400).json({ success: false, message: 'Mohon lengkapi seluruh field Kampanye.' });
             return;
         }
-        await pool.query('INSERT INTO pemasaran_campaigns (nama_campaign, jenis, budget_alokasi, tanggal_mulai, tanggal_selesai) VALUES (?, ?, ?, ?, ?)', [nama_campaign.trim(), jenis, parseFloat(budget_alokasi), tanggal_mulai || null, tanggal_selesai || null]);
+        await pool.query('INSERT INTO pemasaran_campaigns (nama_campaign, jenis, budget_alokasi, tanggal_mulai, tanggal_selesai, lokasi) VALUES (?, ?, ?, ?, ?, ?)', [nama_campaign.trim(), jenis, parseFloat(budget_alokasi), tanggal_mulai || null, tanggal_selesai || null, lokasi || ""]);
         res.status(201).json({ success: true, message: 'Kampanye baru berhasil dibuat.' });
     }
     catch (error) {
@@ -36,8 +36,8 @@ export const createCampaign = async (req, res) => {
 export const updateCampaign = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nama_campaign, jenis, budget_alokasi, status, tanggal_mulai, tanggal_selesai } = req.body;
-        await pool.query('UPDATE pemasaran_campaigns SET nama_campaign = ?, jenis = ?, budget_alokasi = ?, status = ?, tanggal_mulai = ?, tanggal_selesai = ? WHERE id_campaign = ?', [nama_campaign?.trim(), jenis, parseFloat(budget_alokasi), status, tanggal_mulai || null, tanggal_selesai || null, id]);
+        const { nama_campaign, jenis, budget_alokasi, status, tanggal_mulai, tanggal_selesai, lokasi } = req.body;
+        await pool.query('UPDATE pemasaran_campaigns SET nama_campaign = ?, jenis = ?, budget_alokasi = ?, status = ?, tanggal_mulai = ?, tanggal_selesai = ?, lokasi = ? WHERE id_campaign = ?', [nama_campaign?.trim(), jenis, parseFloat(budget_alokasi), status, tanggal_mulai || null, tanggal_selesai || null, lokasi || "", id]);
         res.json({ success: true, message: 'Kampanye berhasil diperbarui.' });
     }
     catch (error) {
@@ -85,12 +85,12 @@ export const getAllLeads = async (req, res) => {
 // [POST] /api/pemasaran/leads
 export const createLead = async (req, res) => {
     try {
-        const { nama_toko, kontak_person, no_telepon, id_campaign, estimasi_nilai_deal } = req.body;
+        const { nama_toko, kontak_person, no_telepon, alamat, id_campaign, estimasi_nilai_deal } = req.body;
         if (!nama_toko || !kontak_person || !no_telepon) {
             res.status(400).json({ success: false, message: 'Nama toko, kontak person, dan nomor telepon wajib diisi.' });
             return;
         }
-        await pool.query('INSERT INTO pemasaran_leads (nama_toko, kontak_person, no_telepon, id_campaign, estimasi_nilai_deal) VALUES (?, ?, ?, ?, ?)', [nama_toko.trim(), kontak_person.trim(), no_telepon.trim(), id_campaign || null, parseFloat(estimasi_nilai_deal) || 0]);
+        await pool.query('INSERT INTO pemasaran_leads (nama_toko, kontak_person, no_telepon, alamat, id_campaign, estimasi_nilai_deal) VALUES (?, ?, ?, ?, ?, ?)', [nama_toko.trim(), kontak_person.trim(), no_telepon.trim(), alamat ? alamat.trim() : null, id_campaign || null, parseFloat(estimasi_nilai_deal) || 0]);
         res.status(201).json({ success: true, message: 'Lead baru berhasil ditambahkan ke pipeline.' });
     }
     catch (error) {
@@ -139,7 +139,7 @@ export const updateLeadStatus = async (req, res) => {
 export const updateLead = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nama_toko, kontak_person, no_telepon, estimasi_nilai_deal } = req.body;
+        const { nama_toko, kontak_person, no_telepon, alamat, estimasi_nilai_deal } = req.body;
         const leadId = parseInt(id, 10);
         if (isNaN(leadId)) {
             res.status(400).json({ success: false, message: 'ID Lead tidak valid.' });
@@ -154,7 +154,7 @@ export const updateLead = async (req, res) => {
             res.status(403).json({ success: false, message: 'Data master lead yang sudah Won Deal atau Lost telah dikunci dan tidak dapat diubah.' });
             return;
         }
-        await pool.query('UPDATE pemasaran_leads SET nama_toko = ?, kontak_person = ?, no_telepon = ?, estimasi_nilai_deal = ? WHERE id_lead = ?', [nama_toko?.trim(), kontak_person?.trim(), no_telepon?.trim(), parseFloat(estimasi_nilai_deal) || 0, leadId]);
+        await pool.query('UPDATE pemasaran_leads SET nama_toko = ?, kontak_person = ?, no_telepon = ?, alamat = ?, estimasi_nilai_deal = ? WHERE id_lead = ?', [nama_toko?.trim(), kontak_person?.trim(), no_telepon?.trim(), alamat ? alamat.trim() : null, parseFloat(estimasi_nilai_deal) || 0, leadId]);
         res.json({ success: true, message: 'Detail lead berhasil diperbarui.' });
     }
     catch (error) {

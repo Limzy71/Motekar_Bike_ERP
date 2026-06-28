@@ -35,34 +35,67 @@ export const reportFailedDelivery = async (req: Request, res: Response) => {
         const { id } = req.params;
 
         // 1. Ubah status SO
-        const [updateResult]: any = await connection.query(
-            `UPDATE sales_order SET status = 'FAILED_DELIVERY' WHERE id = ?`,
-            [id]
-        );
-
-        if (updateResult.affectedRows === 0) {
+        const [soHeader]: any = await connection.query('SELECT status_so, nomor_so FROM penjualan_so_header WHERE id = ? FOR UPDATE', [id]);
+        if (soHeader.length === 0) {
             throw new Error('Sales Order tidak ditemukan.');
         }
 
+        await connection.query(
+            `UPDATE penjualan_so_header SET status_so = 'FAILED_DELIVERY' WHERE id = ?`,
+            [id]
+        );
+
         // 2. Karantina barang (ambil barang_id dan qty_order dari sales_order_detail)
-        const [items]: any = await connection.query('SELECT barang_id, qty_order FROM sales_order_detail WHERE so_id = ?', [id]);
+        const [items]: any = await connection.query('SELECT id_inventory_barang_jadi as barang_id, qty FROM penjualan_so_detail WHERE id_so_header = ?', [id]);
         
         for (const item of items) {
             // Karena barang gagal dikirim, kita kembalikan ke stok_karantina, bukan stok utama
             await connection.query(
                 'UPDATE inventory_stok SET stok_karantina = stok_karantina + ? WHERE id = ?',
-                [item.qty_order, item.barang_id]
+                [item.qty, item.barang_id]
             );
         }
 
         await connection.commit();
-        res.json({ success: true, message: `Pesanan ${id} ditandai Gagal Kirim. Stok dikarantina.` });
+        res.json({ success: true, message: `Pesanan ${soHeader[0].nomor_so} ditandai Gagal Kirim. Stok dikarantina.` });
     } catch (error: any) {
         await connection.rollback();
         console.error('Error reportFailedDelivery:', error);
         res.status(500).json({ success: false, message: 'Gagal melaporkan kegagalan pengiriman.', error: error.message });
     } finally {
         connection.release();
+    }
+};
+
+// GET /api/exception/failed-deliveries
+export const getFailedDeliveries = async (req: Request, res: Response) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT h.id, h.nomor_so, h.nama_customer, h.updated_at as tanggal_gagal, 
+                    s.kode_barang, d.qty,
+                    (SELECT COUNT(*) FROM exception_writeoff w 
+                     WHERE w.alasan_hilang LIKE CONCAT('%', h.nomor_so, '%')
+                     AND w.status_approval = 'REJECTED'
+                     AND w.created_at >= h.updated_at) as rejected_count,
+                    (SELECT COUNT(*) FROM exception_writeoff w 
+                     WHERE w.alasan_hilang LIKE CONCAT('%', h.nomor_so, '%')
+                     AND w.status_approval = 'APPROVED'
+                     AND w.created_at >= h.updated_at) as approved_count
+             FROM penjualan_so_header h
+             JOIN penjualan_so_detail d ON d.id_so_header = h.id
+             JOIN inventory_stok s ON s.id = d.id_inventory_barang_jadi
+             WHERE h.status_so = 'FAILED_DELIVERY' 
+             AND NOT EXISTS (
+                 SELECT 1 FROM exception_writeoff w 
+                 WHERE w.alasan_hilang LIKE CONCAT('%', h.nomor_so, '%')
+                 AND w.status_approval = 'PENDING'
+                 AND w.created_at >= h.updated_at
+             )
+             ORDER BY h.updated_at DESC`
+        );
+        res.json({ success: true, data: rows });
+    } catch (err: any) {
+        res.status(500).json({ success: false, message: err.message });
     }
 };
 
@@ -73,23 +106,45 @@ export const rescheduleDelivery = async (req: Request, res: Response) => {
         await connection.beginTransaction();
         const { id } = req.params;
         
-        // Kembalikan ke SHIPPED (karena dia lagi di jalan) atau DRAFT tergantung alur. Kita asumsikan SHIPPED untuk reschedule.
+        // 1. Dapatkan info SO dan waktu gagal kirim (updated_at saat ini)
+        const [soHeader]: any = await connection.query('SELECT nomor_so, updated_at FROM penjualan_so_header WHERE id = ?', [id]);
+        if (soHeader.length === 0) throw new Error('Sales Order tidak ditemukan.');
+        const nomor_so = soHeader[0].nomor_so;
+        const failure_time = soHeader[0].updated_at;
+        
+        // 2. Kembalikan ke SHIPPED (karena dia lagi di jalan)
         await connection.query(
-            `UPDATE sales_order SET status = 'SHIPPED' WHERE id = ?`,
+            `UPDATE penjualan_so_header SET status_so = 'SHIPPED' WHERE id = ?`,
             [id]
         );
 
-        // Keluarkan dari karantina
-        const [items]: any = await connection.query('SELECT barang_id, qty_order FROM sales_order_detail WHERE so_id = ?', [id]);
+        // 3. Cek apakah ada Write-Off yang di-ACC sejak barang dinyatakan gagal kirim
+        const [writeoffs]: any = await connection.query(
+            `SELECT * FROM exception_writeoff WHERE alasan_hilang LIKE CONCAT('%', ?, '%') AND status_approval = 'APPROVED' AND created_at >= ?`,
+            [nomor_so, failure_time]
+        );
+        const isReplacement = writeoffs.length > 0;
+
+        // Keluarkan dari karantina (atau potong stok baru jika replacement)
+        const [items]: any = await connection.query('SELECT id_inventory_barang_jadi as barang_id, qty FROM penjualan_so_detail WHERE id_so_header = ?', [id]);
         for (const item of items) {
-            await connection.query(
-                'UPDATE inventory_stok SET stok_karantina = stok_karantina - ? WHERE id = ?',
-                [item.qty_order, item.barang_id]
-            );
+            if (isReplacement) {
+                // Jika replacement, ambil stok fisik baru dari gudang
+                await connection.query(
+                    'UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE id = ?',
+                    [item.qty, item.barang_id]
+                );
+            } else {
+                // Jika normal reschedule, kembalikan dari karantina
+                await connection.query(
+                    'UPDATE inventory_stok SET stok_karantina = stok_karantina - ? WHERE id = ?',
+                    [item.qty, item.barang_id]
+                );
+            }
         }
 
         await connection.commit();
-        res.json({ success: true, message: `Pesanan ${id} berhasil dijadwalkan ulang.` });
+        res.json({ success: true, message: `Pesanan ${nomor_so} berhasil dijadwalkan ulang.` });
     } catch (error: any) {
         await connection.rollback();
         console.error('Error rescheduleDelivery:', error);
@@ -151,10 +206,10 @@ export const approveWriteOff = async (req: Request, res: Response) => {
         // 1. Approve
         await connection.query(`UPDATE exception_writeoff SET status_approval = 'APPROVED' WHERE id_writeoff = ?`, [id]);
 
-        // 2. Reduce Stock
+        // 2. Reduce Stock (Also from karantina because it was quarantined during failure)
         await connection.query(
-            `UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE kode_barang = ?`,
-            [writeoff.qty_hilang, writeoff.kode_item]
+            `UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ?, stok_karantina = GREATEST(0, stok_karantina - ?) WHERE kode_barang = ?`,
+            [writeoff.qty_hilang, writeoff.qty_hilang, writeoff.kode_item]
         );
 
         // Fetch nominal kerugian (asumsikan harga standard atau just placeholder for now, ideally from item cost)
@@ -186,10 +241,50 @@ export const approveWriteOff = async (req: Request, res: Response) => {
     }
 };
 
+// PATCH /api/exception/writeoff/:id/reject
+export const rejectWriteOff = async (req: Request, res: Response) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const { id } = req.params;
+        
+        const [rows]: any = await connection.query(`SELECT * FROM exception_writeoff WHERE id_writeoff = ?`, [id]);
+        if (rows.length === 0) throw new Error('Data Write-Off tidak ditemukan.');
+        const writeoff = rows[0];
+
+        if (writeoff.status_approval !== 'PENDING') {
+            throw new Error('Hanya Write-Off berstatus PENDING yang dapat ditolak.');
+        }
+
+        // Reject
+        await connection.query(`UPDATE exception_writeoff SET status_approval = 'REJECTED' WHERE id_writeoff = ?`, [id]);
+
+        await connection.commit();
+        res.json({ success: true, message: `Write-Off ${id} berhasil ditolak.` });
+    } catch (error: any) {
+        await connection.rollback();
+        console.error('Error rejectWriteOff:', error);
+        res.status(500).json({ success: false, message: 'Gagal menolak write-off.', error: error.message });
+    } finally {
+        connection.release();
+    }
+};
+
 // GET /api/exception/writeoff (Helper for testing)
 export const getWriteOffs = async (req: Request, res: Response) => {
     try {
-        const [rows] = await pool.query('SELECT id_writeoff, kode_item, qty_hilang, alasan_hilang, status_approval, created_at FROM exception_writeoff ORDER BY created_at DESC');
+        const [rows] = await pool.query(`
+            SELECT w.id_writeoff, w.kode_item, w.qty_hilang, w.alasan_hilang, w.status_approval, w.created_at 
+            FROM exception_writeoff w
+            WHERE w.status_approval = 'PENDING'
+            OR EXISTS (
+                SELECT 1 FROM penjualan_so_header h
+                WHERE w.alasan_hilang LIKE CONCAT('%', h.nomor_so, '%')
+                AND h.status_so = 'FAILED_DELIVERY'
+                AND w.created_at >= h.updated_at
+            )
+            ORDER BY w.created_at DESC
+        `);
         res.json({ success: true, data: rows });
     } catch (err: any) {
         res.status(500).json({ success: false, message: err.message });

@@ -131,7 +131,8 @@ function renderTable() {
     }
 
     const tr = document.createElement('tr');
-    tr.className = 'hover:bg-slate-100 transition-colors';
+    tr.className = `hover:bg-slate-50 transition-colors ${!isRestricted ? 'cursor-pointer' : ''}`;
+    tr.dataset.id = user.id.toString();
     tr.innerHTML = `
       <td class="px-6 py-4 font-data-mono text-slate-500">#${displayId}</td>
       <td class="px-6 py-4">
@@ -328,6 +329,7 @@ tbody.addEventListener('click', async (e) => {
   if (btnEdit) {
     const id = parseInt(btnEdit.dataset.id || '0');
     openModal('edit', id);
+    return;
   }
 
   if (btnReset) {
@@ -364,6 +366,24 @@ tbody.addEventListener('click', async (e) => {
         showToast('Terjadi kesalahan sistem', true);
       }
     }
+    return;
+  }
+
+  // Row click
+  const tr = target.closest('tr[data-id]');
+  if (tr) {
+      const id = parseInt(tr.getAttribute('data-id') || '0', 10);
+      if (id) {
+          const user = allUsers.find(u => u.id === id);
+          if (user) {
+             const isOwner = user.divisi_role === 'Owner';
+             const isGM = user.divisi_role === 'General Manager';
+             let isRestricted = false;
+             if (isOwner && (currentUserRole === 'IT Support' || currentUserRole === 'General Manager')) isRestricted = true;
+             if (isGM && currentUserRole === 'IT Support') isRestricted = true;
+             if (!isRestricted) openModal('edit', id);
+          }
+      }
   }
 });
 

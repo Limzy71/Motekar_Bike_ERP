@@ -5,6 +5,7 @@
 
 import { apiFetch, getUserData } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
+import { renderPaginationUI } from '../utils/pagination.js';
 
 declare const Swal: any;
 
@@ -160,7 +161,7 @@ function renderTable() {
 
   if (filteredData.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-8 text-center text-sm text-on-surface-variant">Belum ada data PR.</td></tr>`;
-    updatePaginationUI();
+    renderPaginationUI('pr-pagination-pagination', 'pr-pagination-info', 1, 10, 0, () => {});
     return;
   }
 
@@ -237,69 +238,20 @@ function renderTable() {
     `;
     tbody.appendChild(tr);
   });
-
-  updatePaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+    renderPaginationUI(
+        'pr-pagination-pagination',
+        'pr-pagination-info',
+        currentPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentPage = newPage;
+            renderTable();
+        }
+    );
 }
 
-function updatePaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
-    const infoText = document.getElementById('pr-pagination-info');
-    const btnPrev = document.getElementById('pr-btn-prev') as HTMLButtonElement;
-    const btnNext = document.getElementById('pr-btn-next') as HTMLButtonElement;
-    const pagesContainer = document.getElementById('pr-pagination-pages');
 
-    if (infoText) {
-        if (total === 0) {
-            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
-        } else {
-            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
-        }
-    }
-
-    if (btnPrev) {
-        btnPrev.disabled = currentPage <= 1;
-        btnPrev.onclick = () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderTable();
-            }
-        };
-    }
-
-    if (btnNext) {
-        btnNext.disabled = currentPage >= totalPages;
-        btnNext.onclick = () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderTable();
-            }
-        };
-    }
-
-    if (pagesContainer) {
-        pagesContainer.innerHTML = '';
-        if (totalPages > 1) {
-            // Logic to show page numbers
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                const btn = document.createElement('button');
-                btn.className = `w-7 h-7 rounded-lg text-xs font-bold transition-colors ${i === currentPage ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`;
-                btn.textContent = i.toString();
-                btn.onclick = () => {
-                    currentPage = i;
-                    renderTable();
-                };
-                pagesContainer.appendChild(btn);
-            }
-        }
-    }
-}
 
 // ============================================================
 // ACTIONS
@@ -812,7 +764,7 @@ function renderVendorsSRM(): void {
 
     if (masterVendorsSRM.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Tidak ada data vendor.</td></tr>`;
-        updateSRMPaginationUI(0, 0, 0, 0);
+    renderPaginationUI('srm-pagination-pagination', 'srm-pagination-info', 1, 10, 0, () => {});
         return;
     }
 
@@ -860,70 +812,20 @@ function renderVendorsSRM(): void {
 
         tbody.appendChild(tr);
     });
-
-    updateSRMPaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+    renderPaginationUI(
+        'srm-pagination-pagination',
+        'srm-pagination-info',
+        currentSRMPage,
+        srmItemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentSRMPage = newPage;
+            renderVendorsSRM();
+        }
+    );
 }
 
-function updateSRMPaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
-    const infoText = document.getElementById('srm-pagination-info');
-    const btnPrev = document.getElementById('srm-btn-prev') as HTMLButtonElement;
-    const btnNext = document.getElementById('srm-btn-next') as HTMLButtonElement;
-    const pagesContainer = document.getElementById('srm-pagination-pages');
 
-    if (infoText) {
-        if (total === 0) {
-            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
-        } else {
-            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
-        }
-    }
-
-    if (btnPrev) {
-        btnPrev.disabled = currentSRMPage <= 1;
-        btnPrev.onclick = () => {
-            if (currentSRMPage > 1) {
-                currentSRMPage--;
-                renderVendorsSRM();
-            }
-        };
-    }
-
-    if (btnNext) {
-        btnNext.disabled = currentSRMPage >= totalPages;
-        btnNext.onclick = () => {
-            if (currentSRMPage < totalPages) {
-                currentSRMPage++;
-                renderVendorsSRM();
-            }
-        };
-    }
-
-    if (pagesContainer) {
-        pagesContainer.innerHTML = '';
-        let startPage = Math.max(1, currentSRMPage - 1);
-        let endPage = Math.min(totalPages, startPage + 2);
-        
-        if (endPage - startPage < 2 && totalPages >= 3) {
-            if (startPage === 1) endPage = 3;
-            else if (endPage === totalPages) startPage = totalPages - 2;
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            const btn = document.createElement('button');
-            if (i === currentSRMPage) {
-                btn.className = 'w-7 h-7 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold shadow-sm';
-            } else {
-                btn.className = 'w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 text-xs font-bold transition-colors';
-            }
-            btn.textContent = i.toString();
-            btn.onclick = () => {
-                currentSRMPage = i;
-                renderVendorsSRM();
-            };
-            pagesContainer.appendChild(btn);
-        }
-    }
-}
 
 function openSRMStatusModal(v: SRMVendor): void {
     const modal = document.getElementById('modal-srm-status');

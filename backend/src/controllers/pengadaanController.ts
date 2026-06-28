@@ -2,6 +2,29 @@ import { Request, Response } from 'express';
 import pool from '../config/database.js';
 import { generatePONumber } from './poController.js';
 
+// ============================================================
+// HELPER: Generate PR Number (Format: PR/MTK/YYYY/XXXX)
+// ============================================================
+export async function generatePRNumber(connection: any): Promise<string> {
+    const year = new Date().getFullYear();
+    const prefix = `PR/MTK/${year}/`;
+
+    const [rows]: any = await connection.query(
+        `SELECT nomor_pr FROM pengadaan_pr_header WHERE nomor_pr LIKE ? ORDER BY id DESC LIMIT 1`,
+        [`${prefix}%`]
+    );
+
+    let nextNum = 1;
+    if (rows.length > 0) {
+        const lastPR = rows[0].nomor_pr;
+        const lastSequence = parseInt(lastPR.split('/').pop() || '0', 10);
+        nextNum = lastSequence + 1;
+    }
+
+    const sequence = nextNum.toString().padStart(4, '0');
+    return `${prefix}${sequence}`;
+}
+
 /**
  * Controller untuk Modul Pengadaan (Purchase Requisition).
  * Endpoint ini dilindungi oleh authMiddleware + requireRole('Owner', 'Admin', 'Pengadaan').
@@ -70,9 +93,9 @@ export const getAllPR = async (req: Request, res: Response): Promise<void> => {
 export const createPR = async (req: Request, res: Response): Promise<void> => {
   const connection = await pool.getConnection();
   try {
-    const { nomor_pr, id_vendor, pr_items } = req.body;
+    const { id_vendor, pr_items } = req.body;
 
-    if (!nomor_pr || !id_vendor || !Array.isArray(pr_items) || pr_items.length === 0) {
+    if (!id_vendor || !Array.isArray(pr_items) || pr_items.length === 0) {
       res.status(400).json({ success: false, message: 'Data PR tidak lengkap.' });
       connection.release();
       return;
@@ -87,9 +110,11 @@ export const createPR = async (req: Request, res: Response): Promise<void> => {
 
     await connection.beginTransaction();
 
+    const generated_nomor_pr = await generatePRNumber(connection);
+
     const [headerResult]: any = await connection.query(
       'INSERT INTO pengadaan_pr_header (nomor_pr, id_vendor, status_pr) VALUES (?, ?, ?)',
-      [nomor_pr.trim(), id_vendor, 'Menunggu Persetujuan']
+      [generated_nomor_pr, id_vendor, 'Menunggu Persetujuan']
     );
 
     const prHeaderId = headerResult.insertId;
@@ -296,6 +321,20 @@ export const deletePR = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Revert restock requests linked to this PR's materials back to 'Pending'
+    await pool.query(`
+      UPDATE pengadaan_restock_requests r
+      JOIN operasi_wo_header w ON r.nomor_wo = w.nomor_wo
+      SET r.status = 'Pending'
+      WHERE r.status = 'Selesai' 
+      AND w.status NOT IN ('COMPLETED', 'CANCELLED')
+      AND r.id_inventory_material IN (
+         SELECT i.id FROM inventory_stok i 
+         JOIN pengadaan_pr_detail d ON i.kode_barang = d.kode_barang
+         WHERE d.id_pr_header = ?
+      )
+    `, [prId]);
+
     // Hapus detail terlebih dahulu untuk menghindari foreign key constraint
     await pool.query('DELETE FROM pengadaan_pr_detail WHERE id_pr_header = ?', [prId]);
 
@@ -305,7 +344,7 @@ export const deletePR = async (req: Request, res: Response): Promise<void> => {
     );
 
     if (result.affectedRows > 0) {
-      res.json({ success: true, message: 'Data PR berhasil dihapus.' });
+      res.json({ success: true, message: 'Data PR berhasil dihapus dan permintaan material dikembalikan ke kotak masuk.' });
     } else {
       res.status(404).json({ success: false, message: 'PR tidak ditemukan.' });
     }
@@ -319,6 +358,21 @@ export const deletePR = async (req: Request, res: Response): Promise<void> => {
 // ============================================================
 export const bulkDeletePR = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Revert restock requests for all deletable PRs back to 'Pending'
+    await pool.query(`
+      UPDATE pengadaan_restock_requests r
+      JOIN operasi_wo_header w ON r.nomor_wo = w.nomor_wo
+      SET r.status = 'Pending'
+      WHERE r.status = 'Selesai' 
+      AND w.status NOT IN ('COMPLETED', 'CANCELLED')
+      AND r.id_inventory_material IN (
+         SELECT i.id FROM inventory_stok i 
+         JOIN pengadaan_pr_detail d ON i.kode_barang = d.kode_barang
+         JOIN pengadaan_pr_header h ON d.id_pr_header = h.id
+         WHERE h.status_pr NOT IN ('Diproses Vendor', 'Selesai')
+      )
+    `);
+
     await pool.query(`
       DELETE FROM pengadaan_pr_detail 
       WHERE id_pr_header IN (
@@ -328,7 +382,7 @@ export const bulkDeletePR = async (req: Request, res: Response): Promise<void> =
     const [result]: any = await pool.query(`
       DELETE FROM pengadaan_pr_header WHERE status_pr NOT IN ('Diproses Vendor', 'Selesai')
     `);
-    res.json({ success: true, message: `Berhasil menghapus ${result.affectedRows} PR yang bisa dihapus.` });
+    res.json({ success: true, message: `Berhasil menghapus ${result.affectedRows} PR dan mengembalikan request material ke kotak masuk.` });
   } catch (error: any) {
     res.status(500).json({ success: false, message: `Error menghapus semua PR: ${error.message}` });
   }
@@ -455,9 +509,7 @@ export const autoGeneratePR = async (req: Request, res: Response): Promise<void>
       const vendorId = parseInt(vendorIdStr, 10);
 
       // Generate PR Number
-      const year = new Date().getFullYear();
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      const nomor_pr = `PR/MTK/${year}/${rand}`;
+      const nomor_pr = await generatePRNumber(connection);
 
       const [headerResult]: any = await connection.query(
         'INSERT INTO pengadaan_pr_header (nomor_pr, id_vendor, status_pr) VALUES (?, ?, ?)',
@@ -492,7 +544,7 @@ export const autoGeneratePR = async (req: Request, res: Response): Promise<void>
 
     if (orderedItemIds.length > 0) {
         await connection.query(
-            "UPDATE pengadaan_restock_requests SET status = 'Completed' WHERE status = 'Pending' AND id_inventory_material IN (?)",
+            "UPDATE pengadaan_restock_requests SET status = 'Selesai' WHERE status = 'Pending' AND id_inventory_material IN (?)",
             [orderedItemIds]
         );
     }

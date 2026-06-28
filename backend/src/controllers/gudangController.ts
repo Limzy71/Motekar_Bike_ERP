@@ -143,6 +143,22 @@ export const getPendingPODetails = asyncHandler(async (req: Request, res: Respon
 });
 
 // ============================================================
+// [GET] /api/gudang/receipts - Ambil riwayat penerimaan barang (Goods Receipt History)
+// ============================================================
+export const getReceiptHistory = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const [rows] = await pool.query(`
+    SELECT pb.id, pb.tanggal_terima as tanggal_penerimaan, pb.surat_jalan_vendor as no_surat_jalan, pb.penerima, pb.catatan,
+           po.nomor_po, po.catatan as catatan_po, v.nama_vendor
+    FROM penerimaan_barang pb
+    JOIN pengadaan_po_header po ON pb.id_po_header = po.id
+    LEFT JOIN master_vendor v ON po.id_vendor = v.id
+    ORDER BY pb.tanggal_terima DESC
+    LIMIT 100
+  `);
+  res.json({ success: true, data: rows });
+});
+
+// ============================================================
 // [POST] /api/gudang/receive — Proses Penerimaan Barang (GR)
 // ============================================================
 export const receiveGoods = asyncHandler(async (req: Request, res: Response): Promise<void> => {

@@ -153,13 +153,23 @@ export const getKPI = async (req: Request, res: Response): Promise<void> => {
     // 4. Laba Bersih = Pendapatan - HPP
     const labaBersih = pendapatanKotor - totalHPP;
 
+    // 5. Kas & Bank = SUM(Debit Kas_Bank) - SUM(Kredit Kas_Bank)
+    const [kasDebit]: any = await pool.query(
+      "SELECT COALESCE(SUM(nominal), 0) as total FROM keuangan_jurnal WHERE tipe_akun = 'Kas_Bank' AND posisi = 'Debit'"
+    );
+    const [kasKredit]: any = await pool.query(
+      "SELECT COALESCE(SUM(nominal), 0) as total FROM keuangan_jurnal WHERE tipe_akun = 'Kas_Bank' AND posisi = 'Kredit'"
+    );
+    const totalKasBank = parseFloat(kasDebit[0].total) - parseFloat(kasKredit[0].total);
+
     res.json({
       success: true,
       data: {
         total_aset_persediaan: totalAsetPersediaan,
         pendapatan_kotor: pendapatanKotor,
         total_hpp: totalHPP,
-        laba_bersih: labaBersih
+        laba_bersih: labaBersih,
+        total_kas_bank: totalKasBank
       }
     });
   } catch (error: any) {

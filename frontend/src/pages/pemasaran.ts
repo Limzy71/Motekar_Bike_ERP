@@ -12,6 +12,7 @@ interface Lead {
   no_telepon: string;
   estimasi_nilai_deal: number;
   status_pipeline: "New Lead" | "Follow Up" | "Negosiasi" | "Won_Deal" | "Lost";
+  alamat: string | null;
   catatan: string | null;
   nama_campaign: string | null;
   created_at: string;
@@ -289,6 +290,27 @@ function openLeadDetail(lead: Lead): void {
     (form.querySelector('[name="nama_toko"]') as HTMLInputElement).value = lead.nama_toko ?? '';
     (form.querySelector('[name="kontak_person"]') as HTMLInputElement).value = lead.kontak_person ?? '';
     (form.querySelector('[name="no_telepon"]') as HTMLInputElement).value = lead.no_telepon ?? '';
+    (form.querySelector('[name="alamat"]') as HTMLInputElement).value = lead.alamat ?? '';
+    
+    const mapContainerLead = document.getElementById('map-container-lead');
+    if (lead.alamat && typeof (window as any).google !== 'undefined' && mapPreviewLead && mapMarkerLead) {
+        const service = new (window as any).google.maps.places.PlacesService(mapPreviewLead);
+        service.findPlaceFromQuery({
+            query: lead.alamat,
+            fields: ['geometry']
+        }, (results: any, status: any) => {
+            if (status === (window as any).google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
+                if (mapContainerLead) mapContainerLead.classList.remove('hidden');
+                (window as any).google.maps.event.trigger(mapPreviewLead, 'resize');
+                mapPreviewLead.setCenter(results[0].geometry.location);
+                mapPreviewLead.setZoom(16);
+                mapMarkerLead.setPosition(results[0].geometry.location);
+            }
+        });
+    } else {
+        if (mapContainerLead) mapContainerLead.classList.add('hidden');
+        if (mapMarkerLead) mapMarkerLead.setPosition(null);
+    }
     (form.querySelector('[name="id_campaign"]') as HTMLSelectElement).value = lead.id_campaign?.toString() || '';
     const estimasi = lead.estimasi_nilai_deal ?? 0;
     const inputEstimasiHidden = form.querySelector('#input-estimasi-hidden') as HTMLInputElement;
@@ -366,7 +388,9 @@ function setupModals(): void {
     const contentLead = document.getElementById('modal-lead-content');
     const contentCampaign = document.getElementById('modal-campaign-content');
 
-    const closeLead = () => { if (modalLead && contentLead) { modalLead.classList.add('opacity-0'); contentLead.classList.add('scale-95'); setTimeout(() => { modalLead.classList.add('hidden'); (document.getElementById('form-lead') as HTMLFormElement)?.reset(); document.getElementById('section-aktivitas')?.classList.add('hidden'); }, 300); } };
+    const closeLead = () => { if (modalLead && contentLead) { modalLead.classList.add('opacity-0'); contentLead.classList.add('scale-95'); setTimeout(() => { modalLead.classList.add('hidden'); (document.getElementById('form-lead') as HTMLFormElement)?.reset(); document.getElementById('section-aktivitas')?.classList.add('hidden');
+        document.getElementById('map-container-lead')?.classList.add('hidden');
+        if (mapMarkerLead) mapMarkerLead.setPosition(null); }, 300); } };
     const closeCampaign = () => { if (modalCampaign && contentCampaign) { modalCampaign.classList.add('opacity-0'); contentCampaign.classList.add('scale-95'); setTimeout(() => { modalCampaign.classList.add('hidden'); (document.getElementById('form-campaign') as HTMLFormElement)?.reset(); }, 300); } };
 
     document.getElementById('btn-close-lead')?.addEventListener('click', closeLead);
@@ -635,6 +659,7 @@ function setupTabs(): void {
 // ============================================================
 interface PrintData {
     namaKlien: string;
+    alamatKlien?: string;
     noSurat: string;
     item: string;
     qty: number;
@@ -649,20 +674,42 @@ function cetakSuratPenawaran(data: PrintData): void {
 
     // Inject values into DOM
     const elNama = document.getElementById('pdf-klien-nama');
+    const elAlamat = document.getElementById('pdf-klien-alamat');
     const elNoSurat = document.getElementById('pdf-no-surat');
     const elItem = document.getElementById('pdf-item-deskripsi');
     const elQty = document.getElementById('pdf-item-qty');
     const elHarga = document.getElementById('pdf-item-harga');
     const elTotal = document.getElementById('pdf-total-harga');
     const elGrandTotal = document.getElementById('pdf-grand-total');
+    
+    // Description replacements
+    const elDescItem = document.getElementById('pdf-desc-item');
+    const elDescKlien = document.getElementById('pdf-desc-klien');
+
+    // Freebie Logic
+    const rowFreebie = document.getElementById('pdf-row-freebie');
+    const elFreebieQty = document.getElementById('pdf-freebie-qty');
 
     if (elNama) elNama.innerText = data.namaKlien;
+    if (elAlamat) elAlamat.innerText = data.alamatKlien || '-';
     if (elNoSurat) elNoSurat.innerText = data.noSurat;
     if (elItem) elItem.innerText = data.item;
     if (elQty) elQty.innerText = data.qty.toString();
     if (elHarga) elHarga.innerText = formatRp(data.hargaSatuan);
     if (elTotal) elTotal.innerText = formatRp(total);
     if (elGrandTotal) elGrandTotal.innerText = formatRp(total);
+    
+    if (elDescItem) elDescItem.innerText = `"${data.item}"`;
+    if (elDescKlien) elDescKlien.innerText = data.namaKlien;
+
+    if (rowFreebie && elFreebieQty) {
+        if (data.qty >= 10) {
+            rowFreebie.classList.remove('hidden');
+            elFreebieQty.innerText = data.qty.toString();
+        } else {
+            rowFreebie.classList.add('hidden');
+        }
+    }
 
     // Secret Feature: Change Document Title temporarily so PDF saves with this name
     const originalTitle = document.title;
@@ -680,10 +727,94 @@ function cetakSuratPenawaran(data: PrintData): void {
 // ============================================================
 // INIT
 // ============================================================
+
+// ============================================================
+// GOOGLE MAPS SETUP
+// ============================================================
+let mapPreviewLead: any = null;
+let mapMarkerLead: any = null;
+
+function setupGoogleMaps(): void {
+    const inputAlamat = document.getElementById('input-alamat-lead') as HTMLInputElement;
+    const mapContainer = document.getElementById('map-container-lead');
+    const mapPreviewEl = document.getElementById('map-preview-lead');
+
+    if (!inputAlamat || !mapContainer || !mapPreviewEl) return;
+
+    try {
+        if (typeof (window as any).google !== 'undefined' && (window as any).google.maps && (window as any).google.maps.places) {
+            
+            // Initialize Map
+            mapPreviewLead = new (window as any).google.maps.Map(mapPreviewEl, {
+                center: { lat: -6.200000, lng: 106.816666 },
+                zoom: 15,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false
+            });
+
+            mapMarkerLead = new (window as any).google.maps.Marker({
+                map: mapPreviewLead,
+                animation: (window as any).google.maps.Animation.DROP
+            });
+
+            const autocomplete = new (window as any).google.maps.places.Autocomplete(inputAlamat, {
+                componentRestrictions: { country: 'id' },
+                fields: ['geometry', 'name', 'formatted_address']
+            });
+
+            inputAlamat.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') e.preventDefault();
+            });
+
+            // Hack Google Maps: Auto-select opsi pertama saat user menekan Enter
+            const _addEventListener = inputAlamat.addEventListener;
+            inputAlamat.addEventListener = function(type: string, listener: any, options?: any) {
+                if (type === "keydown") {
+                    const newListener = function(event: any) {
+                        const suggestionSelected = document.querySelector('.pac-item-selected');
+                        if (event.key === 'Enter' && !suggestionSelected) {
+                            const firstSuggestion = document.querySelector('.pac-item');
+                            if (firstSuggestion) {
+                                const evt = new KeyboardEvent('keydown', { keyCode: 40, bubbles: true } as any);
+                                inputAlamat.dispatchEvent(evt);
+                            }
+                        }
+                        listener.call(inputAlamat, event);
+                    };
+                    _addEventListener.call(inputAlamat, type, newListener, options);
+                } else {
+                    _addEventListener.call(inputAlamat, type, listener, options);
+                }
+            };
+
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                
+                if (!place.geometry || !place.geometry.location) {
+                    mapContainer.classList.add('hidden');
+                    mapMarkerLead.setPosition(null);
+                } else {
+                    inputAlamat.value = place.formatted_address || place.name;
+                    
+                    mapContainer.classList.remove('hidden');
+                    (window as any).google.maps.event.trigger(mapPreviewLead, 'resize');
+                    mapPreviewLead.setCenter(place.geometry.location);
+                    mapPreviewLead.setZoom(16);
+                    mapMarkerLead.setPosition(place.geometry.location);
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('Google Maps script is not loaded or key is invalid.');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const user = initRBAC('nav-pemasaran');
     if (!user) return;
     setupTabs();
+    setupGoogleMaps();
     setupModals();
     setupDragDrop();
     loadKPI();
@@ -694,6 +825,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-print-penawaran')?.addEventListener('click', () => {
         cetakSuratPenawaran({
             namaKlien: "PT Nusantara Jaya",
+            alamatKlien: "Jl. Jend. Sudirman No.45, Jakarta",
             noSurat: "PNW/MTK/2026/099",
             item: "Motekar Premium Commuter Fleet",
             qty: 15,
@@ -710,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (tab === 'campaigns') {
             loadCampaigns();
         }
-    }, 30000);
+    }, 3000);
 });
 
 
@@ -720,6 +852,10 @@ document.addEventListener('DOMContentLoaded', () => {
 const modalCetak = document.getElementById('modal-cetak');
 const contentCetak = document.getElementById('modal-cetak-content');
 
+let fgItemsCetak: any[] = [];
+let mapPreviewCetak: any = null;
+let mapMarkerCetak: any = null;
+
 const closeCetak = () => {
     if (modalCetak && contentCetak) {
         modalCetak.classList.add('opacity-0');
@@ -727,6 +863,11 @@ const closeCetak = () => {
         setTimeout(() => {
             modalCetak.classList.add('hidden');
             (document.getElementById('form-cetak') as HTMLFormElement)?.reset();
+            const mapContainer = document.getElementById('map-container-cetak');
+            if (mapContainer) mapContainer.classList.add('hidden');
+            const inputAlamatCetak = document.getElementById('input-alamat-cetak') as HTMLInputElement;
+            if (inputAlamatCetak) { inputAlamatCetak.disabled = false; inputAlamatCetak.classList.remove('bg-slate-50', 'text-slate-500'); }
+            if (mapMarkerCetak) mapMarkerCetak.setPosition(null);
         }, 300);
     }
 };
@@ -735,7 +876,7 @@ document.getElementById('btn-close-cetak')?.addEventListener('click', closeCetak
 document.getElementById('btn-cancel-cetak')?.addEventListener('click', closeCetak);
 modalCetak?.addEventListener('click', (e) => { if (e.target === modalCetak) closeCetak(); });
 
-document.getElementById('btn-cetak-penawaran')?.addEventListener('click', () => {
+document.getElementById('btn-cetak-penawaran')?.addEventListener('click', async () => {
     const selectLead = document.getElementById('input-cetak-lead') as HTMLSelectElement;
     if (selectLead) {
         selectLead.innerHTML = '<option value="">-- Pilih Lead --</option>';
@@ -749,6 +890,41 @@ document.getElementById('btn-cetak-penawaran')?.addEventListener('click', () => 
         });
     }
 
+    // Load Items
+    const selectItem = document.getElementById('input-cetak-item') as HTMLSelectElement;
+    if (selectItem && fgItemsCetak.length === 0) {
+        selectItem.innerHTML = '<option value="">Memuat produk...</option>';
+        try {
+            const r = await apiFetch<{success: boolean, data: any[]}>('penjualan/products');
+            if (r.success) {
+                fgItemsCetak = r.data;
+                selectItem.innerHTML = '<option value="">-- Pilih Sepeda --</option>';
+                fgItemsCetak.forEach(i => {
+                    const opt = document.createElement('option');
+                    opt.value = i.id;
+                    opt.textContent = `[${i.kode_barang}] ${i.nama_barang}`;
+                    selectItem.appendChild(opt);
+                });
+            }
+        } catch (e) {}
+    }
+
+    // Setup Map
+    const mapPreviewEl = document.getElementById('map-preview-cetak');
+    if (mapPreviewEl && typeof (window as any).google !== 'undefined' && !mapPreviewCetak) {
+        mapPreviewCetak = new (window as any).google.maps.Map(mapPreviewEl, {
+            center: { lat: -6.200000, lng: 106.816666 },
+            zoom: 15,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false
+        });
+        mapMarkerCetak = new (window as any).google.maps.Marker({
+            map: mapPreviewCetak,
+            animation: (window as any).google.maps.Animation.DROP
+        });
+    }
+
     if (modalCetak && contentCetak) {
         modalCetak.classList.remove('hidden');
         setTimeout(() => {
@@ -758,12 +934,93 @@ document.getElementById('btn-cetak-penawaran')?.addEventListener('click', () => 
     }
 });
 
+// Event Listeners for Dropdowns
+const inputCetakLead = document.getElementById('input-cetak-lead') as HTMLSelectElement;
+const inputAlamatCetak = document.getElementById('input-alamat-cetak') as HTMLInputElement;
+const mapContainerCetak = document.getElementById('map-container-cetak');
+
+if (inputCetakLead) {
+    inputCetakLead.addEventListener('change', () => {
+        const lead = masterLeads.find(x => x.id_lead.toString() === inputCetakLead.value);
+        if (lead && lead.alamat) {
+            if (inputAlamatCetak) inputAlamatCetak.value = lead.alamat;
+            if (inputAlamatCetak) { inputAlamatCetak.disabled = true; inputAlamatCetak.classList.add('bg-slate-50', 'text-slate-500'); }
+            if (mapContainerCetak) mapContainerCetak.classList.remove('hidden');
+            
+            if (typeof (window as any).google !== 'undefined' && mapPreviewCetak && mapMarkerCetak) {
+                const service = new (window as any).google.maps.places.PlacesService(mapPreviewCetak);
+                service.findPlaceFromQuery({
+                    query: lead.alamat,
+                    fields: ['geometry']
+                }, (results: any, status: any) => {
+                    if (status === (window as any).google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
+                        (window as any).google.maps.event.trigger(mapPreviewCetak, 'resize');
+                        mapPreviewCetak.setCenter(results[0].geometry.location);
+                        mapPreviewCetak.setZoom(16);
+                        mapMarkerCetak.setPosition(results[0].geometry.location);
+                    }
+                });
+            }
+        } else {
+            if (inputAlamatCetak) inputAlamatCetak.value = '';
+            if (inputAlamatCetak) { inputAlamatCetak.disabled = false; inputAlamatCetak.classList.remove('bg-slate-50', 'text-slate-500'); }
+            if (mapContainerCetak) mapContainerCetak.classList.add('hidden');
+            if (mapMarkerCetak) mapMarkerCetak.setPosition(null);
+        }
+    });
+}
+
+const inputCetakItem = document.getElementById('input-cetak-item') as HTMLSelectElement;
+const inputCetakHarga = document.getElementById('input-cetak-harga') as HTMLInputElement;
+const inputCetakQty = document.getElementById('input-cetak-qty') as HTMLInputElement;
+
+if (inputCetakItem) {
+    inputCetakItem.addEventListener('change', () => {
+        const item = fgItemsCetak.find(x => x.id.toString() === inputCetakItem.value);
+        if (item && inputCetakHarga) {
+            inputCetakHarga.value = new Intl.NumberFormat('id-ID').format(item.harga_standar || 0);
+            if (inputCetakQty) {
+                inputCetakQty.value = '1';
+                inputCetakQty.min = '1';
+            }
+        } else if (inputCetakHarga) {
+            inputCetakHarga.value = '';
+            if (inputCetakQty) {
+                inputCetakQty.value = '';
+            }
+        }
+    });
+}
+
+if (inputCetakQty) {
+    inputCetakQty.addEventListener('input', (e) => {
+        let val = parseInt((e.target as HTMLInputElement).value, 10);
+        if (isNaN(val) || val < 1) {
+            (e.target as HTMLInputElement).value = '1';
+        }
+    });
+}
+
+
+if (inputCetakHarga) {
+    inputCetakHarga.addEventListener('input', (e) => {
+        let value = (e.target as HTMLInputElement).value.replace(/\D/g, '');
+        if (value) {
+            (e.target as HTMLInputElement).value = new Intl.NumberFormat('id-ID').format(parseInt(value, 10));
+        } else {
+            (e.target as HTMLInputElement).value = '';
+        }
+    });
+}
+
 (document.getElementById('form-cetak') as HTMLFormElement)?.addEventListener('submit', (e) => {
     e.preventDefault();
     const leadId = (document.getElementById('input-cetak-lead') as HTMLSelectElement).value;
-    const item = (document.getElementById('input-cetak-item') as HTMLInputElement).value;
+    const selectItem = document.getElementById('input-cetak-item') as HTMLSelectElement;
+    const itemText = selectItem.options[selectItem.selectedIndex]?.text || '';
     const qty = parseInt((document.getElementById('input-cetak-qty') as HTMLInputElement).value, 10);
-    const harga = parseInt((document.getElementById('input-cetak-harga') as HTMLInputElement).value, 10);
+    const hargaStr = (document.getElementById('input-cetak-harga') as HTMLInputElement).value.replace(/\D/g, '');
+    const harga = parseInt(hargaStr, 10) || 0;
     
     const lead = masterLeads.find(x => x.id_lead.toString() === leadId);
     if (!lead) return;
@@ -774,8 +1031,9 @@ document.getElementById('btn-cetak-penawaran')?.addEventListener('click', () => 
 
     cetakSuratPenawaran({
         namaKlien: lead.nama_toko || 'Klien',
+        alamatKlien: lead.alamat || '-',
         noSurat: noSurat,
-        item: item,
+        item: itemText,
         qty: qty,
         hargaSatuan: harga
     });

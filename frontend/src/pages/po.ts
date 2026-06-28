@@ -1,5 +1,6 @@
 import { initRBAC } from '../components/rbac.js';
 import { apiFetch, getUserData } from '../api.js';
+import { renderPaginationUI } from '../utils/pagination.js';
 
 interface PODetail {
     id: number;
@@ -63,6 +64,39 @@ const formatIndoNumber = (numStr: string | number) => {
     if (isNaN(num)) return '';
     return new Intl.NumberFormat('id-ID').format(num);
 };
+
+
+function fillPrintPO(po: any) {
+    const elMitra = document.getElementById('pdf-po-mitra');
+    const elAlamat = document.getElementById('pdf-po-alamat');
+    const elNo = document.getElementById('pdf-po-no');
+    const elTgl = document.getElementById('pdf-po-tgl');
+    const elStatus = document.getElementById('pdf-po-status');
+    const elTbody = document.getElementById('pdf-po-tbody');
+    const elGrandTotal = document.getElementById('pdf-po-grand-total');
+
+    if (elMitra) elMitra.textContent = po.nama_vendor || '-';
+    if (elAlamat) elAlamat.textContent = po.alamat_vendor || '-';
+    if (elNo) elNo.textContent = po.nomor_po;
+    if (elTgl) elTgl.textContent = new Date(po.created_at).toLocaleDateString('id-ID');
+    if (elStatus) elStatus.textContent = po.status;
+    if (elGrandTotal) elGrandTotal.textContent = formatIndoNumber(parseFloat(po.total_nilai));
+
+    if (elTbody && po.items) {
+        elTbody.innerHTML = '';
+        po.items.forEach((item: any, idx: number) => {
+            elTbody.innerHTML += `
+                <tr>
+                    <td class="py-4 px-2 font-medium">${idx + 1}</td>
+                    <td class="py-4 px-2 font-bold text-slate-900">${item.nama_barang}</td>
+                    <td class="py-4 px-2 text-center font-bold">${item.qty} ${item.satuan}</td>
+                    <td class="py-4 px-2 text-right font-data-mono">${formatIndoNumber(parseFloat(item.harga_satuan))}</td>
+                    <td class="py-4 px-2 text-right font-data-mono font-bold text-slate-900">${formatIndoNumber(parseFloat(item.total_harga))}</td>
+                </tr>
+            `;
+        });
+    }
+}
 
 // ============================================================
 // 1. DATA TABLE & DISPENSER
@@ -155,7 +189,7 @@ function renderTable() {
 
     if (filteredData.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 italic font-medium">Belum ada Purchase Order</td></tr>`;
-        updatePaginationUI();
+    renderPaginationUI('po-pagination-pagination', 'po-pagination-info', 1, 10, 0, () => {});
         return;
     }
 
@@ -224,68 +258,20 @@ function renderTable() {
         `;
         tbody.appendChild(tr);
     });
-
-    updatePaginationUI(startIndex + 1, endIndex, totalItems, totalPages);
+    renderPaginationUI(
+        'po-pagination-pagination',
+        'po-pagination-info',
+        currentPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentPage = newPage;
+            renderTable();
+        }
+    );
 }
 
-function updatePaginationUI(start = 0, end = 0, total = 0, totalPages = 0) {
-    const infoText = document.getElementById('po-pagination-info');
-    const btnPrev = document.getElementById('po-btn-prev') as HTMLButtonElement;
-    const btnNext = document.getElementById('po-btn-next') as HTMLButtonElement;
-    const pagesContainer = document.getElementById('po-pagination-pages');
 
-    if (infoText) {
-        if (total === 0) {
-            infoText.textContent = `Menampilkan 0-0 dari 0 data`;
-        } else {
-            infoText.textContent = `Menampilkan ${start}-${end} dari ${total} data`;
-        }
-    }
-
-    if (btnPrev) {
-        btnPrev.disabled = currentPage <= 1;
-        btnPrev.onclick = () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderTable();
-            }
-        };
-    }
-
-    if (btnNext) {
-        btnNext.disabled = currentPage >= totalPages;
-        btnNext.onclick = () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderTable();
-            }
-        };
-    }
-
-    if (pagesContainer) {
-        pagesContainer.innerHTML = '';
-        if (totalPages > 1) {
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                const btn = document.createElement('button');
-                btn.className = `w-7 h-7 rounded-lg text-xs font-bold transition-colors ${i === currentPage ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`;
-                btn.textContent = i.toString();
-                btn.onclick = () => {
-                    currentPage = i;
-                    renderTable();
-                };
-                pagesContainer.appendChild(btn);
-            }
-        }
-    }
-}
 
 // ============================================================
 // 2. DEEP-DIVE TRIGGER & STATE SHIFTER (Drawer)

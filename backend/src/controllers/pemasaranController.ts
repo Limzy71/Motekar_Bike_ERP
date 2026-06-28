@@ -105,7 +105,7 @@ export const getAllLeads = async (req: Request, res: Response): Promise<void> =>
 // [POST] /api/pemasaran/leads
 export const createLead = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nama_toko, kontak_person, no_telepon, id_campaign, estimasi_nilai_deal } = req.body;
+    const { nama_toko, kontak_person, no_telepon, alamat, id_campaign, estimasi_nilai_deal } = req.body;
 
     if (!nama_toko || !kontak_person || !no_telepon) {
       res.status(400).json({ success: false, message: 'Nama toko, kontak person, dan nomor telepon wajib diisi.' });
@@ -113,8 +113,8 @@ export const createLead = async (req: Request, res: Response): Promise<void> => 
     }
 
     await pool.query(
-      'INSERT INTO pemasaran_leads (nama_toko, kontak_person, no_telepon, id_campaign, estimasi_nilai_deal) VALUES (?, ?, ?, ?, ?)',
-      [nama_toko.trim(), kontak_person.trim(), no_telepon.trim(), id_campaign || null, parseFloat(estimasi_nilai_deal) || 0]
+      'INSERT INTO pemasaran_leads (nama_toko, kontak_person, no_telepon, alamat, id_campaign, estimasi_nilai_deal) VALUES (?, ?, ?, ?, ?, ?)',
+      [nama_toko.trim(), kontak_person.trim(), no_telepon.trim(), alamat ? alamat.trim() : null, id_campaign || null, parseFloat(estimasi_nilai_deal) || 0]
     );
 
     res.status(201).json({ success: true, message: 'Lead baru berhasil ditambahkan ke pipeline.' });
@@ -170,7 +170,7 @@ export const updateLeadStatus = async (req: Request, res: Response): Promise<voi
 export const updateLead = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nama_toko, kontak_person, no_telepon, estimasi_nilai_deal } = req.body;
+    const { nama_toko, kontak_person, no_telepon, alamat, estimasi_nilai_deal } = req.body;
     const leadId = parseInt(id, 10);
 
     if (isNaN(leadId)) {
@@ -187,8 +187,8 @@ export const updateLead = async (req: Request, res: Response): Promise<void> => 
     }
 
     await pool.query(
-      'UPDATE pemasaran_leads SET nama_toko = ?, kontak_person = ?, no_telepon = ?, estimasi_nilai_deal = ? WHERE id_lead = ?',
-      [nama_toko?.trim(), kontak_person?.trim(), no_telepon?.trim(), parseFloat(estimasi_nilai_deal) || 0, leadId]
+      'UPDATE pemasaran_leads SET nama_toko = ?, kontak_person = ?, no_telepon = ?, alamat = ?, estimasi_nilai_deal = ? WHERE id_lead = ?',
+      [nama_toko?.trim(), kontak_person?.trim(), no_telepon?.trim(), alamat ? alamat.trim() : null, parseFloat(estimasi_nilai_deal) || 0, leadId]
     );
 
     res.json({ success: true, message: 'Detail lead berhasil diperbarui.' });
