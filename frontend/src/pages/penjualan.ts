@@ -126,7 +126,7 @@ function fillPrintSO(so: any) {
 // ============================================================
 async function loadSOs() {
     try {
-        const response = await apiFetch<{ success: boolean; data: SOHeader[] }>('sales/orders');
+        const response = await apiFetch<{ success: boolean; data: SOHeader[] }>('penjualan/so');
         if (!response.success) throw new Error('Gagal mengambil data SO');
         
         allSOs = response.data;
@@ -472,8 +472,8 @@ window.confirmDelivered = async (id: number) => {
     formData.append('foto_bukti_terima', fileInput.files[0]);
 
     try {
-        const res = await apiFetch<{success: boolean, message: string}>(`sales/deliver/${id}`, {
-            method: 'POST',
+        const res = await apiFetch<{success: boolean, message: string}>(`penjualan/so/${id}/deliver`, {
+            method: 'PATCH',
             body: formData
         });
         if (res.success) { 
@@ -893,7 +893,7 @@ async function initCreateModal() {
         };
 
         try {
-            const res = await apiFetch<{success: boolean, message: string}>('sales/orders', {
+            const res = await apiFetch<{success: boolean, message: string}>('penjualan/so', {
                 method: 'POST',
                 body: JSON.stringify(payload)
             });

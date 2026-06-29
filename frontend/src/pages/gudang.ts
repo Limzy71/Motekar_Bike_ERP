@@ -293,7 +293,7 @@ async function loadOutboundLogistics(): Promise<void> {
   if (!tbody) return;
 
   try {
-      const response = await apiFetch<{success: boolean, data: OutboundSO[]}>('sales/orders');
+      const response = await apiFetch<{success: boolean, data: OutboundSO[]}>('penjualan/so');
       if (response && response.success) {
           // Filter RESERVED or SHIPPED (for exception handling)
           outboundSOs = response.data.filter(so => so.status_so === 'RESERVED' || so.status_so === 'SHIPPED');
@@ -506,7 +506,7 @@ function setupModalDispatch(): void {
                 const base64Foto = reader.result as string;
 
                 try {
-                    const response = await apiFetch<ActionResponse>(`sales/orders/${id}/ship`, {
+                    const response = await apiFetch<ActionResponse>(`penjualan/so/${id}/ship`, {
                       method: 'PATCH',
                       body: JSON.stringify({ vendor, resi, foto: base64Foto })
                     });
