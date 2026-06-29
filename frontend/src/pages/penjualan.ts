@@ -823,6 +823,27 @@ async function initCreateModal() {
                 if (qtyInput.value === '' || parseInt(qtyInput.value) < 1 || isNaN(parseInt(qtyInput.value))) {
                     qtyInput.value = '1';
                 }
+
+                // Validasi Stok dan Munculkan Peringatan Defisit
+                const selectedItem = fgItems.find(i => i.id == select.value);
+                if (selectedItem) {
+                    const qty = parseInt(qtyInput.value);
+                    const stok = parseInt(selectedItem.jumlah_stok || 0);
+                    if (qty > stok) {
+                        if (typeof (window as any).Swal !== 'undefined') {
+                            (window as any).Swal.fire({
+                                title: 'Peringatan Defisit Stok!',
+                                text: `Jumlah permintaan (${qty}) melebihi stok fisik di gudang (${stok}). Jika dilanjutkan, status pesanan akan menjadi BACKORDER dan sistem akan meminta penerbitan Work Order perakitan.`,
+                                icon: 'warning',
+                                confirmButtonColor: '#f59e0b',
+                                confirmButtonText: 'Mengerti'
+                            });
+                        } else {
+                            showToast(`Peringatan: Stok hanya tersedia ${stok}. Pesanan akan masuk Backorder.`, 'error');
+                        }
+                    }
+                }
+
                 if (inputAlamat.value.trim() !== '') {
                     calculateShippingCost();
                 } else {
