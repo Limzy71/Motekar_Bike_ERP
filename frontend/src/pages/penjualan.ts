@@ -659,7 +659,7 @@ async function initCreateModal() {
         _addEventListener.apply(inputAlamat, [type, listener, options]);
     } as any;
 
-    // Reset ongkir jika alamat dihapus manual
+    // Reset ongkir & sembunyikan elemen terkait jika alamat dihapus manual
     inputAlamat.addEventListener('input', () => {
         if (inputAlamat.value.trim() === '') {
             inputLat.value = '';
@@ -667,6 +667,8 @@ async function initCreateModal() {
             inputOngkir.value = '0';
             const mapContainer = document.getElementById('map-preview');
             if (mapContainer) mapContainer.classList.add('hidden');
+            const teksOngkir = document.getElementById('teks-keterangan-ongkir');
+            if (teksOngkir) teksOngkir.classList.add('hidden');
         }
     });
 
