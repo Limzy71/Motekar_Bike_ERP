@@ -134,9 +134,7 @@ function renderData(): void {
             </td>
             <td class="px-4 py-3 text-center">
                 <button class="btn-inspeksi text-slate-400 hover:text-primary hover:bg-primary-container/30 px-3 py-1.5 rounded-md transition-all font-bold tracking-wide flex items-center justify-center gap-1.5 w-full border border-transparent hover:border-primary/20" data-id="${wo.id}">
-                <button class="btn-cetak-qc text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-md transition-all font-bold tracking-wide flex items-center justify-center gap-1.5 w-full mt-1 border border-transparent hover:border-emerald-200" onclick="window.print()">
-                    <span class="material-symbols-outlined text-[16px]">print</span> Cetak Label QC
-                </button>
+
                     <span class="material-symbols-outlined text-[16px]">search</span> Inspeksi
                 </button>
             </td>
