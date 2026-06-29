@@ -502,15 +502,6 @@ export const openReportWindow = (options: ReportOptions) => {
             <div class="footer">
                 Dicetak oleh Sistem ERP Motekar Bike Assy pada ${new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}
             </div>
-            
-            <script>
-                window.onload = function() {
-                    setTimeout(() => {
-                        window.print();
-                        window.close();
-                    }, 500);
-                }
-            </script>
         </body>
         </html>
     `;
