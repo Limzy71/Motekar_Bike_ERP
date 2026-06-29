@@ -1614,6 +1614,10 @@ function renderReceiptHistoryTable() {
     const penerimaEl = document.getElementById('detail-receipt-penerima');
     const sjEl = document.getElementById('detail-receipt-sj');
     const catatanEl = document.getElementById('detail-receipt-catatan');
+    const statusEl = document.getElementById('detail-receipt-status');
+    const termsEl = document.getElementById('detail-receipt-terms');
+    const totalEl = document.getElementById('detail-receipt-total');
+    const tbodyItems = document.getElementById('tbody-detail-receipt-items');
     
     if (poEl) poEl.textContent = item.nomor_po || '-';
     if (vendorEl) vendorEl.textContent = item.nama_vendor || '-';
@@ -1621,6 +1625,39 @@ function renderReceiptHistoryTable() {
     if (penerimaEl) penerimaEl.textContent = item.penerima || '-';
     if (sjEl) sjEl.textContent = item.no_surat_jalan || '-';
     if (catatanEl) catatanEl.textContent = item.catatan || '-';
+    if (statusEl) statusEl.textContent = `APPROVAL: ${item.status_po || 'UNKNOWN'}`;
+    if (termsEl) termsEl.textContent = item.term_of_payment || '-';
+    
+    if (totalEl) {
+        const num = parseFloat(item.total_nilai || 0);
+        totalEl.textContent = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(num);
+    }
+    
+    if (tbodyItems) {
+        tbodyItems.innerHTML = '';
+        if (item.items && item.items.length > 0) {
+            item.items.forEach((it: any) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                const subtotal = (parseFloat(it.qty) * parseFloat(it.harga_satuan)) || 0;
+                const hargaFormatted = new Intl.NumberFormat('id-ID').format(parseFloat(it.harga_satuan) || 0);
+                const subtotalFormatted = new Intl.NumberFormat('id-ID').format(subtotal);
+                
+                tr.innerHTML = `
+                    <td class="py-2 px-3">
+                        <p class="font-bold text-slate-800">${it.nama_barang || '-'}</p>
+                        <p class="text-[10px] text-slate-400 font-data-mono">${it.kode_barang || '-'}</p>
+                    </td>
+                    <td class="py-2 px-3 text-center font-bold text-slate-700">${it.qty}</td>
+                    <td class="py-2 px-3 text-right font-data-mono text-slate-600">Rp ${hargaFormatted}</td>
+                    <td class="py-2 px-3 text-right font-data-mono text-slate-800 font-bold">Rp ${subtotalFormatted}</td>
+                `;
+                tbodyItems.appendChild(tr);
+            });
+        } else {
+            tbodyItems.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-xs text-slate-400 italic">Tidak ada detail barang</td></tr>`;
+        }
+    }
     
     drawer.classList.remove('hidden');
     

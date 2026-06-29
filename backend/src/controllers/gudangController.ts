@@ -148,13 +148,25 @@ export const getPendingPODetails = asyncHandler(async (req: Request, res: Respon
 export const getReceiptHistory = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const [rows] = await pool.query(`
     SELECT pb.id, pb.tanggal_terima as tanggal_penerimaan, pb.surat_jalan_vendor as no_surat_jalan, pb.penerima, pb.catatan,
-           po.nomor_po, po.catatan as catatan_po, v.nama_vendor
+           po.id as id_po_header, po.nomor_po, po.catatan as catatan_po, po.status as status_po, po.total_nilai,
+           v.nama_vendor, v.term_of_payment
     FROM penerimaan_barang pb
     JOIN pengadaan_po_header po ON pb.id_po_header = po.id
     LEFT JOIN master_vendor v ON po.id_vendor = v.id
     ORDER BY pb.tanggal_terima DESC
     LIMIT 100
   `);
+  
+  for (const row of rows as any[]) {
+      const [items]: any = await pool.query(`
+          SELECT d.qty, d.harga_satuan, (d.qty * d.harga_satuan) as total_harga, i.nama_barang, i.kode_barang
+          FROM pengadaan_po_detail d
+          JOIN inventory_stok i ON d.id_inventory_material = i.id
+          WHERE d.id_po_header = ?
+      `, [row.id_po_header]);
+      row.items = items;
+  }
+  
   res.json({ success: true, data: rows });
 });
 

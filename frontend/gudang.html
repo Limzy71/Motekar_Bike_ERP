@@ -779,15 +779,24 @@
                             <p class="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Nomor PO</p>
                             <p id="detail-receipt-po" class="font-data-mono font-bold text-slate-800 text-lg">-</p>
                         </div>
-                        <span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">DITERIMA</span>
+                        <div class="flex flex-col items-end gap-1">
+                            <span id="detail-receipt-status" class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">STATUS PO</span>
+                            <span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">PENGIRIMAN: DITERIMA</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Info Grid -->
                 <div class="space-y-4">
-                    <div>
-                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Nama Vendor</p>
-                        <p id="detail-receipt-vendor" class="text-sm font-semibold text-slate-700">-</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Nama Vendor</p>
+                            <p id="detail-receipt-vendor" class="text-sm font-semibold text-slate-700">-</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Term of Payment</p>
+                            <p id="detail-receipt-terms" class="text-sm font-semibold text-slate-700">-</p>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -799,9 +808,35 @@
                             <p id="detail-receipt-penerima" class="text-sm font-semibold text-slate-700">-</p>
                         </div>
                     </div>
-                    <div>
-                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">No. Surat Jalan</p>
-                        <p id="detail-receipt-sj" class="text-sm font-semibold text-slate-700 font-data-mono">-</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">No. Surat Jalan</p>
+                            <p id="detail-receipt-sj" class="text-sm font-semibold text-slate-700 font-data-mono">-</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Total Nilai PO</p>
+                            <p id="detail-receipt-total" class="text-sm font-bold text-emerald-600 font-data-mono">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daftar Barang Table -->
+                <div class="border-t border-slate-100 pt-4">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Daftar Barang (PO)</p>
+                    <div class="border border-slate-200 rounded-lg overflow-hidden">
+                        <table class="w-full text-[11px] text-left">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wide">
+                                <tr>
+                                    <th class="py-2 px-3">BARANG</th>
+                                    <th class="py-2 px-3 text-center">QTY</th>
+                                    <th class="py-2 px-3 text-right">HARGA SAT.</th>
+                                    <th class="py-2 px-3 text-right">SUBTOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-detail-receipt-items" class="divide-y divide-slate-100 text-slate-600">
+                                <!-- injected by js -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
