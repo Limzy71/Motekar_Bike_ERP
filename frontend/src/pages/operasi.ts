@@ -621,11 +621,11 @@ async function handleStateShift(woId: number, newStatus: string, bypassModal: bo
                     .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
                     .logo { font-size: 28px; font-weight: 900; letter-spacing: -1px; margin: 0; color: #0f172a; }
                     .title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin: 0; text-align: right; color: #475569; }
-                    .data-row { margin-bottom: 12px; }
+                    .data-row { margin-bottom: 12px; display: flex; flex-direction: column; }
                     .label-text { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 2px; letter-spacing: 0.5px; }
-                    .value-text { font-size: 16px; font-weight: 700; margin: 0; color: #1e293b; }
-                    .qc-stamp { border: 5px solid #10b981; color: #10b981; font-size: 32px; font-weight: 900; text-transform: uppercase; text-align: center; padding: 12px; margin-top: 24px; letter-spacing: 3px; transform: rotate(-4deg); display: block; width: 100%; box-sizing: border-box; border-radius: 8px;}
-                    .footer-text { text-align: center; font-size: 9px; color: #94a3b8; font-weight: bold; margin-top: 16px; text-transform: uppercase; }
+                    .value-text { font-size: 14px; font-weight: 700; margin: 0; color: #1e293b; }
+                    .qc-stamp { border: 5px solid #10b981; color: #10b981; font-size: 30px; font-weight: 900; text-transform: uppercase; text-align: center; padding: 12px; margin-top: 24px; letter-spacing: 3px; transform: rotate(-4deg); display: block; width: 100%; box-sizing: border-box; border-radius: 8px;}
+                    .footer-text { text-align: center; font-size: 9px; color: #94a3b8; font-weight: bold; margin-top: 16px; text-transform: uppercase; line-height: 1.5; }
                     @media print { body { background-color: #ffffff; align-items: flex-start; margin: 0; } .label { box-shadow: none; border-width: 2px; width: 100%; max-width: 380px; } }
                 </style>
             </head>
@@ -640,20 +640,32 @@ async function handleStateShift(woId: number, newStatus: string, bypassModal: bo
                         <p class="value-text" style="font-family: monospace; font-size: 18px;">${wo.nomor_wo}</p>
                     </div>
                     <div class="data-row">
-                        <span class="label-text">Product Code</span>
-                        <p class="value-text" style="font-family: monospace;">${wo.kode_barang}</p>
+                        <span class="label-text">BOM Reference</span>
+                        <p class="value-text" style="font-family: monospace;">BOM-${wo.kode_barang}</p>
                     </div>
                     <div class="data-row">
-                        <span class="label-text">Product Description</span>
+                        <span class="label-text">Nama Produk</span>
                         <p class="value-text">${wo.produk}</p>
                     </div>
                     <div class="data-row">
-                        <span class="label-text">Date Passed (QA)</span>
-                        <p class="value-text">${today}</p>
+                        <span class="label-text">Teknisi</span>
+                        <p class="value-text">Tim Perakitan Motekar</p>
+                    </div>
+                    <div class="data-row">
+                        <span class="label-text">Assembly Progress</span>
+                        <p class="value-text">100% Completed</p>
+                    </div>
+                    <div class="data-row">
+                        <span class="label-text">Production Target</span>
+                        <p class="value-text">${wo.jumlah_produksi} Unit</p>
+                    </div>
+                    <div class="data-row">
+                        <span class="label-text">Catatan Produksi</span>
+                        <p class="value-text" style="font-size: 11px; font-weight: 500;">${wo.catatan_rework || 'Tidak ada catatan khusus. Unit dirakit sesuai standar.'}</p>
                     </div>
                     
                     <div class="qc-stamp">QC PASSED</div>
-                    <p class="footer-text">MOTEKAR QUALITY ASSURANCE DEPARTMENT</p>
+                    <p class="footer-text">MOTEKAR QUALITY ASSURANCE DEPARTMENT<br/>Date: ${today}</p>
                 </div>
                 <script>
                     window.onload = function() { window.print(); }
