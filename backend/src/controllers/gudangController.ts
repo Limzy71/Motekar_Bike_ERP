@@ -149,7 +149,7 @@ export const getReceiptHistory = asyncHandler(async (req: Request, res: Response
   const [rows] = await pool.query(`
     SELECT pb.id, pb.tanggal_terima as tanggal_penerimaan, pb.surat_jalan_vendor as no_surat_jalan, pb.penerima, pb.catatan,
            po.id as id_po_header, po.nomor_po, po.catatan as catatan_po, po.status as status_po, po.total_nilai,
-           v.nama_vendor, v.term_of_payment
+           v.nama_vendor
     FROM penerimaan_barang pb
     JOIN pengadaan_po_header po ON pb.id_po_header = po.id
     LEFT JOIN master_vendor v ON po.id_vendor = v.id
