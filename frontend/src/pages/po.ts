@@ -1011,6 +1011,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     { label: 'Nomor PO', key: 'nomor_po' },
                     { label: 'Tanggal', key: 'created_at', format: (val) => new Date(val).toLocaleDateString('id-ID') },
                     { label: 'Nama Vendor', key: 'nama_vendor' },
+                    { label: 'Item Barang', key: 'items', format: (items: any[]) => {
+                        if (!items || items.length === 0) return '-';
+                        if (items.length === 1) return items[0].nama_barang;
+                        return `${items[0].nama_barang} (+${items.length - 1} lain)`;
+                    } },
+                    { label: 'Jumlah', key: 'items', align: 'right', format: (items: any[]) => {
+                        if (!items || items.length === 0) return '-';
+                        if (items.length === 1) return `${items[0].qty} ${items[0].satuan}`;
+                        const totalQty = items.reduce((sum: number, item: any) => sum + parseInt(item.qty), 0);
+                        return `${totalQty} items`;
+                    } },
                     { label: 'Total Nilai', key: 'total_nilai', align: 'right', format: (val) => formatRupiahPrint(parseFloat(val)) },
                     { label: 'Status PO', key: 'status', align: 'center' }
                 ],

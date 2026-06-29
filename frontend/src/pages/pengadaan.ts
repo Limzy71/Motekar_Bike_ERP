@@ -1355,9 +1355,20 @@ document.addEventListener('DOMContentLoaded', () => {
               subtitle: `Filter: Status ${currentFilterPR}`,
               columns: [
                   { label: 'Nomor PR', key: 'nomor_pr' },
-                  { label: 'Tanggal', key: 'created_at', format: (val) => new Date(val).toLocaleDateString('id-ID') },
-                  { label: 'Nama Vendor', key: 'nama_vendor' },
-                  { label: 'Status PR', key: 'status_pr', align: 'center' }
+                  { label: 'Nama Barang', key: 'items', format: (items: any[]) => {
+                      if (!items || items.length === 0) return '-';
+                      if (items.length === 1) return items[0].nama_barang;
+                      return `${items[0].nama_barang} (+${items.length - 1} lain)`;
+                  } },
+                  { label: 'Quantity', key: 'items', align: 'right', format: (items: any[]) => {
+                      if (!items || items.length === 0) return '-';
+                      if (items.length === 1) return `${items[0].jumlah} ${items[0].satuan}`;
+                      const totalQty = items.reduce((sum: number, item: any) => sum + parseInt(item.jumlah), 0);
+                      return `${totalQty} items`;
+                  } },
+                  { label: 'Vendor Rekomendasi', key: 'nama_vendor' },
+                  { label: 'Tanggal Permintaan', key: 'created_at', format: (val) => new Date(val).toLocaleDateString('id-ID') },
+                  { label: 'Status Approval', key: 'status_pr', align: 'center' }
               ],
               data: filteredData
           });
