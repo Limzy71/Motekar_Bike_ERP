@@ -128,7 +128,7 @@ async function run() {
     for (const i of inventories) {
       await connection.query(
         'INSERT INTO inventory_stok (kode_barang, nama_barang, kategori, satuan, tipe_item, harga_standar, harga_jual, jumlah_stok) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [i.kode, i.nama, i.kategori, i.satuan, i.tipe, i.harga, i.jual || 0, 100] // Beri stok awal 100 agar mudah testing WO
+        [i.kode, i.nama, i.kategori, i.satuan, i.tipe, i.harga, i.jual || 0, 30] // Stok awal 30 per komponen
       );
     }
     console.log('Inventory seeded.');
