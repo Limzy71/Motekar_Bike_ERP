@@ -246,6 +246,7 @@ function setupFilters(): void {
           if (tabException) tabException.className = exceptionActiveClass + " flex items-center gap-2";
           sectionException?.classList.remove('hidden');
           localStorage.setItem('gudangLastTab', 'exception');
+          loadFailedDeliveries();
           loadWriteOffs();
       } else if (tabName === 'receipt') {
           if (tabReceipt) tabReceipt.className = activeClass + " flex items-center gap-2";
@@ -757,16 +758,49 @@ async function loadWriteOffs() {
     }
 }
 
+async function loadFailedDeliveries() {
+    const tbody = document.getElementById('tbody-failed-deliveries');
+    if (!tbody) return;
+
+    try {
+        const response = await apiFetch<any>('exception/failed-deliveries');
+        if (response.success) {
+            tbody.innerHTML = '';
+            if (response.data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada pesanan gagal kirim.</td></tr>`;
+                return;
+            }
+            response.data.forEach((item: any) => {
+                const dateStr = new Date(item.tanggal_gagal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-data-mono font-bold text-rose-700">${item.nomor_so}</td>
+                    <td class="px-4 py-3 font-semibold text-slate-800">${item.nama_customer}</td>
+                    <td class="px-4 py-3 text-slate-600">${dateStr}</td>
+                    <td class="px-4 py-3 text-center">
+                        <button onclick="window.openWriteoffModal('${item.nomor_so}', '${item.kode_barang}', ${item.qty})" class="px-3 py-1.5 bg-rose-600 text-white hover:bg-rose-700 rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
+                            <span class="material-symbols-outlined text-[16px]">add_circle</span> Ajukan Kehilangan
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat data karantina.</td></tr>`;
+    }
+}
+
 function setupExceptionForms() {
-    const btnAjukan = document.getElementById('btn-ajukan-writeoff');
     const modalWriteoff = document.getElementById('modal-writeoff');
     const modalContent = document.getElementById('modal-writeoff-content');
     const btnClose = document.getElementById('btn-close-writeoff');
     const btnCancel = document.getElementById('btn-cancel-writeoff');
     const btnSubmit = document.getElementById('btn-submit-writeoff');
     const selectItem = document.getElementById('wo-kode-item') as HTMLSelectElement;
+    const readOnlyItem = document.getElementById('wo-kode-item-readonly') as HTMLInputElement;
 
-    const openModal = () => {
+    (window as any).openWriteoffModal = (nomor_so?: string, kode_barang?: string, qty?: number) => {
         // Populate items
         if (selectItem) {
             selectItem.innerHTML = '<option value="">-- Pilih Item --</option>';
@@ -774,6 +808,24 @@ function setupExceptionForms() {
                 selectItem.innerHTML += `<option value="${item.kode_barang}">${item.kode_barang} - ${item.nama_barang} (Stok: ${item.jumlah_stok})</option>`;
             });
         }
+        
+        if (nomor_so && kode_barang) {
+            // Pre-fill from failed delivery
+            if (selectItem) selectItem.classList.add('hidden');
+            if (readOnlyItem) {
+                readOnlyItem.classList.remove('hidden');
+                readOnlyItem.value = kode_barang;
+            }
+            (document.getElementById('wo-qty') as HTMLInputElement).value = qty?.toString() || '';
+            (document.getElementById('wo-alasan') as HTMLTextAreaElement).value = `Barang hilang saat pengiriman SO: ${nomor_so}`;
+        } else {
+            // Normal Write-off
+            if (selectItem) selectItem.classList.remove('hidden');
+            if (readOnlyItem) readOnlyItem.classList.add('hidden');
+            (document.getElementById('wo-qty') as HTMLInputElement).value = '';
+            (document.getElementById('wo-alasan') as HTMLTextAreaElement).value = '';
+        }
+
         modalWriteoff?.classList.remove('hidden');
         setTimeout(() => {
             modalWriteoff?.classList.remove('opacity-0');
@@ -789,7 +841,6 @@ function setupExceptionForms() {
         }, 300);
     };
 
-    btnAjukan?.addEventListener('click', openModal);
     btnClose?.addEventListener('click', closeModal);
     btnCancel?.addEventListener('click', closeModal);
 
@@ -803,7 +854,11 @@ function setupExceptionForms() {
     };
 
     btnSubmit?.addEventListener('click', async () => {
-        const kode_item = selectItem.value;
+        const readOnlyItem = document.getElementById('wo-kode-item-readonly') as HTMLInputElement;
+        const kode_item = (readOnlyItem && !readOnlyItem.classList.contains('hidden') && readOnlyItem.value) 
+            ? readOnlyItem.value 
+            : selectItem.value;
+            
         const qty_hilang = (document.getElementById('wo-qty') as HTMLInputElement).value;
         const alasan_hilang = (document.getElementById('wo-alasan') as HTMLTextAreaElement).value;
         const fileInput = document.getElementById('wo-bukti') as HTMLInputElement;
@@ -1095,7 +1150,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const tab = localStorage.getItem('gudangLastTab') || 'master';
       if (tab === 'master') loadGudang();
       else if (tab === 'outbound') loadOutboundLogistics();
-      else if (tab === 'exception') loadWriteOffs();
+      else if (tab === 'exception') {
+          loadFailedDeliveries();
+          loadWriteOffs();
+      }
       else if (tab === 'receipt') loadPendingPO();
   }, 30000);
 });
