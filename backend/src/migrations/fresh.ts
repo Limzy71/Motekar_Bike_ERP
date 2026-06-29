@@ -34,9 +34,14 @@ async function fresh() {
     
     console.log('\n[2/2] Restoring Master Schema...');
     
-    const schemaPath = path.join(__dirname, 'master_schema.sql');
+    let schemaPath = path.join(__dirname, 'master_schema.sql');
     if (!fs.existsSync(schemaPath)) {
-      throw new Error(`master_schema.sql not found at ${schemaPath}`);
+      // Fallback untuk jika dijalankan dari folder dist/
+      schemaPath = path.join(__dirname, '../../src/migrations/master_schema.sql');
+    }
+
+    if (!fs.existsSync(schemaPath)) {
+      throw new Error(`master_schema.sql tidak ditemukan di: ${schemaPath}`);
     }
 
     const schemaSql = fs.readFileSync(schemaPath, 'utf8');
