@@ -214,10 +214,9 @@ export const triggerWO = async (req: Request, res: Response): Promise<void> => {
     const woNumber = `WO-MTK-${new Date().getFullYear()}-${String(countRows[0].count + 1).padStart(4, '0')}`;
 
     // 3. Create Work Order in Modul 2 (operasi_wo_header)
-    const catatanWO = `Auto-generated dari ${detail.nomor_so} untuk menutupi defisit stok.`;
     const [woResult]: any = await connection.query(
-      'INSERT INTO operasi_wo_header (nomor_wo, kode_sepeda, target_qty, status_wo, catatan) VALUES (?, ?, ?, ?, ?)',
-      [woNumber, detail.kode_barang, selisihDefisit, 'DRAFT', catatanWO]
+      'INSERT INTO operasi_wo_header (nomor_wo, id_inventory_fg, jumlah_produksi, status) VALUES (?, ?, ?, ?)',
+      [woNumber, detail.id_inventory_barang_jadi, selisihDefisit, 'DRAFT']
     );
     const woId = woResult.insertId;
 
