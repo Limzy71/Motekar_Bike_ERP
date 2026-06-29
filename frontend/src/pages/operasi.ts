@@ -324,7 +324,17 @@ function openRightDrawer(wo: WorkOrder) {
                     ]
                 },
                 {
-                    title: "Langkah 2: Drivetrain Assy",
+                    title: "Langkah 2: Wheel Set Assy",
+                    time: "20 Menit",
+                    tools: "Spoke Wrench, Tire Levers (Congkelan Ban), Truing Stand",
+                    checklist: [
+                        "Memasang ban dalam dan ban luar pada rims (velg)",
+                        "Memastikan posisi bead ban duduk sempurna",
+                        "Menyetel ketegangan jari-jari (spoke) agar roda tidak oleng"
+                    ]
+                },
+                {
+                    title: "Langkah 3: Drivetrain Assy",
                     time: "25 Menit",
                     tools: "Bottom Bracket Tool, Crank Puller / Hex Tool 8 mm, Chain Breaker Tool (Pemotong Rantai), Cassette Lockring Tool + Chain Whip",
                     checklist: [
@@ -335,7 +345,7 @@ function openRightDrawer(wo: WorkOrder) {
                     ]
                 },
                 {
-                    title: "Langkah 3: Cockpit & Controls Assy",
+                    title: "Langkah 4: Cockpit & Controls Assy",
                     time: "15 Menit",
                     tools: "Hex Key Set (4, 5 mm), Cable Puller Pliers (Tang Penarik Kabel), Cable Cutter (Pemotong Kabel)",
                     checklist: [
@@ -353,7 +363,7 @@ function openRightDrawer(wo: WorkOrder) {
             icon: 'rule',
             metadata: [
                 {
-                    title: "Langkah 4: Final Assembly & QC",
+                    title: "Langkah 5: Final Assembly & QC",
                     time: "20 Menit",
                     tools: "Floor Pump with Pressure Gauge, Open-end Wrench (Kunci Pas 15 mm / Quick Release), Obeng Plus/Minus (Screwdriver PH2)",
                     checklist: [
