@@ -24,6 +24,7 @@ interface POHeader {
     nama_vendor: string;
     alamat_vendor?: string;
     kontak_vendor?: string;
+    term_of_payment?: number;
     items: PODetail[];
 }
 
@@ -128,7 +129,7 @@ function fillPrintPO(po: any) {
     }
 
     // Payment Terms
-    let paymentTerms = 'Net 30 Hari (Transfer Bank)';
+    let paymentTerms = po.term_of_payment ? `Net ${po.term_of_payment} Hari (Transfer Bank)` : 'Net 30 Hari (Transfer Bank)';
     if (po.catatan && po.catatan.toLowerCase().includes('termin')) {
         paymentTerms = po.catatan;
     }
@@ -469,7 +470,7 @@ function openRightDrawer(po: POHeader) {
 
         const paymentTerms = (po.catatan && po.catatan.toLowerCase().includes('termin'))
             ? po.catatan
-            : 'Net 30 Hari (Transfer Bank)';
+            : (po.term_of_payment ? `Net ${po.term_of_payment} Hari (Transfer Bank)` : 'Net 30 Hari (Transfer Bank)');
 
         const docDate = po.created_at
             ? new Date(po.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })

@@ -33,7 +33,7 @@ export async function generatePONumber(connection: any): Promise<string> {
 export const getAllPO = async (req: Request, res: Response): Promise<void> => {
     try {
         const [headers]: any = await pool.query(`
-            SELECT p.*, v.nama_vendor, v.alamat AS alamat_vendor, v.kontak AS kontak_vendor, pb.surat_jalan_vendor 
+            SELECT p.*, v.nama_vendor, v.alamat AS alamat_vendor, v.kontak AS kontak_vendor, v.term_of_payment, pb.surat_jalan_vendor 
             FROM pengadaan_po_header p
             LEFT JOIN master_vendor v ON p.id_vendor = v.id
             LEFT JOIN penerimaan_barang pb ON pb.id_po_header = p.id
