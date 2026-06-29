@@ -1467,6 +1467,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setupModalReceipt();
   setupModalBulkReceipt();
 
+  document.getElementById('btn-close-receipt-drawer')?.addEventListener('click', (window as any).closeReceiptDetailDrawer);
+  document.getElementById('btn-close-receipt-drawer-bottom')?.addEventListener('click', (window as any).closeReceiptDetailDrawer);
+  document.getElementById('drawer-receipt-backdrop')?.addEventListener('click', (window as any).closeReceiptDetailDrawer);
+
   // Polling for Real-Time Experience (Every 30 seconds)
   setInterval(() => {
       const tab = localStorage.getItem('gudangLastTab') || 'master';
@@ -1572,7 +1576,8 @@ function renderReceiptHistoryTable() {
     currentItems.forEach(item => {
         const dateStr = new Date(item.tanggal_penerimaan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 transition-colors";
+        tr.className = "hover:bg-slate-50 transition-colors cursor-pointer";
+        tr.onclick = () => (window as any).openReceiptDetailDrawer(item);
         tr.innerHTML = `
             <td class="px-4 py-3"><p class="text-slate-600">${dateStr}</p></td>
             <td class="px-4 py-3 whitespace-nowrap"><p class="font-bold text-slate-700 font-data-mono">${item.nomor_po}</p></td>
@@ -1595,3 +1600,48 @@ function renderReceiptHistoryTable() {
         }
     );
 }
+
+(window as any).openReceiptDetailDrawer = (item: any) => {
+    const drawer = document.getElementById('drawer-receipt-detail');
+    const backdrop = document.getElementById('drawer-receipt-backdrop');
+    const panel = document.getElementById('drawer-receipt-panel');
+    
+    if (!drawer || !backdrop || !panel) return;
+    
+    const poEl = document.getElementById('detail-receipt-po');
+    const vendorEl = document.getElementById('detail-receipt-vendor');
+    const tanggalEl = document.getElementById('detail-receipt-tanggal');
+    const penerimaEl = document.getElementById('detail-receipt-penerima');
+    const sjEl = document.getElementById('detail-receipt-sj');
+    const catatanEl = document.getElementById('detail-receipt-catatan');
+    
+    if (poEl) poEl.textContent = item.nomor_po || '-';
+    if (vendorEl) vendorEl.textContent = item.nama_vendor || '-';
+    if (tanggalEl) tanggalEl.textContent = new Date(item.tanggal_penerimaan).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+    if (penerimaEl) penerimaEl.textContent = item.penerima || '-';
+    if (sjEl) sjEl.textContent = item.no_surat_jalan || '-';
+    if (catatanEl) catatanEl.textContent = item.catatan || '-';
+    
+    drawer.classList.remove('hidden');
+    
+    // Animate in
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        panel.classList.remove('translate-x-full');
+    }, 10);
+};
+
+(window as any).closeReceiptDetailDrawer = () => {
+    const drawer = document.getElementById('drawer-receipt-detail');
+    const backdrop = document.getElementById('drawer-receipt-backdrop');
+    const panel = document.getElementById('drawer-receipt-panel');
+    
+    if (!drawer || !backdrop || !panel) return;
+    
+    backdrop.classList.add('opacity-0');
+    panel.classList.add('translate-x-full');
+    
+    setTimeout(() => {
+        drawer.classList.add('hidden');
+    }, 300);
+};

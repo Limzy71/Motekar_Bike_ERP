@@ -445,9 +445,9 @@ export function initRBAC(currentPage: string = 'dashboard'): UserData | null {
       
       const style = document.createElement('style');
       style.innerHTML = `
-          .is-testing-account button:not([id*="btn-hamburger"]):not([id*="btn-logout"]):not([onclick*="print"]):not([onclick*="openPrintWindow"]):not([onclick*="Cetak"]):not([id^="tab-"]):not(.filter-btn):not([onclick*="Page"]):not(.nav-item),
-          .is-testing-account input[type="submit"],
-          .is-testing-account input[type="button"] {
+          .is-testing-account button:not([id*="btn-hamburger"]):not([id*="btn-logout"]):not([onclick*="print"]):not([onclick*="openPrintWindow"]):not([onclick*="Cetak"]):not([id^="tab-"]):not(.filter-btn):not([onclick*="Page"]):not(.nav-item):not(.btn-pagination):not([id*="cancel"]):not([id*="close"]):not([id*="batal"]):not([onclick*="close"]):not([class*="close"]),
+          .is-testing-account input[type="submit"]:not([id*="cancel"]):not([id*="close"]):not([id*="batal"]),
+          .is-testing-account input[type="button"]:not([id*="cancel"]):not([id*="close"]):not([id*="batal"]) {
               cursor: not-allowed !important;
           }
       `;
@@ -469,7 +469,11 @@ export function initRBAC(currentPage: string = 'dashboard'): UserData | null {
                 button.hasAttribute('data-filter') ||
                 (button.id && button.id.startsWith('tab-')) ||
                 htmlStr.includes('Page') ||
-                htmlStr.includes('nav-item');
+                htmlStr.includes('nav-item') ||
+                htmlStr.includes('btn-pagination') ||
+                htmlStr.toLowerCase().includes('cancel') ||
+                htmlStr.toLowerCase().includes('close') ||
+                htmlStr.toLowerCase().includes('batal');
               
               if (!isAllowed) {
                   e.preventDefault();

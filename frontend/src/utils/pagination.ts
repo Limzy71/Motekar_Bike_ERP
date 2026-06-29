@@ -53,14 +53,14 @@ export function renderPaginationUI(
 
         if (isArrow) {
             btn.className = [
-                'w-8 h-8 flex items-center justify-center rounded-lg transition-colors',
+                'btn-pagination w-8 h-8 flex items-center justify-center rounded-lg transition-colors',
                 disabled
                     ? 'text-slate-300 cursor-not-allowed'
                     : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
             ].join(' ');
         } else {
             btn.className = [
-                'w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all',
+                'btn-pagination w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all',
                 active
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
