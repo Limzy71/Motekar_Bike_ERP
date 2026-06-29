@@ -79,6 +79,11 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
     // Handle 401: Token expired, coba silent refresh
     if (response.status === 401 && endpoint !== 'auth/refresh') {
       const user = getUserData();
+      if (user && user.username === 'testing') {
+        // Bypass force logout for testing account, return fake data
+        return { success: true, data: [], message: 'Data dilindungi (Mode Guest)' } as any;
+      }
+      
       if (user && user.refresh_token) {
         try {
           const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
@@ -109,6 +114,10 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
         return forceLogout();
       }
     } else if (response.status === 401) {
+       const user = getUserData();
+       if (user && user.username === 'testing') {
+           return { success: true, data: [], message: 'Data dilindungi (Mode Guest)' } as any;
+       }
        // Gagal pada saat refresh token itu sendiri
        return forceLogout();
     }
