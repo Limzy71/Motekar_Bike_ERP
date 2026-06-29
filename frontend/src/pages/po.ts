@@ -477,17 +477,22 @@ function openRightDrawer(po: POHeader) {
 
         const totalNilai = parseFloat(po.total_nilai) || 0;
 
+        const MOTEKAR_ADDRESS = 'Jl. Dr. Setiabudi No.193, Gegerkalong, Kec. Sukasari, Kota Bandung, Jawa Barat 40153';
+
         openPrintWindow({
             docType: 'Purchase Order',
             docNumber: po.nomor_po,
             docDate: docDate,
             status: approvalLabel,
             headerFields: [
+                { label: 'Nomor PO', value: po.nomor_po },
+                { label: 'Tanggal Terbit', value: docDate },
                 { label: 'Nama Supplier', value: po.nama_vendor || '-' },
                 { label: 'Alamat Supplier', value: po.alamat_vendor || '-' },
+                { label: 'Alamat Pengiriman (Tujuan)', value: MOTEKAR_ADDRESS },
+                { label: 'Payment Terms', value: paymentTerms },
                 { label: 'Status Approval', value: approvalLabel },
                 { label: 'Status Pengiriman', value: pengirimanLabel },
-                { label: 'Payment Terms', value: paymentTerms },
                 { label: 'Catatan', value: po.catatan || 'Tidak ada catatan khusus' },
             ],
             columns: [

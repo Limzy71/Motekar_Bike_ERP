@@ -436,6 +436,7 @@ window.printPR = (id: number) => {
       { label: 'Tanggal Permintaan', value: dateStr },
       { label: 'Vendor Rekomendasi', value: pr.nama_vendor || '-' },
       { label: 'Status Approval', value: pr.status_pr },
+      { label: 'Alamat Pengiriman (Tujuan)', value: 'Jl. Dr. Setiabudi No.193, Gegerkalong, Kec. Sukasari, Kota Bandung, Jawa Barat 40153' },
     ],
     columns: [
       { label: 'No', key: 'no', align: 'center' },
@@ -444,6 +445,7 @@ window.printPR = (id: number) => {
       { label: 'Quantity', key: 'quantity', align: 'right' },
     ],
     items,
+    footer: `Dokumen ini diterbitkan oleh Sistem ERP Motekar Bike Assy · ${pr.nomor_pr} · Dicetak: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
     signatures: [
       { title: 'Diajukan Oleh', name: 'Departemen Pengadaan' },
       { title: 'Disetujui Oleh', name: 'Owner / General Manager' },
