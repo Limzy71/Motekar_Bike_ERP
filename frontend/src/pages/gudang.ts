@@ -1480,6 +1480,9 @@ document.addEventListener('DOMContentLoaded', () => {
           currentHistoryPage = 1;
           renderReceiptHistoryTable();
       });
+      filterMonthReceipt.addEventListener('click', function() {
+          try { (this as any).showPicker(); } catch (e) {}
+      });
   }
 
   const btnPrintReportReceipt = document.getElementById('btn-print-report-receipt');
