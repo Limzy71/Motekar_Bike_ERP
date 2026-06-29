@@ -12,17 +12,16 @@ async function seedAdditionalUsers() {
     const hashedPassword = await bcrypt.hash('password123', 10);
 
     const newUsers = [
-      { username: 'admin',     nama_lengkap: 'IT & System Administrator',       email: 'admin@motekar.com',     divisi_role: 'IT Support' },
-      { username: 'pengadaan', nama_lengkap: 'Staf Pengadaan',    email: 'pengadaan@motekar.com', divisi_role: 'Pengadaan' },
-      { username: 'qc',        nama_lengkap: 'Staf Kendali Mutu', email: 'qc@motekar.com',        divisi_role: 'Kendali Mutu' },
-      { username: 'sales',     nama_lengkap: 'Staf Penjualan',    email: 'sales@motekar.com',     divisi_role: 'Penjualan & Penagihan' },
-      { username: 'produksi',  nama_lengkap: 'Staf Produksi',     email: 'produksi@motekar.com',  divisi_role: 'Operasi Inti' },
-      { username: 'marketing', nama_lengkap: 'Staf Pemasaran',    email: 'marketing@motekar.com', divisi_role: 'Pemasaran' },
-      { username: 'gudang',    nama_lengkap: 'Staf Gudang',       email: 'gudang@motekar.com',    divisi_role: 'Gudang' },
-      { username: 'agus',      nama_lengkap: 'Ir. Agus Hexagraha',              email: 'agus@motekar.com',      divisi_role: 'Owner' },
-      { username: 'keuangan',  nama_lengkap: 'Tim Keuangan',                     email: 'keuangan@motekar.com',  divisi_role: 'Keuangan & Akuntansi' },
-      { username: 'penjualan', nama_lengkap: 'Pemasaran & Penjualan',             email: 'penjualan@motekar.com', divisi_role: 'Pemasaran & Penjualan' },
-      { username: 'legal',     nama_lengkap: 'Legal & Kepatuhan',                email: 'legal@motekar.com',     divisi_role: 'Legal & Kepatuhan' },
+      { username: 'agus',      nama_lengkap: 'Ir. Agus Hexagraha',        email: 'agus@motekar.com',       divisi_role: 'Owner' },
+      { username: 'manager',   nama_lengkap: 'General Manager',           email: 'manager@motekar.com',    divisi_role: 'General Manager' },
+      { username: 'admin',     nama_lengkap: 'IT Support',                email: 'it_support@motekar.com', divisi_role: 'IT Support' },
+      { username: 'pengadaan', nama_lengkap: 'Tim Pengadaan',             email: 'pengadaan@motekar.com',  divisi_role: 'Pengadaan' },
+      { username: 'gudang',    nama_lengkap: 'Tim Gudang',                email: 'gudang@motekar.com',     divisi_role: 'Gudang' },
+      { username: 'produksi',  nama_lengkap: 'Operasi Inti',              email: 'operasi@motekar.com',    divisi_role: 'Operasi Inti' },
+      { username: 'qc',        nama_lengkap: 'Kendali Mutu',              email: 'qc@motekar.com',         divisi_role: 'Kendali Mutu' },
+      { username: 'keuangan',  nama_lengkap: 'Tim Keuangan',              email: 'keuangan@motekar.com',   divisi_role: 'Keuangan & Akuntansi' },
+      { username: 'penjualan', nama_lengkap: 'Pemasaran & Penjualan',     email: 'penjualan@motekar.com',  divisi_role: 'Pemasaran & Penjualan' },
+      { username: 'legal',     nama_lengkap: 'Legal & Kepatuhan',         email: 'legal@motekar.com',      divisi_role: 'Legal & Kepatuhan' },
     ];
 
     for (const user of newUsers) {
