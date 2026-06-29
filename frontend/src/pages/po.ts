@@ -370,23 +370,26 @@ function openRightDrawer(po: POHeader) {
         btnSend.onclick = () => handleStateShift(po.id, 'SENT_TO_VENDOR');
         execBay.appendChild(btnSend);
     }
-    else if (po.status === 'SENT_TO_VENDOR' && (role === 'Gudang' || role === 'Owner' || role === 'General Manager' || role === 'Pengadaan')) {
-        const btnReceive = document.createElement('button');
-        btnReceive.className = 'w-full py-3 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm rounded-xl font-bold text-sm transition-colors flex justify-center items-center gap-2';
-        btnReceive.innerHTML = `<span class="material-symbols-outlined text-[18px]">inventory</span> Terima Barang (GRN)`;
-        btnReceive.onclick = () => handleStateShift(po.id, 'COMPLETED');
-        execBay.appendChild(btnReceive);
-    }
     else {
         let msg = 'Menunggu tindak lanjut dari divisi lain.';
         if (po.status === 'COMPLETED') msg = 'PO Selesai & Barang Diterima (GRN)';
         if (po.status === 'REJECTED') msg = 'PO Ditolak';
+        if (po.status === 'SENT_TO_VENDOR') msg = 'Menunggu pihak Gudang melakukan penerimaan barang (GRN).';
         if (role !== 'Owner' && role !== 'General Manager' && role !== 'Pengadaan' && po.status === 'DRAFT') msg = 'Draft PO sedang disusun Pengadaan.';
         if (role !== 'Owner' && role !== 'General Manager' && po.status === 'ISSUED') msg = 'Menunggu Approval Executive.';
-        if (role !== 'Owner' && role !== 'General Manager' && role !== 'Gudang' && po.status === 'SENT_TO_VENDOR') msg = 'Menunggu Gudang melakukan GRN.';
 
         execBay.innerHTML = `<div class="w-full text-center py-2 text-slate-500 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">info</span> ${msg}</div>`;
     }
+
+    // Selalu tambahkan tombol Cetak Purchase Order di paling bawah drawer
+    const btnPrint = document.createElement('button');
+    btnPrint.className = 'w-full py-3 bg-slate-800 text-white hover:bg-slate-900 shadow-sm rounded-xl font-bold text-sm transition-colors flex justify-center items-center gap-2 mt-2';
+    btnPrint.innerHTML = `<span class="material-symbols-outlined text-[18px]">print</span> Cetak Purchase Order`;
+    btnPrint.onclick = () => {
+        fillPrintPO(po);
+        window.print();
+    };
+    execBay.appendChild(btnPrint);
 
     backdrop.classList.remove('hidden');
     setTimeout(() => { drawer.classList.add('open'); }, 10);
