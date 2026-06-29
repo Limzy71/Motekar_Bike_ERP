@@ -1104,7 +1104,7 @@ function setupSRMModals(): void {
             modalVendor.classList.add('flex');
             
             const mapEl = document.getElementById('srm-map-vendor');
-            if (mapEl) mapEl.classList.remove('hidden');
+            if (mapEl) mapEl.classList.add('hidden'); // Reset ke hidden saat buka form baru
             
             // Trigger resize after modal becomes visible so map renders correctly
             setTimeout(() => {
