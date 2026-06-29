@@ -577,8 +577,18 @@ async function handleStateShift(woId: number, newStatus: string, bypassModal: bo
 
             if (response.success) {
                 showToast(response.message, 'success');
-                closeRightDrawer();
-                loadWorkOrders(); // Refresh Kanban Dispenser
+                await loadWorkOrders(); // Wait for data to refresh
+                
+                if (newStatus !== 'CANCELLED' && newStatus !== 'COMPLETED' && currentOpenedWO) {
+                    const updatedWO = allWorkOrders.find((w: WorkOrder) => w.id === woId);
+                    if (updatedWO) {
+                        openRightDrawer(updatedWO); // Re-render inside the same open drawer
+                    } else {
+                        closeRightDrawer();
+                    }
+                } else {
+                    closeRightDrawer();
+                }
             } else {
                 // @ts-ignore
                 Swal.fire('Gagal!', response.message, 'error');
