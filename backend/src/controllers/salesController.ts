@@ -17,7 +17,7 @@ export const getSalesOrders = asyncHandler(async (req: Request, res: Response): 
 
 export const createSalesOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
-    const validatedData = createSOSchema.parse(req.body);
+    const validatedData = createSOSchema.parse({ body: req.body });
     const connection = await pool.getConnection();
 
     try {
@@ -26,7 +26,7 @@ export const createSalesOrder = asyncHandler(async (req: Request, res: Response)
       let totalHargaSO = 0;
 
       // 1. Validasi Stok Gudang (Inventory Validation Guard)
-      for (const item of validatedData.items) {
+      for (const item of validatedData.body.items) {
         const [stokRows]: any = await connection.query(
           'SELECT nama_barang, jumlah_stok, harga_jual FROM inventory_stok WHERE id = ? FOR UPDATE',
           [item.barang_id]
@@ -51,13 +51,13 @@ export const createSalesOrder = asyncHandler(async (req: Request, res: Response)
       // 3. Insert Header SO
       const [soResult]: any = await connection.query(
         'INSERT INTO sales_order (no_so, nama_customer, tanggal_order, total_harga, status) VALUES (?, ?, ?, ?, ?)',
-        [soNumber, validatedData.nama_customer, validatedData.tanggal_order, totalHargaSO, 'DRAFT']
+        [soNumber, validatedData.body.nama_customer, validatedData.body.tanggal_target_kirim, totalHargaSO, 'DRAFT']
       );
 
       const soId = soResult.insertId;
 
       // 4. Insert Detail SO (ambil harga_jual fresh dari DB)
-      for (const item of validatedData.items) {
+      for (const item of validatedData.body.items) {
         const [barangRows]: any = await connection.query('SELECT harga_jual FROM inventory_stok WHERE id = ?', [item.barang_id]);
         const hargaSatuan = parseFloat(barangRows[0].harga_jual);
 
