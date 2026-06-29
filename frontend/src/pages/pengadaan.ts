@@ -1090,6 +1090,13 @@ function setupSRMModals(): void {
 
     const inputAlamat = document.getElementById('srm-input-alamat') as HTMLInputElement;
     if (inputAlamat) {
+        inputAlamat.addEventListener('input', () => {
+            if (inputAlamat.value.trim() === '') {
+                const mapEl = document.getElementById('srm-map-vendor');
+                if (mapEl) mapEl.classList.add('hidden');
+            }
+        });
+
         inputAlamat.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault(); // Mencegah form tersubmit otomatis
@@ -1117,7 +1124,7 @@ function setupSRMModals(): void {
                     });
                 }
             }
-        });
+        }, { capture: true }); // capture: true agar berjalan sebelum Google Maps stopPropagation
     }
 
     document.getElementById('btn-create-vendor')?.addEventListener('click', () => {
