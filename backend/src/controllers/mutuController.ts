@@ -83,7 +83,7 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
 
       if (totalKapitalisasi > 0) {
         await insertJurnal(connection, refDoc, `Kapitalisasi WIP ke Finished Good (${wo.jumlah_produksi} Unit)`, 'Aset_Persediaan', 'Debit', totalKapitalisasi);
-        await insertJurnal(connection, refDoc, `Pelepasan nilai WIP untuk FG`, 'Barang_Setengah_Jadi', 'Kredit', totalKapitalisasi);
+        await insertJurnal(connection, refDoc, `Pelepasan nilai WIP untuk FG`, 'Aset_Persediaan', 'Kredit', totalKapitalisasi);
       }
 
       await connection.commit();
