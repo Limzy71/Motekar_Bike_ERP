@@ -8,8 +8,7 @@
     "start": "node dist/server.js",
     "db:fresh": "tsx src/migrations/fresh.ts",
     "db:dump": "tsx src/migrations/dump_schema.ts",
-    "db:seed": "tsx src/migrations/seed_master_data.ts",
-    "db:seed-exception": "tsx src/migrations/seed_exception_flow.ts"
+    "db:seed": "tsx src/migrations/seed_master_data.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
