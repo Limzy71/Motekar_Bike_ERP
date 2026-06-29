@@ -8,6 +8,8 @@ import { initRBAC, showToast } from '../components/rbac.js';
 import { renderPaginationUI } from '../utils/pagination.js';
 import { openPrintWindow, openReportWindow } from '../utils/printDocument.js';
 
+declare const Swal: any;
+
 interface InventoryItem {
   id: number;
   kode_barang: string;
@@ -1475,7 +1477,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnPrintReportReceipt) {
       btnPrintReportReceipt.addEventListener('click', () => {
           if (receiptHistory.length === 0) {
-              showToast('Tidak ada data riwayat penerimaan untuk dicetak.', true);
+              // @ts-ignore
+              Swal.fire('Info', 'Tidak ada data riwayat penerimaan untuk dicetak.', 'info');
               return;
           }
           openReportWindow({

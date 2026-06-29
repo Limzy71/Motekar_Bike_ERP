@@ -1346,7 +1346,8 @@ document.addEventListener('DOMContentLoaded', () => {
               filteredData = allPRData.filter(pr => pr.status_pr === currentFilterPR);
           }
           if (filteredData.length === 0) {
-              showToast('Tidak ada data PR untuk dicetak.', true);
+              // @ts-ignore
+              Swal.fire('Info', 'Tidak ada data PR untuk dicetak.', 'info');
               return;
           }
           openReportWindow({
