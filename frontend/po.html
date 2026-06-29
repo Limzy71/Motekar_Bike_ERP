@@ -71,20 +71,11 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
         }
 
-        .po-print-sheet {
-            display: none;
-        }
-
-        @media print {
-            body { background: white !important; overflow: visible !important; }
-            body > *:not(#lembar-po) { display: none !important; }
-            #lembar-po { display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 20px !important; }
-        }
     </style>
 </head>
 
 <body class="text-on-surface overflow-hidden">
-    <div class="flex h-screen overflow-hidden relative">
+    <div class="flex h-screen overflow-hidden relative print:hidden">
         
         {{> sidebar }}
 
@@ -362,7 +353,7 @@
     <script type="module" src="/src/pages/po.ts"></script>
 
 <!-- Lembar Print po -->
-<div id="lembar-po" class="po-print-sheet w-[210mm] min-h-[297mm] bg-white text-slate-900 p-12 mx-auto font-sans absolute top-0 left-0 z-50">
+<div id="lembar-po" class="hidden print:block w-[210mm] min-h-[297mm] bg-white text-slate-900 p-12 mx-auto font-sans absolute top-0 left-0 z-50">
     <!-- Kop Surat -->
     <div class="flex justify-between items-end border-b-4 border-primary pb-6 mb-8">
         <div>
