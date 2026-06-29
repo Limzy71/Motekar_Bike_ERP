@@ -436,6 +436,49 @@ export function initRBAC(currentPage: string = 'dashboard'): UserData | null {
   setupSidebarToggle();
   setupLogout();
 
+  // ============================================================
+  // TESTING ACCOUNT INTERCEPTOR
+  // ============================================================
+  if (user.username === 'testing') {
+      document.body.classList.add('is-testing-account');
+      
+      const style = document.createElement('style');
+      style.innerHTML = `
+          .is-testing-account button:not([id*="btn-hamburger"]):not([id*="btn-logout"]):not([onclick*="print"]):not([onclick*="openPrintWindow"]):not([onclick*="Cetak"]):not([id^="tab-"]):not(.filter-btn):not([onclick*="Page"]):not(.nav-item),
+          .is-testing-account input[type="submit"],
+          .is-testing-account input[type="button"] {
+              cursor: not-allowed !important;
+          }
+      `;
+      document.head.appendChild(style);
+
+      document.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement;
+          const button = target.closest('button, input[type="submit"], input[type="button"]');
+          
+          if (button) {
+              const htmlStr = button.outerHTML;
+              const isAllowed = 
+                htmlStr.includes('btn-hamburger') || 
+                htmlStr.includes('btn-logout') || 
+                htmlStr.includes('print') || 
+                htmlStr.includes('openPrintWindow') || 
+                htmlStr.includes('Cetak') ||
+                htmlStr.includes('filter-btn') ||
+                button.hasAttribute('data-filter') ||
+                (button.id && button.id.startsWith('tab-')) ||
+                htmlStr.includes('Page') ||
+                htmlStr.includes('nav-item');
+              
+              if (!isAllowed) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  showToast('Akun Testing (Guest) tidak memiliki izin untuk melakukan aksi ini.', true);
+              }
+          }
+      }, true); // Gunakan capture phase agar dijalankan sebelum event listener lainnya
+  }
+
   return user;
 }
 

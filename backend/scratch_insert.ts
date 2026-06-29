@@ -1,0 +1,1 @@
+import pool from './src/config/database.js'; async function run() { await pool.query('INSERT IGNORE INTO users (username, password, nama_lengkap, divisi_role) VALUES (?, ?, ?, ?)', ['testing', 'testing123', 'Akun testing', 'Auditor']); console.log('Done'); process.exit(0); } run();
