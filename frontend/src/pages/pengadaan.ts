@@ -670,8 +670,16 @@ function handleItemChange(e: Event) {
   }
   
   // Auto select vendor if an item is chosen
-  if (vendorId && selectVendor) {
-    selectVendor.value = vendorId;
+  if (vendorId && vendorId !== 'null' && selectVendor) {
+    // Check if the vendor exists in the dropdown options
+    const optionExists = Array.from(selectVendor.options).some(opt => opt.value === vendorId);
+    if (optionExists) {
+      selectVendor.value = vendorId;
+    } else {
+      selectVendor.value = '';
+    }
+  } else if (selectVendor) {
+    selectVendor.value = '';
   }
 }
 
