@@ -1254,8 +1254,12 @@ function setupModalReceipt(): void {
         let hasItems = false;
         let itemIndex = 0;
         
-        for (const po of pendingPOs) {
-            const res = await apiFetch<any>(`gudang/po-pending/${po.id}`);
+        const fetchPromises = pendingPOs.map(po => apiFetch<any>(`gudang/po-pending/${po.id}`).then(res => ({ po, res })));
+        const results = await Promise.all(fetchPromises);
+
+        const rows: HTMLTableRowElement[] = [];
+
+        results.forEach(({ po, res }) => {
             if (res.success && res.data.length > 0) {
                 hasItems = true;
                 res.data.forEach((item: any) => {
@@ -1281,14 +1285,17 @@ function setupModalReceipt(): void {
                             <input type="text" name="bulk_items[${itemIndex}][surat_jalan_vendor]" value="SJ-${po.nomor_po.split('-').pop()}-${Math.floor(1000 + Math.random() * 9000)}" class="w-full text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors">
                         </td>
                     `;
-                    if (tbodyItems) tbodyItems.appendChild(tr);
+                    rows.push(tr);
                     itemIndex++;
                 });
             }
-        }
+        });
         
-        if (!hasItems) {
-            if (tbodyItems) tbodyItems.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs text-rose-500">Tidak ada item yang dapat diterima.</td></tr>`;
+        if (hasItems && tbodyItems) {
+            tbodyItems.innerHTML = '';
+            rows.forEach(row => tbodyItems.appendChild(row));
+        } else if (!hasItems && tbodyItems) {
+            tbodyItems.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs text-rose-500">Tidak ada item yang dapat diterima.</td></tr>`;
         }
         
         if (document.getElementById('bulk-receipt-info')) {
