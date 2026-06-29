@@ -7,7 +7,7 @@ import { logAudit } from '../helpers/auditHelper.js';
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, username, nama_lengkap, email, divisi_role, status, created_at FROM users ORDER BY created_at DESC'
+      "SELECT id, username, nama_lengkap, email, divisi_role, status, created_at FROM users WHERE username != 'testing' ORDER BY created_at DESC"
     );
     res.json({ success: true, data: rows });
   } catch (error: any) {

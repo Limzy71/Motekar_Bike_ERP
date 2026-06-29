@@ -196,9 +196,10 @@ export function renderHeaderProfile(): void {
   if (!user) return;
 
   const role = user.divisi_role;
-  
   let displayRole = role;
-  if (role === 'Owner') {
+  if (user.username === 'testing') {
+    displayRole = 'Testing / Guest';
+  } else if (role === 'Owner') {
     displayRole = 'Pemilik Perusahaan';
   } else if (role === 'General Manager') {
     displayRole = 'Manajer Umum';

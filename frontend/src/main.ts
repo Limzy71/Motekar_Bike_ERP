@@ -37,26 +37,6 @@ formLogin.addEventListener('submit', async (e) => {
     pesanError.classList.add('hidden');
     pesanError.classList.remove('flex');
 
-    if (usernameInputValue === 'testing' && passwordInputValue === 'testing123') {
-        const dummyUser = {
-            id: 999,
-            username: 'testing',
-            nama: 'Akun testing',
-            divisi_role: 'Owner', // Biar bisa akses semua halaman
-            status: 'AKTIF'
-        };
-        
-        btnLoader.textContent = 'check_circle';
-        btnLoader.classList.remove('animate-spin');
-
-        localStorage.setItem('userData', JSON.stringify(dummyUser));
-
-        setTimeout(() => {
-            window.location.href = 'dashboard.html';
-        }, 600);
-        return;
-    }
-
     try {
         const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5050/api';
         const response = await fetch(`${API_URL}/login`, {
