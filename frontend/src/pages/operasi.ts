@@ -877,6 +877,9 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPage = 1;
             renderTable();
         });
+        filterMonthWO.addEventListener('click', function() {
+            try { (this as any).showPicker(); } catch (e) {}
+        });
     }
 
     const btnPrintReportWO = document.getElementById('btn-print-report-wo');

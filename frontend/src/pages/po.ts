@@ -1002,6 +1002,9 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPage = 1;
             renderTable();
         });
+        filterMonthPo.addEventListener('click', function() {
+            try { (this as any).showPicker(); } catch (e) {}
+        });
     }
 
     const btnPrintReportPo = document.getElementById('btn-print-report-po');
