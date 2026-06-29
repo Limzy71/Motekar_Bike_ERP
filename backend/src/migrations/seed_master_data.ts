@@ -3,22 +3,22 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const vendors = [
-  { kode_vendor: 'VND-001', nama_vendor: 'Frame-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-002', nama_vendor: 'Fork-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-003', nama_vendor: 'Saddle-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-004', nama_vendor: 'Seatpost-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-005', nama_vendor: 'Rim-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-006', nama_vendor: 'Spoke-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-007', nama_vendor: 'Ban-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-008', nama_vendor: 'Cran-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-009', nama_vendor: 'Chain-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-010', nama_vendor: 'Cassette-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-011', nama_vendor: 'Derail-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-012', nama_vendor: 'Handle-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-013', nama_vendor: 'Stem-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-014', nama_vendor: 'Brake-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-015', nama_vendor: 'Shifter-Indonesia', kategori: 'LOKAL' },
-  { kode_vendor: 'VND-016', nama_vendor: 'Grips-Indonesia', kategori: 'LOKAL' },
+  { kode_vendor: 'VND-001', nama_vendor: 'Frame-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-002', nama_vendor: 'Fork-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-003', nama_vendor: 'Saddle-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-004', nama_vendor: 'Seatpost-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-005', nama_vendor: 'Rim-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-006', nama_vendor: 'Spoke-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-007', nama_vendor: 'Ban-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-008', nama_vendor: 'Cran-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-009', nama_vendor: 'Chain-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-010', nama_vendor: 'Cassette-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-011', nama_vendor: 'Derail-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-012', nama_vendor: 'Handle-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-013', nama_vendor: 'Stem-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-014', nama_vendor: 'Brake-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-015', nama_vendor: 'Shifter-Indonesia', kategori: 'LOKAL', insertedId: null },
+  { kode_vendor: 'VND-016', nama_vendor: 'Grips-Indonesia', kategori: 'LOKAL', insertedId: null },
 ];
 
 const inventories = [
@@ -117,21 +117,30 @@ async function run() {
     
     // Seed Vendors
     for (const v of vendors) {
-      await connection.query(
+      const [vResult]: any = await connection.query(
         'INSERT INTO master_vendor (kode_vendor, nama_vendor, kategori, status_vendor) VALUES (?, ?, ?, ?)',
         [v.kode_vendor, v.nama_vendor, v.kategori, 'AKTIF']
       );
+      v.insertedId = vResult.insertId;
     }
     console.log('Vendors seeded.');
 
     // Seed Inventory
     for (const i of inventories) {
+      let idVendor = null;
+
+      if (i.tipe === 'RM') {
+         const num = parseInt(i.kode.split('-')[1]);
+         const v = vendors[num - 1];
+         if (v) idVendor = v.insertedId;
+      }
+
       await connection.query(
-        'INSERT INTO inventory_stok (kode_barang, nama_barang, kategori, satuan, tipe_item, harga_standar, harga_jual, jumlah_stok) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [i.kode, i.nama, i.kategori, i.satuan, i.tipe, i.harga, i.jual || 0, 30] // Stok awal 30 per komponen
+        'INSERT INTO inventory_stok (kode_barang, nama_barang, kategori, satuan, tipe_item, harga_standar, harga_jual, jumlah_stok, id_vendor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [i.kode, i.nama, i.kategori, i.satuan, i.tipe, i.harga, i.jual || 0, 30, idVendor]
       );
     }
-    console.log('Inventory seeded.');
+    console.log('Inventory seeded with Vendor links.');
 
     // Seed BOM Header
     for (const bh of bomHeaders) {
