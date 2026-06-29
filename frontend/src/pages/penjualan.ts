@@ -665,6 +665,8 @@ async function initCreateModal() {
             inputLat.value = '';
             inputLng.value = '';
             inputOngkir.value = '0';
+            const mapContainer = document.getElementById('map-preview');
+            if (mapContainer) mapContainer.classList.add('hidden');
         }
     });
 
