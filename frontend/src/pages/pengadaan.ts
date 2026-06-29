@@ -263,6 +263,7 @@ declare global {
     approvePR: (id: number) => void;
     confirmDeletePR: (id: number) => void;
     openRightDrawer: (id: number) => void;
+    printPR: (id: number) => void;
   }
 }
 
@@ -352,6 +353,12 @@ window.openRightDrawer = (id: number) => {
               </div>
           `;
       }
+      // Tombol cetak selalu tersedia di semua status
+      html += `
+          <button onclick="window.printPR(${pr.id})" class="w-full px-4 py-2.5 bg-slate-800 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-[18px]">print</span> Cetak Purchase Request
+          </button>
+      `;
       bay.innerHTML = html;
   }
 
@@ -400,6 +407,49 @@ window.approvePR = async (id: number) => {
   } catch (err) {
     showToast('Gagal menyetujui PR.', true);
   }
+};
+
+window.printPR = (id: number) => {
+  const pr = allPRData.find(p => p.id === id);
+  if (!pr) return;
+
+  // Isi field utama dokumen
+  const prNo = document.getElementById('pdf-pr-no');
+  const prTgl = document.getElementById('pdf-pr-tgl');
+  const prVendor = document.getElementById('pdf-pr-vendor');
+  const prStatus = document.getElementById('pdf-pr-status');
+  const prTbody = document.getElementById('pdf-pr-tbody');
+
+  if (prNo) prNo.textContent = pr.nomor_pr;
+  if (prTgl) {
+    prTgl.textContent = pr.created_at
+      ? new Date(pr.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '-';
+  }
+  if (prVendor) prVendor.textContent = pr.nama_vendor;
+  if (prStatus) prStatus.textContent = pr.status_pr;
+
+  // Isi tabel item: Nama Barang & Quantity
+  if (prTbody) {
+    if (pr.items && pr.items.length > 0) {
+      prTbody.innerHTML = pr.items.map((item: any, index: number) => `
+        <tr>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0;">${index + 1}</td>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0;">
+            <strong>${item.nama_barang}</strong>
+            <br><small style="color:#64748b; font-family:monospace;">${item.kode_barang}</small>
+          </td>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align:right; font-weight:bold;">
+            ${item.jumlah} ${item.satuan}
+          </td>
+        </tr>
+      `).join('');
+    } else {
+      prTbody.innerHTML = '<tr><td colspan="3" style="padding:16px; text-align:center; color:#94a3b8; font-style:italic;">Tidak ada item</td></tr>';
+    }
+  }
+
+  window.print();
 };
 
 window.confirmDeletePR = (id: number) => {
