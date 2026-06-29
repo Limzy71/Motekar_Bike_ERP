@@ -1090,6 +1090,29 @@ function setupSRMModals(): void {
         inputAlamat.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault(); // Mencegah form tersubmit otomatis
+                
+                const address = inputAlamat.value;
+                if (address && typeof (window as any).google !== 'undefined' && mapVendor) {
+                    const geocoder = new (window as any).google.maps.Geocoder();
+                    geocoder.geocode({ address: address }, (results: any, status: any) => {
+                        if (status === "OK" && results && results[0]) {
+                            const mapEl = document.getElementById('srm-map-vendor');
+                            if (mapEl) mapEl.classList.remove('hidden');
+                            
+                            setTimeout(() => {
+                                (window as any).google.maps.event.trigger(mapVendor, 'resize');
+                                if (results[0].geometry.viewport) {
+                                    mapVendor.fitBounds(results[0].geometry.viewport);
+                                } else {
+                                    mapVendor.setCenter(results[0].geometry.location);
+                                    mapVendor.setZoom(17);
+                                }
+                                markerVendor.setPosition(results[0].geometry.location);
+                                inputAlamat.value = results[0].formatted_address;
+                            }, 50);
+                        }
+                    });
+                }
             }
         });
     }
