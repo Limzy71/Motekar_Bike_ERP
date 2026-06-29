@@ -21,6 +21,9 @@ interface WorkOrder {
     kode_barang: string;
     materials: MaterialAllocation[];
     catatan_rework?: string;
+    qc_history?: any;
+    has_pending_deficit?: boolean;
+    target_selesai?: string;
 }
 
 let allWorkOrders: WorkOrder[] = [];
