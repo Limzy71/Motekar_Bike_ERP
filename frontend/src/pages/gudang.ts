@@ -397,7 +397,15 @@ function renderOutboundTable() {
     (document.getElementById('input-dispatch-so-no') as HTMLInputElement).value = no_so;
     (document.getElementById('input-vendor-3pl') as HTMLInputElement).value = '';
     (document.getElementById('input-resi-3pl') as HTMLInputElement).value = '';
+    (document.getElementById('input-supir-3pl') as HTMLInputElement).value = '';
+    (document.getElementById('input-plat-3pl') as HTMLInputElement).value = '';
+    (document.getElementById('input-telepon-3pl') as HTMLInputElement).value = '';
     (document.getElementById('input-foto-3pl') as HTMLInputElement).value = '';
+
+    const previewContainer = document.getElementById('preview-container-3pl');
+    const previewImg = document.getElementById('preview-foto-3pl') as HTMLImageElement;
+    if (previewImg) previewImg.src = '';
+    previewContainer?.classList.add('hidden');
 
     if (modal && modalContent) {
         modal.classList.remove('hidden');
@@ -463,6 +471,15 @@ function setupModalDispatch(): void {
     const btnCancel = document.getElementById('btn-cancel-dispatch');
     const form = document.getElementById('form-dispatch') as HTMLFormElement;
 
+    const vendorSelect = document.getElementById('input-vendor-3pl') as HTMLSelectElement;
+    const resiInput = document.getElementById('input-resi-3pl') as HTMLInputElement;
+    const supirInput = document.getElementById('input-supir-3pl') as HTMLInputElement;
+    const platInput = document.getElementById('input-plat-3pl') as HTMLInputElement;
+    const teleponInput = document.getElementById('input-telepon-3pl') as HTMLInputElement;
+    const fileInput = document.getElementById('input-foto-3pl') as HTMLInputElement;
+    const previewContainer = document.getElementById('preview-container-3pl');
+    const previewImg = document.getElementById('preview-foto-3pl') as HTMLImageElement;
+
     const closeModal = () => {
         if (modal && modalContent) {
             modal.classList.add('opacity-0');
@@ -470,6 +487,8 @@ function setupModalDispatch(): void {
             setTimeout(() => {
                 modal.classList.add('hidden');
                 form?.reset();
+                if (previewImg) previewImg.src = '';
+                previewContainer?.classList.add('hidden');
             }, 300);
         }
     };
@@ -477,15 +496,73 @@ function setupModalDispatch(): void {
     btnClose?.addEventListener('click', closeModal);
     btnCancel?.addEventListener('click', closeModal);
 
+    // Event listener for vendor change -> autofill all fields with unique values from API
+    vendorSelect?.addEventListener('change', async () => {
+        const vendor = vendorSelect.value;
+        if (!vendor) {
+            resiInput.value = '';
+            supirInput.value = '';
+            platInput.value = '';
+            teleponInput.value = '';
+            return;
+        }
+
+        try {
+            resiInput.value = 'Memuat...';
+            supirInput.value = 'Memuat...';
+            platInput.value = 'Memuat...';
+            teleponInput.value = 'Memuat...';
+
+            const response = await apiFetch<any>(`penjualan/generate-3pl?vendor=${encodeURIComponent(vendor)}`);
+            if (response.success && response.data) {
+                resiInput.value = response.data.resi;
+                supirInput.value = response.data.supir;
+                platInput.value = response.data.plat;
+                teleponInput.value = response.data.no_telepon;
+            } else {
+                showToast(response.message || 'Gagal mengambil data ekspedisi.', true);
+                resiInput.value = '';
+                supirInput.value = '';
+                platInput.value = '';
+                teleponInput.value = '';
+            }
+        } catch (err) {
+            showToast('Kesalahan koneksi saat mengambil data ekspedisi.', true);
+            resiInput.value = '';
+            supirInput.value = '';
+            platInput.value = '';
+            teleponInput.value = '';
+        }
+    });
+
+    // Event listener for file upload -> show preview
+    fileInput?.addEventListener('change', () => {
+        if (fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (previewImg && e.target?.result) {
+                    previewImg.src = e.target.result as string;
+                    previewContainer?.classList.remove('hidden');
+                }
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            if (previewImg) previewImg.src = '';
+            previewContainer?.classList.add('hidden');
+        }
+    });
+
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const id = (document.getElementById('input-dispatch-so-id') as HTMLInputElement).value;
-        const vendor = (document.getElementById('input-vendor-3pl') as HTMLInputElement).value;
-        const resi = (document.getElementById('input-resi-3pl') as HTMLInputElement).value;
-        const fileInput = document.getElementById('input-foto-3pl') as HTMLInputElement;
+        const vendor = vendorSelect.value;
+        const resi = resiInput.value;
+        const supir = supirInput.value;
+        const plat = platInput.value;
+        const no_telepon = teleponInput.value;
 
-        if (!vendor || !resi || !fileInput.files || fileInput.files.length === 0) {
+        if (!vendor || !resi || !supir || !plat || !no_telepon || !fileInput.files || fileInput.files.length === 0) {
             showToast('Form tidak lengkap atau foto belum diunggah!', true);
             return;
         }
@@ -508,7 +585,7 @@ function setupModalDispatch(): void {
                 try {
                     const response = await apiFetch<ActionResponse>(`penjualan/so/${id}/ship`, {
                       method: 'PATCH',
-                      body: JSON.stringify({ vendor, resi, foto: base64Foto })
+                      body: JSON.stringify({ vendor, resi, foto: base64Foto, supir, plat, no_telepon })
                     });
 
                     if (response.success) {

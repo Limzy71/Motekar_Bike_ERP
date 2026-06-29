@@ -468,3 +468,148 @@ export const deliverSO = async (req: Request, res: Response): Promise<void> => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+// ============================================================
+// 6. [GET] /api/penjualan/generate-3pl (Generate unique 3PL Details)
+// ============================================================
+export const generate3PLDetails = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { vendor } = req.query;
+    if (!vendor) {
+      res.status(400).json({ success: false, message: 'Vendor wajib ditentukan.' });
+      return;
+    }
+
+    const vendorStr = String(vendor);
+
+    // 1. Pools of drivers: 10 per vendor (total 50 unique names, no overlap)
+    const driversMap: Record<string, string[]> = {
+      'Dakota Cargo': [
+        'Budi Santoso', 'Anton Wijaya', 'Candra Pratama', 'Dedi Kurniawan', 'Erik Setiawan',
+        'Fajar Nugroho', 'Guntur Wibowo', 'Hadi Susanto', 'Indra Cahyono', 'Joko Prasetyo'
+      ],
+      'Indah Logistik Cargo': [
+        'Kiki Ramadhan', 'Lukman Hakim', 'Mamat Hidayat', 'Nana Suryana', 'Oki Saputra',
+        'Priyo Sembodo', 'Qori Amrullah', 'Rian Hidayat', 'Soni Wahyudi', 'Tono Suhartono'
+      ],
+      'JNE Trucking (JTR)': [
+        'Udin Sedunia', 'Valen Siahaan', 'Wawan Hermawan', 'Xaverius Frans', 'Yayan Ruhiyan',
+        'Zainal Abidin', 'Asep Sunandar', 'Bambang Pamungkas', 'Cecep Supriadi', 'Dadang Subur'
+      ],
+      'Deliveree': [
+        'Eko Prasetyo', 'Firman Utina', 'Gunawan Sudradjat', 'Heri Kiswanto', 'Irfan Bachdim',
+        'Jamal Mirdad', 'Kusnadi Wijaya', 'Lutfi Alfarizi', 'Mansur S', 'Nurdin Halid'
+      ],
+      'Lalamove': [
+        'Otong Surotong', 'Parlin Hutapea', 'Qomaruddin', 'Robby Purba', 'Syarif Hidayatullah',
+        'Teguh Karya', 'Usman Harun', 'Vicky Prasetyo', 'Wira Wirawan', 'Yudi Latif'
+      ]
+    };
+
+    const drivers = driversMap[vendorStr];
+    if (!drivers) {
+      res.status(400).json({ success: false, message: 'Vendor tidak dikenali.' });
+      return;
+    }
+
+    // 2. Fetch already used driver names, plate numbers, phone numbers, and receipt numbers from penjualan_so_header
+    const [usedRows]: any = await pool.query(
+      'SELECT nomor_resi_3pl, nama_supir, plat_nomor, no_telepon_supir FROM penjualan_so_header'
+    );
+
+    const usedDrivers = new Set(usedRows.map((r: any) => r.nama_supir).filter(Boolean));
+    const usedPlates = new Set(usedRows.map((r: any) => r.plat_nomor).filter(Boolean));
+    const usedPhones = new Set(usedRows.map((r: any) => r.no_telepon_supir).filter(Boolean));
+    const usedResis = new Set(usedRows.map((r: any) => r.nomor_resi_3pl).filter(Boolean));
+
+    // 3. Find an unused driver for this vendor
+    let selectedDriver = '';
+    const availableDrivers = drivers.filter(d => !usedDrivers.has(d));
+    if (availableDrivers.length > 0) {
+      selectedDriver = availableDrivers[Math.floor(Math.random() * availableDrivers.length)];
+    } else {
+      // Fallback if all 10 are used (highly unlikely in normal usage, but good practice):
+      // Pick a random one and append a unique random number to make it unique
+      const baseDriver = drivers[Math.floor(Math.random() * drivers.length)];
+      selectedDriver = `${baseDriver} ${Math.floor(100 + Math.random() * 900)}`;
+    }
+
+    // 4. Generate unique Plate Number: "D" + 4 digits + 3 letters (Format: D 1234 ABC)
+    const generatePlate = () => {
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      const digits = '0123456789';
+      let num = '';
+      for (let i = 0; i < 4; i++) {
+        num += digits[Math.floor(Math.random() * digits.length)];
+      }
+      let chars = '';
+      for (let i = 0; i < 3; i++) {
+        chars += letters[Math.floor(Math.random() * letters.length)];
+      }
+      return `D ${num} ${chars}`;
+    };
+
+    let selectedPlate = generatePlate();
+    let limit = 0;
+    while (usedPlates.has(selectedPlate) && limit < 100) {
+      selectedPlate = generatePlate();
+      limit++;
+    }
+
+    // 5. Generate unique Phone Number: "08" + 10-11 random digits (length 12-13)
+    const generatePhone = () => {
+      const digits = '0123456789';
+      const len = Math.floor(12 + Math.random() * 2); // 12 or 13
+      let phone = '08';
+      for (let i = 0; i < len - 2; i++) {
+        phone += digits[Math.floor(Math.random() * digits.length)];
+      }
+      return phone;
+    };
+
+    let selectedPhone = generatePhone();
+    limit = 0;
+    while (usedPhones.has(selectedPhone) && limit < 100) {
+      selectedPhone = generatePhone();
+      limit++;
+    }
+
+    // 6. Generate unique Receipt Number (resi) based on vendor prefix
+    const vendorCodes: Record<string, string> = {
+      'Dakota Cargo': 'DKT',
+      'Indah Logistik Cargo': 'IND',
+      'JNE Trucking (JTR)': 'JNE',
+      'Deliveree': 'DLV',
+      'Lalamove': 'LLM'
+    };
+    const code = vendorCodes[vendorStr] || '3PL';
+    const generateResi = () => {
+      const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let r = '';
+      for (let i = 0; i < 10; i++) {
+        r += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return `${code}-${r}`;
+    };
+
+    let selectedResi = generateResi();
+    limit = 0;
+    while (usedResis.has(selectedResi) && limit < 100) {
+      selectedResi = generateResi();
+      limit++;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        resi: selectedResi,
+        supir: selectedDriver,
+        plat: selectedPlate,
+        no_telepon: selectedPhone
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

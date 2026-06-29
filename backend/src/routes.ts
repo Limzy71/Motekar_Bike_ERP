@@ -119,7 +119,7 @@ router.post('/mutu/inspeksi', mutuAuth, submitInspeksi);
 // ============================================================
 // MODUL PENJUALAN & PENAGIHAN (O2C & Soft Allocation)
 // ============================================================
-import { getAllSO, createSO, triggerWO, fulfillSO, shipSO, deliverSO, getProducts } from './controllers/penjualanController.js';
+import { getAllSO, createSO, triggerWO, fulfillSO, shipSO, deliverSO, getProducts, generate3PLDetails } from './controllers/penjualanController.js';
 import { calculateShipping } from './controllers/mapsController.js';
 
 const penjualanAuth = [authenticate, requireRole('Owner', 'General Manager', 'Penjualan & Penagihan')];
@@ -128,6 +128,7 @@ const penjualanGudangAuth = [authenticate, requireRole('Owner', 'General Manager
 router.post('/maps/calculate-shipping', penjualanAuth, calculateShipping);
 
 router.get('/penjualan/so', penjualanGudangAuth, getAllSO);
+router.get('/penjualan/generate-3pl', authenticate, generate3PLDetails);
 router.post('/penjualan/so', penjualanAuth, createSO);
 router.post('/penjualan/so/detail/:idDetail/trigger-wo', penjualanAuth, triggerWO);
 router.patch('/penjualan/so/:id/fulfill', penjualanAuth, fulfillSO);
