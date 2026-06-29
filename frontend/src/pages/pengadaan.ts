@@ -1045,6 +1045,9 @@ function setupSRMModals(): void {
                 const place = autocompleteVendor.getPlace();
                 if (!place.geometry || !place.geometry.location) return;
 
+                const mapEl = document.getElementById('srm-map-vendor');
+                if (mapEl) mapEl.classList.remove('hidden');
+
                 if (place.geometry.viewport) {
                     mapVendor.fitBounds(place.geometry.viewport);
                 } else {
@@ -1099,6 +1102,9 @@ function setupSRMModals(): void {
         if (modalVendor && contentVendor) {
             modalVendor.classList.remove('hidden');
             modalVendor.classList.add('flex');
+            
+            const mapEl = document.getElementById('srm-map-vendor');
+            if (mapEl) mapEl.classList.remove('hidden');
             
             // Trigger resize after modal becomes visible so map renders correctly
             setTimeout(() => {
