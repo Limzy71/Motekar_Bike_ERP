@@ -19,6 +19,10 @@ async function seedAdditionalUsers() {
       { username: 'produksi',  nama_lengkap: 'Staf Produksi',     email: 'produksi@motekar.com',  divisi_role: 'Operasi Inti' },
       { username: 'marketing', nama_lengkap: 'Staf Pemasaran',    email: 'marketing@motekar.com', divisi_role: 'Pemasaran' },
       { username: 'gudang',    nama_lengkap: 'Staf Gudang',       email: 'gudang@motekar.com',    divisi_role: 'Gudang' },
+      { username: 'agus',      nama_lengkap: 'Ir. Agus Hexagraha',              email: 'agus@motekar.com',      divisi_role: 'Owner' },
+      { username: 'keuangan',  nama_lengkap: 'Tim Keuangan',                     email: 'keuangan@motekar.com',  divisi_role: 'Keuangan & Akuntansi' },
+      { username: 'penjualan', nama_lengkap: 'Pemasaran & Penjualan',             email: 'penjualan@motekar.com', divisi_role: 'Pemasaran & Penjualan' },
+      { username: 'legal',     nama_lengkap: 'Legal & Kepatuhan',                email: 'legal@motekar.com',     divisi_role: 'Legal & Kepatuhan' },
     ];
 
     for (const user of newUsers) {
