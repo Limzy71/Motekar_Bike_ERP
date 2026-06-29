@@ -371,7 +371,7 @@ function setupModalLogic(): void {
         const qcHistory: Record<string, string> = {};
         for (let i = 1; i <= 5; i++) {
             const val = formData.get(`chk_${i}`) as string;
-            qcHistory[`chk_`] = val; if (!val) uncompleted = true;
+            qcHistory[`chk_${i}`] = val; if (!val) uncompleted = true;
             if (val === 'Fail') {
                 finalResult = 'Fail';
             }
