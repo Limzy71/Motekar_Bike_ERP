@@ -1282,7 +1282,7 @@ function setupModalReceipt(): void {
                             </select>
                         </td>
                         <td class="py-2 px-3 text-center">
-                            <input type="text" name="bulk_items[${itemIndex}][surat_jalan_vendor]" value="SJ-${po.nomor_po.split('-').pop()}-${Math.floor(1000 + Math.random() * 9000)}" class="w-full text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors">
+                            <input type="text" name="bulk_items[${itemIndex}][surat_jalan_vendor]" value="SJ-${po.nomor_po.split('-').pop()}-${Math.floor(1000 + Math.random() * 9000)}" readonly class="w-full text-xs border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed font-medium rounded px-2 py-1 outline-none transition-colors">
                         </td>
                     `;
                     rows.push(tr);
