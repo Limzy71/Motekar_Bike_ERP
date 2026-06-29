@@ -240,6 +240,7 @@ function setupFilters(): void {
           if (tabMaster) tabMaster.className = activeClass;
           sectionMaster?.classList.remove('hidden');
           localStorage.setItem('gudangLastTab', 'master');
+          loadGudang();
       } else if (tabName === 'outbound') {
           if (tabOutbound) tabOutbound.className = activeClass + " flex items-center gap-2";
           sectionOutbound?.classList.remove('hidden');
@@ -1242,6 +1243,7 @@ function setupModalReceipt(): void {
                 showToast(response.message);
                 closeModal();
                 loadPendingPO(); // Refresh receipt list
+                loadGudang(); // Refresh real-time stock
             } else {
                 showToast(response.message, true);
             }
@@ -1434,9 +1436,11 @@ function setupModalBulkReceipt(): void {
             showToast(`${successCount} PO berhasil diterima secara massal.`);
             closeModal();
             loadPendingPO();
+            loadGudang();
         } else {
             showToast(`${successCount} sukses, ${failCount} gagal diproses.`, true);
             loadPendingPO();
+            loadGudang();
         }
     });
 }
