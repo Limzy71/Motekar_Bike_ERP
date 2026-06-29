@@ -12,7 +12,7 @@ async function seedAdditionalUsers() {
     const hashedPassword = await bcrypt.hash('password123', 10);
 
     const newUsers = [
-      { username: 'agus',      nama_lengkap: 'Ir. Agus Hexagraha',        email: 'agus@motekar.com',       divisi_role: 'Owner' },
+      { username: 'agus',      nama_lengkap: 'Ir. Agus Hexagraha, M.Kom', email: 'agus@motekar.com',       divisi_role: 'Owner' },
       { username: 'manager',   nama_lengkap: 'General Manager',           email: 'manager@motekar.com',    divisi_role: 'General Manager' },
       { username: 'admin',     nama_lengkap: 'IT Support',                email: 'it_support@motekar.com', divisi_role: 'IT Support' },
       { username: 'pengadaan', nama_lengkap: 'Tim Pengadaan',             email: 'pengadaan@motekar.com',  divisi_role: 'Pengadaan' },
