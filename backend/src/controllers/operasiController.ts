@@ -10,7 +10,7 @@ export const getAllWO = async (req: Request, res: Response): Promise<void> => {
   try {
     const [rows]: any = await pool.query(`
       SELECT 
-        wo.id, wo.nomor_wo, wo.jumlah_produksi, wo.status, wo.created_at, wo.catatan_rework, wo.qc_history,
+        wo.id, wo.nomor_wo, wo.jumlah_produksi, wo.status, wo.created_at, wo.catatan_rework, wo.qc_history, wo.target_selesai,
         fg.nama_barang as produk, fg.kode_barang
       FROM operasi_wo_header wo
       JOIN inventory_stok fg ON wo.id_inventory_fg = fg.id

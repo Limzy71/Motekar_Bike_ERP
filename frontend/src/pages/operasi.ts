@@ -158,12 +158,18 @@ function renderTable() {
         tr.onclick = () => openRightDrawer(wo);
 
         const dateStr = new Date(wo.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        let targetHtml = `<span class="font-data-mono font-bold text-slate-700">${wo.jumlah_produksi} Unit</span>`;
+        if (wo.target_selesai) {
+            const tDate = new Date(wo.target_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            targetHtml += `<br><span class="text-[10px] text-rose-500 font-bold bg-rose-50 px-1 py-0.5 rounded border border-rose-100 inline-block mt-1">Batas: ${tDate}</span>`;
+        }
 
         tr.innerHTML = `
             <td class="py-3 px-4 font-bold font-data-mono text-primary">${wo.nomor_wo}</td>
             <td class="py-3 px-4">${dateStr}</td>
             <td class="py-3 px-4 font-semibold">${wo.produk} <span class="text-[10px] text-slate-400 font-normal ml-1 border rounded px-1">${wo.kode_barang}</span></td>
-            <td class="py-3 px-4 text-right font-data-mono font-bold text-slate-700">${wo.jumlah_produksi} Unit</td>
+            <td class="py-3 px-4 text-right">${targetHtml}</td>
             <td class="py-3 px-4 text-center">${badgeHtml}</td>
         `;
         tbody.appendChild(tr);
@@ -198,6 +204,15 @@ function openRightDrawer(wo: WorkOrder) {
     document.getElementById('drawer-wo-status')!.textContent = wo.status.replace('_', ' ');
     document.getElementById('drawer-product-name')!.textContent = wo.produk;
     document.getElementById('drawer-product-qty')!.textContent = `Qty: ${wo.jumlah_produksi} Unit`;
+    
+    const deadlineNode = document.getElementById('drawer-product-deadline')!;
+    if (wo.target_selesai) {
+        const tDate = new Date(wo.target_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        deadlineNode.textContent = `Target Selesai Produksi: ${tDate}`;
+        deadlineNode.classList.remove('hidden');
+    } else {
+        deadlineNode.classList.add('hidden');
+    }
 
     // Set Status Badge in Alloc
     const allocStatus = document.getElementById('drawer-alloc-status')!;

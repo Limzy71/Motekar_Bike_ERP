@@ -192,7 +192,7 @@ export const triggerWO = async (req: Request, res: Response): Promise<void> => {
     const [detailRows]: any = await connection.query(`
       SELECT d.id_so_header, d.id_inventory_barang_jadi, d.qty, d.status_item, d.id_wo_terkait,
              i.kode_barang, i.jumlah_stok,
-             h.nomor_so
+             h.nomor_so, h.tanggal_target_kirim
       FROM penjualan_so_detail d
       JOIN inventory_stok i ON d.id_inventory_barang_jadi = i.id
       JOIN penjualan_so_header h ON d.id_so_header = h.id
@@ -215,8 +215,8 @@ export const triggerWO = async (req: Request, res: Response): Promise<void> => {
 
     // 3. Create Work Order in Modul 2 (operasi_wo_header)
     const [woResult]: any = await connection.query(
-      'INSERT INTO operasi_wo_header (nomor_wo, id_inventory_fg, jumlah_produksi, status) VALUES (?, ?, ?, ?)',
-      [woNumber, detail.id_inventory_barang_jadi, selisihDefisit, 'DRAFT']
+      'INSERT INTO operasi_wo_header (nomor_wo, id_inventory_fg, jumlah_produksi, status, target_selesai) VALUES (?, ?, ?, ?, ?)',
+      [woNumber, detail.id_inventory_barang_jadi, selisihDefisit, 'DRAFT', detail.tanggal_target_kirim]
     );
     const woId = woResult.insertId;
 
