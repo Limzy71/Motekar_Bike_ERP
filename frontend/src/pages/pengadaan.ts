@@ -6,6 +6,7 @@
 import { apiFetch, getUserData } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
 import { renderPaginationUI } from '../utils/pagination.js';
+import { openPrintWindow } from '../utils/printDocument.js';
 
 declare const Swal: any;
 
@@ -413,43 +414,41 @@ window.printPR = (id: number) => {
   const pr = allPRData.find(p => p.id === id);
   if (!pr) return;
 
-  // Isi field utama dokumen
-  const prNo = document.getElementById('pdf-pr-no');
-  const prTgl = document.getElementById('pdf-pr-tgl');
-  const prVendor = document.getElementById('pdf-pr-vendor');
-  const prStatus = document.getElementById('pdf-pr-status');
-  const prTbody = document.getElementById('pdf-pr-tbody');
+  const dateStr = pr.created_at
+    ? new Date(pr.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '-';
 
-  if (prNo) prNo.textContent = pr.nomor_pr;
-  if (prTgl) {
-    prTgl.textContent = pr.created_at
-      ? new Date(pr.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-      : '-';
-  }
-  if (prVendor) prVendor.textContent = pr.nama_vendor;
-  if (prStatus) prStatus.textContent = pr.status_pr;
+  const items = (pr.items || []).map((item: any, idx: number) => ({
+    no: idx + 1,
+    kode: item.kode_barang,
+    nama_barang: item.nama_barang,
+    satuan: item.satuan,
+    quantity: `${item.jumlah} ${item.satuan}`,
+  }));
 
-  // Isi tabel item: Nama Barang & Quantity
-  if (prTbody) {
-    if (pr.items && pr.items.length > 0) {
-      prTbody.innerHTML = pr.items.map((item: any, index: number) => `
-        <tr>
-          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0;">${index + 1}</td>
-          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0;">
-            <strong>${item.nama_barang}</strong>
-            <br><small style="color:#64748b; font-family:monospace;">${item.kode_barang}</small>
-          </td>
-          <td style="padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align:right; font-weight:bold;">
-            ${item.jumlah} ${item.satuan}
-          </td>
-        </tr>
-      `).join('');
-    } else {
-      prTbody.innerHTML = '<tr><td colspan="3" style="padding:16px; text-align:center; color:#94a3b8; font-style:italic;">Tidak ada item</td></tr>';
-    }
-  }
-
-  window.print();
+  openPrintWindow({
+    docType: 'Purchase Requisition',
+    docNumber: pr.nomor_pr,
+    docDate: dateStr,
+    status: pr.status_pr,
+    headerFields: [
+      { label: 'Nomor PR', value: pr.nomor_pr },
+      { label: 'Tanggal Permintaan', value: dateStr },
+      { label: 'Vendor Rekomendasi', value: pr.nama_vendor || '-' },
+      { label: 'Status Approval', value: pr.status_pr },
+    ],
+    columns: [
+      { label: 'No', key: 'no', align: 'center' },
+      { label: 'Kode Barang', key: 'kode', align: 'left' },
+      { label: 'Nama Barang', key: 'nama_barang', align: 'left' },
+      { label: 'Quantity', key: 'quantity', align: 'right' },
+    ],
+    items,
+    signatures: [
+      { title: 'Diajukan Oleh', name: 'Departemen Pengadaan' },
+      { title: 'Disetujui Oleh', name: 'Owner / General Manager' },
+    ],
+  });
 };
 
 window.confirmDeletePR = (id: number) => {
