@@ -805,10 +805,32 @@ async function initCreateModal() {
         const hargaInput = row.querySelector('.item-harga') as HTMLInputElement;
         const qtyInput = row.querySelector('.item-qty') as HTMLInputElement;
 
+        const checkStock = () => {
+            const selectedItem = fgItems.find(i => i.id == select.value);
+            if (selectedItem) {
+                const qty = parseInt(qtyInput.value) || 1;
+                const stok = parseInt(selectedItem.jumlah_stok || 0);
+                if (qty > stok) {
+                    if (typeof (window as any).Swal !== 'undefined') {
+                        (window as any).Swal.fire({
+                            title: 'Peringatan Defisit Stok!',
+                            text: `Jumlah permintaan (${qty}) melebihi stok fisik di gudang (${stok}). Jika dilanjutkan, status pesanan akan menjadi BACKORDER dan sistem akan meminta penerbitan Work Order perakitan.`,
+                            icon: 'warning',
+                            confirmButtonColor: '#f59e0b',
+                            confirmButtonText: 'Mengerti'
+                        });
+                    } else {
+                        showToast(`Peringatan: Stok hanya tersedia ${stok}. Pesanan akan masuk Backorder.`, 'error');
+                    }
+                }
+            }
+        };
+
         select.addEventListener('change', () => {
             const selectedItem = fgItems.find(i => i.id == select.value);
             if (selectedItem) {
                 hargaInput.value = formatIndoNumber(selectedItem.harga_standar || 0);
+                checkStock(); // Cek stok saat ganti produk
             } else {
                 hargaInput.value = '';
                 qtyInput.value = '1';
@@ -824,25 +846,7 @@ async function initCreateModal() {
                     qtyInput.value = '1';
                 }
 
-                // Validasi Stok dan Munculkan Peringatan Defisit
-                const selectedItem = fgItems.find(i => i.id == select.value);
-                if (selectedItem) {
-                    const qty = parseInt(qtyInput.value);
-                    const stok = parseInt(selectedItem.jumlah_stok || 0);
-                    if (qty > stok) {
-                        if (typeof (window as any).Swal !== 'undefined') {
-                            (window as any).Swal.fire({
-                                title: 'Peringatan Defisit Stok!',
-                                text: `Jumlah permintaan (${qty}) melebihi stok fisik di gudang (${stok}). Jika dilanjutkan, status pesanan akan menjadi BACKORDER dan sistem akan meminta penerbitan Work Order perakitan.`,
-                                icon: 'warning',
-                                confirmButtonColor: '#f59e0b',
-                                confirmButtonText: 'Mengerti'
-                            });
-                        } else {
-                            showToast(`Peringatan: Stok hanya tersedia ${stok}. Pesanan akan masuk Backorder.`, 'error');
-                        }
-                    }
-                }
+                checkStock(); // Cek stok saat ketik qty
 
                 if (inputAlamat.value.trim() !== '') {
                     calculateShippingCost();
