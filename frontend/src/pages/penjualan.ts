@@ -907,9 +907,12 @@ async function initCreateModal() {
             alamat_pengiriman: alamat,
             catatan: catatan,
             biaya_pengiriman: parseFloat(biayaPengiriman.replace(/\D/g, '')) || 0,
+            latitude: lat || null,
+            longitude: lng || null,
             items: [{
-                barang_id: parseInt(select.value),
-                qty_order: parseInt(qtyInput.value)
+                id_inventory_barang_jadi: parseInt(select.value),
+                qty: parseInt(qtyInput.value),
+                harga_satuan: parseFloat(hargaRaw)
             }]
         };
 
