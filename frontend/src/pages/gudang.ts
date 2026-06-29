@@ -850,16 +850,40 @@ async function loadFailedDeliveries() {
             }
             response.data.forEach((item: any) => {
                 const dateStr = new Date(item.tanggal_gagal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                
+                let aksiHtml = '';
+                let statusText = '';
+                
+                if (item.approved_count > 0) {
+                    statusText = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">APPROVED</span>`;
+                    aksiHtml = `
+                        <button onclick="window.rescheduleDelivery(${item.id})" class="px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
+                            <span class="material-symbols-outlined text-[16px]">local_shipping</span> Kirim Ulang Barang
+                        </button>
+                    `;
+                } else if (item.rejected_count > 0) {
+                    statusText = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200">DITOLAK ${item.rejected_count}x</span>`;
+                    aksiHtml = `
+                        <button onclick="window.openWriteoffModal('${item.nomor_so}', '${item.kode_barang}', ${item.qty})" class="px-3 py-1.5 bg-rose-600 text-white hover:bg-rose-700 rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
+                            <span class="material-symbols-outlined text-[16px]">edit_document</span> Ajukan Ulang
+                        </button>
+                    `;
+                } else {
+                    statusText = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-slate-100 text-slate-600 border-slate-300">MENUNGGU PENGAJUAN</span>`;
+                    aksiHtml = `
+                        <button onclick="window.openWriteoffModal('${item.nomor_so}', '${item.kode_barang}', ${item.qty})" class="px-3 py-1.5 bg-amber-600 text-white hover:bg-amber-700 rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
+                            <span class="material-symbols-outlined text-[16px]">edit_document</span> Ajukan Kirim Ulang
+                        </button>
+                    `;
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="px-4 py-3 font-data-mono font-bold text-rose-700">${item.nomor_so}</td>
                     <td class="px-4 py-3 font-semibold text-slate-800">${item.nama_customer}</td>
                     <td class="px-4 py-3 text-slate-600">${dateStr}</td>
-                    <td class="px-4 py-3 text-center">
-                        <button onclick="window.openWriteoffModal('${item.nomor_so}', '${item.kode_barang}', ${item.qty})" class="px-3 py-1.5 bg-rose-600 text-white hover:bg-rose-700 rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
-                            <span class="material-symbols-outlined text-[16px]">add_circle</span> Ajukan Kehilangan
-                        </button>
-                    </td>
+                    <td class="px-4 py-3 text-center">${statusText}</td>
+                    <td class="px-4 py-3 text-center">${aksiHtml}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1462,3 +1486,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (res.success) loadWriteOffs();
             }
         };
+
+(window as any).rescheduleDelivery = async (id: number) => {
+    const result = await (window as any).Swal.fire({
+        title: 'Kirim Ulang Barang?',
+        text: "Pastikan barang pengganti sudah disiapkan. Status SO akan dikembalikan ke dalam proses pengiriman.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Ya, Kirim Ulang',
+        cancelButtonText: 'Batal'
+    });
+    
+    if (!result.isConfirmed) return;
+
+    try {
+        const response = await apiFetch<ActionResponse>(`exception/so/${id}/reschedule`, {
+            method: 'PATCH'
+        });
+        if (response.success) {
+            showToast(response.message);
+            // Refresh tables
+            loadFailedDeliveries();
+            loadOutboundLogistics();
+        } else {
+            showToast(response.message, true);
+        }
+    } catch (err) {
+        showToast('Kesalahan jaringan.', true);
+    }
+};
