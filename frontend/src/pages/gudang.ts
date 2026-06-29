@@ -1056,7 +1056,9 @@ function renderReceiptTable() {
     
     (document.getElementById('input-receipt-po-id') as HTMLInputElement).value = id.toString();
     (document.getElementById('input-receipt-po-no') as HTMLInputElement).value = no_po;
-    (document.getElementById('input-receipt-sj') as HTMLInputElement).value = '';
+    const randomSjSuffix = Math.floor(1000 + Math.random() * 9000);
+    const sjValue = `SJ-${no_po.split('-').pop()}-${randomSjSuffix}`;
+    (document.getElementById('input-receipt-sj') as HTMLInputElement).value = sjValue;
     (document.getElementById('input-receipt-catatan') as HTMLTextAreaElement).value = '';
     
     const tbodyItems = document.getElementById('tbody-receipt-items');
@@ -1230,7 +1232,7 @@ function setupModalReceipt(): void {
                             </select>
                         </td>
                         <td class="py-2 px-3 text-center">
-                            <input type="text" name="bulk_items[${itemIndex}][surat_jalan_vendor]" placeholder="SJ-${po.nomor_po.split('-').pop()}" class="w-full text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors">
+                            <input type="text" name="bulk_items[${itemIndex}][surat_jalan_vendor]" value="SJ-${po.nomor_po.split('-').pop()}-${Math.floor(1000 + Math.random() * 9000)}" class="w-full text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors">
                         </td>
                     `;
                     if (tbodyItems) tbodyItems.appendChild(tr);
