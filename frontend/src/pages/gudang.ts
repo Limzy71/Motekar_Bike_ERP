@@ -1183,6 +1183,186 @@ function setupModalReceipt(): void {
 }
 
 // ============================================================
+// BULK RECEIPT (PENERIMAAN BARANG MASSAL) HANDLERS
+// ============================================================
+
+(window as any).openBulkReceiptModal = async () => {
+    const modal = document.getElementById('modal-bulk-receipt');
+    const modalContent = document.getElementById('modal-bulk-receipt-content');
+    const tbodyItems = document.getElementById('tbody-bulk-receipt-items');
+    
+    if (tbodyItems) tbodyItems.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs text-slate-500">Memuat rincian PO Pending...</td></tr>`;
+
+    if (modal && modalContent) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-95');
+        }, 10);
+    }
+
+    try {
+        if (tbodyItems) tbodyItems.innerHTML = '';
+        let hasItems = false;
+        let itemIndex = 0;
+        
+        for (const po of pendingPOs) {
+            const res = await apiFetch<any>(`gudang/po-pending/${po.id}`);
+            if (res.success && res.data.length > 0) {
+                hasItems = true;
+                res.data.forEach((item: any) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="py-2 px-3 font-data-mono text-slate-700">${po.nomor_po}
+                            <input type="hidden" name="bulk_items[${itemIndex}][id_po_header]" value="${po.id}">
+                            <input type="hidden" name="bulk_items[${itemIndex}][id_inventory_material]" value="${item.id_inventory_material}">
+                        </td>
+                        <td class="py-2 px-3 font-data-mono font-bold text-slate-700">${item.kode_barang}</td>
+                        <td class="py-2 px-3 text-slate-600">${item.nama_barang}</td>
+                        <td class="py-2 px-3 text-center font-data-mono">${item.qty}</td>
+                        <td class="py-2 px-3 text-center">
+                            <input type="number" name="bulk_items[${itemIndex}][qty_diterima]" value="${item.qty}" min="0" max="${item.qty}" class="w-16 text-center text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors">
+                        </td>
+                        <td class="py-2 px-3 text-center">
+                            <select name="bulk_items[${itemIndex}][kondisi]" class="text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors cursor-pointer">
+                                <option value="BAIK">BAIK</option>
+                                <option value="RUSAK">RUSAK</option>
+                            </select>
+                        </td>
+                        <td class="py-2 px-3 text-center">
+                            <input type="text" name="bulk_items[${itemIndex}][surat_jalan_vendor]" placeholder="SJ-${po.nomor_po.split('-').pop()}" class="w-full text-xs border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-400 transition-colors">
+                        </td>
+                    `;
+                    if (tbodyItems) tbodyItems.appendChild(tr);
+                    itemIndex++;
+                });
+            }
+        }
+        
+        if (!hasItems) {
+            if (tbodyItems) tbodyItems.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs text-rose-500">Tidak ada item yang dapat diterima.</td></tr>`;
+        }
+        
+        if (document.getElementById('bulk-receipt-info')) {
+            document.getElementById('bulk-receipt-info')!.textContent = `Menampilkan ${itemIndex} item dari ${pendingPOs.length} Purchase Order`;
+        }
+
+    } catch (e) {
+        if (tbodyItems) tbodyItems.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs text-rose-500">Gagal memuat rincian barang.</td></tr>`;
+    }
+};
+
+function setupModalBulkReceipt(): void {
+    const modal = document.getElementById('modal-bulk-receipt');
+    const modalContent = document.getElementById('modal-bulk-receipt-content');
+    const btnClose = document.getElementById('btn-close-bulk-receipt');
+    const btnCancel = document.getElementById('btn-cancel-bulk-receipt');
+    const form = document.getElementById('form-bulk-receipt') as HTMLFormElement;
+
+    const closeModal = () => {
+        if (modal && modalContent) {
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                form?.reset();
+            }, 300);
+        }
+    };
+
+    btnClose?.addEventListener('click', closeModal);
+    btnCancel?.addEventListener('click', closeModal);
+
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const btnSubmit = document.getElementById('btn-submit-bulk-receipt') as HTMLButtonElement;
+        const spinner = document.getElementById('spinner-bulk-receipt');
+        
+        const fd = new FormData(form);
+        const catatan = fd.get('catatan') as string;
+        
+        const userStr = localStorage.getItem('motekar_user');
+        const penerima = userStr ? JSON.parse(userStr).nama_lengkap : 'Staf Gudang';
+
+        // Group items by id_po_header
+        const posToReceive: Record<string, { items: any[], sj: string }> = {};
+        
+        let i = 0;
+        while (fd.has(`bulk_items[${i}][id_inventory_material]`)) {
+            const poId = fd.get(`bulk_items[${i}][id_po_header]`) as string;
+            if (!posToReceive[poId]) {
+                posToReceive[poId] = { items: [], sj: fd.get(`bulk_items[${i}][surat_jalan_vendor]`) as string || '' };
+            }
+            posToReceive[poId].items.push({
+                id_inventory_material: parseInt(fd.get(`bulk_items[${i}][id_inventory_material]`) as string, 10),
+                qty_diterima: parseInt(fd.get(`bulk_items[${i}][qty_diterima]`) as string, 10),
+                kondisi: fd.get(`bulk_items[${i}][kondisi]`) as string
+            });
+            i++;
+        }
+        
+        if (Object.keys(posToReceive).length === 0) {
+            showToast('Tidak ada data untuk diproses.', true);
+            return;
+        }
+
+        if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.classList.add('opacity-80', 'cursor-wait'); }
+        if (spinner) { spinner.classList.remove('hidden'); spinner.classList.add('animate-spin'); }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        // Process each PO sequentially
+        for (const poId of Object.keys(posToReceive)) {
+            try {
+                const poData = posToReceive[poId];
+                const reqFd = new FormData();
+                reqFd.append('id_po_header', poId);
+                reqFd.append('penerima', penerima);
+                reqFd.append('surat_jalan_vendor', poData.sj);
+                reqFd.append('catatan', catatan);
+                reqFd.append('items', JSON.stringify(poData.items));
+                
+                // Append files
+                const fileInputs = ['foto_barang', 'foto_surat_jalan', 'foto_packaging'];
+                for (const inputName of fileInputs) {
+                    const fileInput = document.querySelector(`input[name="${inputName}"]`) as HTMLInputElement;
+                    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                        reqFd.append(inputName, fileInput.files[0]);
+                    }
+                }
+
+                const response = await apiFetch<ActionResponse>('gudang/receive', {
+                    method: 'POST',
+                    body: reqFd
+                });
+
+                if (response.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            } catch (err) {
+                failCount++;
+            }
+        }
+
+        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-80', 'cursor-wait'); }
+        if (spinner) { spinner.classList.add('hidden'); spinner.classList.remove('animate-spin'); }
+
+        if (failCount === 0) {
+            showToast(`${successCount} PO berhasil diterima secara massal.`);
+            closeModal();
+            loadPendingPO();
+        } else {
+            showToast(`${successCount} sukses, ${failCount} gagal diproses.`, true);
+            loadPendingPO();
+        }
+    });
+}
+
+// ============================================================
 // INIT
 // ============================================================
 
@@ -1198,6 +1378,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupModalDispatch();
   setupExceptionForms();
   setupModalReceipt();
+  setupModalBulkReceipt();
 
   // Polling for Real-Time Experience (Every 30 seconds)
   setInterval(() => {
