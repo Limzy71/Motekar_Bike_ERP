@@ -607,6 +607,14 @@ export const createRestockRequest = async (req: Request, res: Response): Promise
 // ============================================================
 export const getPendingRequests = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Self-healing: Delete orphaned restock requests from cancelled or completed WOs
+    await pool.query(`
+      DELETE FROM pengadaan_restock_requests 
+      WHERE status = 'Pending' AND nomor_wo IN (
+        SELECT nomor_wo FROM operasi_wo_header WHERE status IN ('CANCELLED', 'COMPLETED')
+      )
+    `);
+
     const [manualRequests]: any = await pool.query(`
       SELECT 
         r.id, 

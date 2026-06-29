@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import pool from '../config/database.js';
 import { insertJurnal } from './keuanganController.js';
+import { resolveAllocations } from './operasiController.js';
 
 /**
  * Controller untuk Modul Penjualan & Penagihan (Order-to-Cash & Dual-Track Engine).
@@ -26,6 +27,34 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
 // ============================================================
 export const getAllSO = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Self-healing check for completed linked WOs
+    const [desyncedItems]: any = await pool.query(`
+      SELECT d.id as id_detail, d.id_so_header, w.status as status_wo
+      FROM penjualan_so_detail d
+      JOIN operasi_wo_header w ON d.id_wo_terkait = w.id
+      WHERE d.status_item = 'DEFISIT' AND w.status = 'COMPLETED'
+    `);
+
+    if (desyncedItems.length > 0) {
+      for (const item of desyncedItems) {
+        await pool.query(
+          'UPDATE penjualan_so_detail SET status_item = "TERSEDIA" WHERE id = ?',
+          [item.id_detail]
+        );
+        const [allDetails]: any = await pool.query(
+          'SELECT status_item FROM penjualan_so_detail WHERE id_so_header = ?',
+          [item.id_so_header]
+        );
+        const hasDefisit = allDetails.some((d: any) => d.status_item === 'DEFISIT' && d.id !== item.id_detail);
+        if (!hasDefisit) {
+          await pool.query(
+            'UPDATE penjualan_so_header SET status_so = "RESERVED" WHERE id = ? AND status_so = "BACKORDER"',
+            [item.id_so_header]
+          );
+        }
+      }
+    }
+
     const [headers]: any = await pool.query(`
       SELECT id, nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, catatan, biaya_pengiriman, status_so, total_nilai, foto_bukti_terima_retailer, created_at,
              vendor_3pl, nomor_resi_3pl, nama_supir, plat_nomor, no_telepon_supir
@@ -209,6 +238,10 @@ export const triggerWO = async (req: Request, res: Response): Promise<void> => {
     const selisihDefisit = detail.qty > detail.jumlah_stok ? detail.qty - detail.jumlah_stok : 0;
     if (selisihDefisit <= 0) throw new Error('Stok fisik saat ini cukup, tidak perlu Work Order. Silakan selaraskan data.');
 
+    // Resolve allocations first to ensure BOM is valid and get components
+    const allocations = await resolveAllocations(connection, detail.kode_barang, selisihDefisit);
+    if (allocations.length === 0) throw new Error('BOM tidak ditemukan untuk produk ini.');
+
     // 2. Generate WO Number
     const woNumber = `WO-M${Date.now().toString().slice(-5)}`;
 
@@ -219,6 +252,36 @@ export const triggerWO = async (req: Request, res: Response): Promise<void> => {
     );
     const woId = woResult.insertId;
 
+    // Allocate materials
+    for (const alloc of allocations) {
+      if (alloc.qty_allocated <= 0) continue;
+      let statusAlokasi = alloc.is_phantom ? 'Phantom' : 'Reserved';
+      await connection.query(
+        'INSERT INTO operasi_wo_material_allocation (id_wo_header, id_inventory_material, qty_kebutuhan, status_alokasi) VALUES (?, ?, ?, ?)',
+        [woId, alloc.id_inventory_material, alloc.qty_allocated, statusAlokasi]
+      );
+      
+      if (!alloc.is_phantom) {
+        await connection.query(
+          'UPDATE inventory_stok SET stok_committed = stok_committed + ? WHERE id = ?',
+          [alloc.qty_allocated, alloc.id_inventory_material]
+        );
+      }
+    }
+
+    // [AUTO-RESTOCK INTEGRATION] Handle hard deficits by generating restock requests automatically
+    const hardDeficits = allocations.filter(a => a.is_deficit && !a.is_phantom);
+    let restockMessage = '';
+    if (hardDeficits.length > 0) {
+        for (const def of hardDeficits) {
+            await connection.query(
+                'INSERT INTO pengadaan_restock_requests (id_inventory_material, nomor_wo, jumlah_diminta, status) VALUES (?, ?, ?, ?)',
+                [def.id_inventory_material, woNumber, def.deficit_amount, 'Pending']
+            );
+        }
+        restockMessage = ` (Peringatan: Ada Defisit Material, Request otomatis dikirim ke Pengadaan!)`;
+    }
+
     // 4. Link WO to SO Detail
     await connection.query(
       'UPDATE penjualan_so_detail SET id_wo_terkait = ? WHERE id = ?',
@@ -226,7 +289,7 @@ export const triggerWO = async (req: Request, res: Response): Promise<void> => {
     );
 
     await connection.commit();
-    res.json({ success: true, message: `Work Order Perakitan ${woNumber} berhasil diterbitkan ke MES.` });
+    res.json({ success: true, message: `Work Order Perakitan ${woNumber} berhasil diterbitkan ke MES.${restockMessage}` });
 
   } catch (error: any) {
     await connection.rollback();

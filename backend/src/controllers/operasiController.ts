@@ -44,7 +44,7 @@ export const getAllWO = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-async function resolveAllocations(connection: any, parentCode: string, qtyMultiplier: number, level: number = 0): Promise<any[]> {
+export async function resolveAllocations(connection: any, parentCode: string, qtyMultiplier: number, level: number = 0): Promise<any[]> {
     const [bomRows]: any = await connection.query(`
         SELECT i.id as id_inventory_material, d.qty_kebutuhan, i.jumlah_stok, i.stok_committed, i.nama_barang, i.kode_barang, i.kategori, i.tipe_item
         FROM manufaktur_bom_detail d
@@ -62,31 +62,48 @@ async function resolveAllocations(connection: any, parentCode: string, qtyMultip
         let allocQty = stokTersedia > 0 ? Math.min(stokTersedia, totalKebutuhan) : 0;
         let deficitQty = totalKebutuhan - allocQty;
 
-        if (allocQty > 0) {
-             finalAllocations.push({
-                 ...item,
-                 level,
-                 is_phantom: false,
-                 qty_allocated: allocQty,
-                 total_kebutuhan: allocQty,
-                 stok_tersedia: stokTersedia,
-                 is_deficit: false,
-                 deficit_amount: 0
-             });
-        }
+        const isWip = item.tipe_item === 'SA' || item.kategori === 'WIP';
 
-        if (deficitQty > 0) {
-            if (item.tipe_item === 'SA' || item.kategori === 'WIP') {
+        if (isWip) {
+            if (qtyMultiplier === 0) {
+                // Visibility only
+                finalAllocations.push({
+                     ...item,
+                     level,
+                     is_phantom: false,
+                     qty_allocated: 0,
+                     total_kebutuhan: 0,
+                     stok_tersedia: stokTersedia,
+                     is_deficit: false,
+                     deficit_amount: 0
+                });
+                const childrenAlloc = await resolveAllocations(connection, item.kode_barang, 0, level + 1);
+                finalAllocations.push(...childrenAlloc);
+            } else if (deficitQty > 0) {
+                if (allocQty > 0) {
+                     finalAllocations.push({
+                         ...item,
+                         level,
+                         is_phantom: false,
+                         qty_allocated: allocQty,
+                         total_kebutuhan: totalKebutuhan,
+                         stok_tersedia: stokTersedia,
+                         is_deficit: false,
+                         deficit_amount: 0
+                     });
+                }
+                
                 finalAllocations.push({
                      ...item,
                      level,
                      is_phantom: true,
                      qty_allocated: deficitQty,
-                     total_kebutuhan: deficitQty,
-                     stok_tersedia: 0,
+                     total_kebutuhan: totalKebutuhan,
+                     stok_tersedia: stokTersedia,
                      is_deficit: true,
                      deficit_amount: deficitQty
                 });
+
                 const childrenAlloc = await resolveAllocations(connection, item.kode_barang, deficitQty, level + 1);
                 finalAllocations.push(...childrenAlloc);
             } else {
@@ -94,12 +111,53 @@ async function resolveAllocations(connection: any, parentCode: string, qtyMultip
                      ...item,
                      level,
                      is_phantom: false,
-                     qty_allocated: deficitQty,
-                     total_kebutuhan: deficitQty,
+                     qty_allocated: totalKebutuhan,
+                     total_kebutuhan: totalKebutuhan,
                      stok_tersedia: stokTersedia,
-                     is_deficit: true,
-                     deficit_amount: deficitQty
+                     is_deficit: false,
+                     deficit_amount: 0
                 });
+
+                const childrenAlloc = await resolveAllocations(connection, item.kode_barang, 0, level + 1);
+                finalAllocations.push(...childrenAlloc);
+            }
+        } else {
+            if (qtyMultiplier === 0) {
+                 finalAllocations.push({
+                     ...item,
+                     level,
+                     is_phantom: false,
+                     qty_allocated: 0,
+                     total_kebutuhan: 0,
+                     stok_tersedia: stokTersedia,
+                     is_deficit: false,
+                     deficit_amount: 0
+                 });
+            } else {
+                 if (allocQty > 0) {
+                      finalAllocations.push({
+                          ...item,
+                          level,
+                          is_phantom: false,
+                          qty_allocated: allocQty,
+                          total_kebutuhan: totalKebutuhan,
+                          stok_tersedia: stokTersedia,
+                          is_deficit: false,
+                          deficit_amount: 0
+                      });
+                 }
+                 if (deficitQty > 0) {
+                      finalAllocations.push({
+                          ...item,
+                          level,
+                          is_phantom: false,
+                          qty_allocated: deficitQty,
+                          total_kebutuhan: totalKebutuhan,
+                          stok_tersedia: stokTersedia,
+                          is_deficit: true,
+                          deficit_amount: deficitQty
+                      });
+                 }
             }
         }
     }
@@ -130,6 +188,7 @@ export const createWO = async (req: Request, res: Response): Promise<void> => {
     const woId = woResult.insertId;
 
     for (const alloc of allocations) {
+      if (alloc.qty_allocated <= 0) continue;
       let statusAlokasi = alloc.is_phantom ? 'Phantom' : 'Reserved';
       await connection.query(
         'INSERT INTO operasi_wo_material_allocation (id_wo_header, id_inventory_material, qty_kebutuhan, status_alokasi) VALUES (?, ?, ?, ?)',
@@ -144,7 +203,6 @@ export const createWO = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // [AUTO-RESTOCK INTEGRATION] Handle hard deficits by generating restock requests automatically
     const hardDeficits = allocations.filter(a => a.is_deficit && !a.is_phantom);
     let restockMessage = '';
     if (hardDeficits.length > 0) {
@@ -190,7 +248,7 @@ export const updateWOStatus = async (req: Request, res: Response): Promise<void>
 
     // DRAFT -> KITTING_RELEASED
     if (status === 'KITTING_RELEASED' && currentStatus === 'DRAFT') {
-      // Block kitting if there are unresolved material deficits (pending restock requests)
+      // 1. Block kitting if there are unresolved material deficits (pending restock requests)
       const [pendingRequests]: any = await connection.query(
         "SELECT id FROM pengadaan_restock_requests WHERE nomor_wo = ? AND status = 'Pending'", 
         [wo.nomor_wo]
@@ -198,6 +256,19 @@ export const updateWOStatus = async (req: Request, res: Response): Promise<void>
       
       if (pendingRequests.length > 0) {
         throw new Error('Gagal Release Kitting! Masih ada defisit material. Harap selesaikan pengadaan material (PR/PO) terlebih dahulu.');
+      }
+
+      // 2. Direct warehouse stock check: ensure physical stock is sufficient for all reserved allocations
+      const [deficits]: any = await connection.query(`
+        SELECT comp.nama_barang, a.qty_kebutuhan, comp.jumlah_stok
+        FROM operasi_wo_material_allocation a
+        JOIN inventory_stok comp ON a.id_inventory_material = comp.id
+        WHERE a.id_wo_header = ? AND a.status_alokasi = 'Reserved' AND comp.jumlah_stok < a.qty_kebutuhan
+      `, [woId]);
+
+      if (deficits.length > 0) {
+        const itemNames = deficits.map((d: any) => `${d.nama_barang} (Butuh: ${d.qty_kebutuhan}, Stok: ${d.jumlah_stok})`).join(', ');
+        throw new Error(`Gagal Release Kitting! Stok fisik tidak mencukupi untuk komponen: ${itemNames}. Silakan penuhi kebutuhan material terlebih dahulu.`);
       }
 
       await connection.query('UPDATE operasi_wo_header SET status = ? WHERE id = ?', [status, woId]);
@@ -284,6 +355,9 @@ export const updateWOStatus = async (req: Request, res: Response): Promise<void>
           }
         }
       }
+
+      // [MRP AUTO-RESTOCK] Delete any pending material requests related to this WO
+      await connection.query('DELETE FROM pengadaan_restock_requests WHERE nomor_wo = ?', [wo.nomor_wo]);
 
       await connection.query('UPDATE operasi_wo_header SET status = ? WHERE id = ?', [status, woId]);
       await logAudit(userId, `WO ${wo.nomor_wo}: Completed (Backflush WIP -> FG) & Linked SO Updated`, req.ip, 'Success');
