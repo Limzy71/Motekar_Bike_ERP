@@ -59,60 +59,31 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
         [woId]
       );
 
-      // 2. BACKFLUSHING ENGINE: Ambil resep komponen dari master_bom
-      const [bomRows]: any = await connection.query(
-        'SELECT komponen_id, qty_dibutuhkan FROM master_bom WHERE barang_jadi_id = ?',
-        [wo.id_inventory_fg]
-      );
+      // 2. BACKFLUSHING ENGINE: Ambil alokasi WIP material dari operasi_wo_material_allocation
+      const [allocations]: any = await connection.query('SELECT * FROM operasi_wo_material_allocation WHERE id_wo_header = ?', [woId]);
       
-      for (const bom of bomRows) {
-        const totalKebutuhan = bom.qty_dibutuhkan * wo.jumlah_produksi;
-        
-        // Cek stok komponen di WIP dengan Pessimistic Lock
-        const [kompRows]: any = await connection.query(
-          'SELECT jumlah_stok, nama_barang, lokasi FROM inventory_stok WHERE id = ? FOR UPDATE',
-          [bom.komponen_id]
-        );
-
-        if (kompRows.length === 0) {
-          throw new Error(`Komponen dengan ID ${bom.komponen_id} tidak ditemukan di gudang.`);
-        }
-        
-        const komponen = kompRows[0];
-        if (komponen.jumlah_stok < totalKebutuhan) {
-          throw new Error(`Stok komponen ${komponen.nama_barang} tidak mencukupi di ${komponen.lokasi}! Butuh: ${totalKebutuhan}, Tersedia: ${komponen.jumlah_stok}`);
-        }
-
-        // Kurangi stok (Backflush)
-        await connection.query(
-          'UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE id = ?',
-          [totalKebutuhan, bom.komponen_id]
-        );
+      for (const alloc of allocations) {
+          if (alloc.status_alokasi === 'Reserved') {
+              await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ?, stok_committed = stok_committed - ? WHERE id = ?', [alloc.qty_kebutuhan, alloc.qty_kebutuhan, alloc.id_inventory_material]);
+              await connection.query('UPDATE operasi_wo_material_allocation SET status_alokasi = "Consumed" WHERE id = ?', [alloc.id]);
+          }
       }
 
       // 3. Tambah stok gudang (Barang Jadi)
-      const [stokUpdateResult]: any = await connection.query(
-        'UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE kode_barang = ?',
-        [wo.jumlah_produksi, wo.kode_sepeda]
-      );
+      await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE id = ?', [wo.jumlah_produksi, wo.id_inventory_fg]);
 
-      if (stokUpdateResult.affectedRows === 0) {
-        throw new Error(`Kode Sepeda ${wo.kode_sepeda} tidak ditemukan di master gudang.`);
-      }
-
-      // 4. AUTOMATED FINANCIAL LEDGER — Catat jurnal HPP masuk ke Aset Persediaan
-      const hppPerUnit = await calculateHPP(connection, wo.kode_sepeda);
-      const totalNilaiHPP = hppPerUnit * wo.jumlah_produksi;
+      // 4. AUTOMATED FINANCIAL LEDGER — Jurnal Kapitalisasi Manufaktur (WIP ke FG)
+      const [fgData]: any = await connection.query('SELECT harga_standar FROM inventory_stok WHERE id = ?', [wo.id_inventory_fg]);
+      const hargaStandar = parseFloat(fgData[0]?.harga_standar || 0);
+      const totalKapitalisasi = hargaStandar * wo.jumlah_produksi;
 
       // Ambil nomor WO untuk referensi dokumen
       const [woRef]: any = await connection.query('SELECT nomor_wo FROM operasi_wo_header WHERE id = ?', [woId]);
       const refDoc = woRef.length > 0 ? woRef[0].nomor_wo : `WO-${woId}`;
 
-      if (totalNilaiHPP > 0) {
-        // Debit: Aset_Persediaan (barang masuk gudang senilai HPP)
-        await insertJurnal(connection, refDoc, `Barang jadi masuk gudang via QC Pass (${wo.kode_sepeda} x${wo.jumlah_produksi})`, 'Aset_Persediaan', 'Debit', totalNilaiHPP);
-        // Kredit: Kas_Bank (biaya perakitan yang terserap)
-        await insertJurnal(connection, refDoc, `Biaya perakitan terserap untuk ${wo.kode_sepeda} x${wo.jumlah_produksi}`, 'Kas_Bank', 'Kredit', totalNilaiHPP);
+      if (totalKapitalisasi > 0) {
+        await insertJurnal(connection, refDoc, `Kapitalisasi WIP ke Finished Good (${wo.jumlah_produksi} Unit)`, 'Aset_Persediaan', 'Debit', totalKapitalisasi);
+        await insertJurnal(connection, refDoc, `Pelepasan nilai WIP untuk FG`, 'Barang_Setengah_Jadi', 'Kredit', totalKapitalisasi);
       }
 
       await connection.commit();

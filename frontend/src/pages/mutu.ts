@@ -367,15 +367,17 @@ function setupModalLogic(): void {
 
         // Tentukan hasil (Jika ada SATU SAJA yang Fail, maka result = Fail)
         // Sekaligus simpan riwayat pilihan masing-masing checklist
-        let finalResult = 'Pass';
+        let finalResult = 'Pass'; let uncompleted = false;
         const qcHistory: Record<string, string> = {};
         for (let i = 1; i <= 5; i++) {
             const val = formData.get(`chk_${i}`) as string;
-            qcHistory[`chk_${i}`] = val;
+            qcHistory[`chk_`] = val; if (!val) uncompleted = true;
             if (val === 'Fail') {
                 finalResult = 'Fail';
             }
         }
+
+        if (uncompleted) { showToast('Anda harus melengkapi seluruh 5 poin inspeksi QC!', true); return; }
 
         // Double cek client-side validation
         if (finalResult === 'Fail' && defectNotes.trim() === '') {
@@ -478,7 +480,7 @@ function openQCModal(wo: WorkOrder): void {
                 const val = qcHistoryObj[`chk_${i}`];
                 if (val) {
                     const radio = form.querySelector(`input[name="chk_${i}"][value="${val}"]`) as HTMLInputElement;
-                    if (radio) radio.checked = true;
+                    // if (radio) radio.checked = true; // DISABLED for fresh inspection
                     if (val === 'Fail') hasFail = true;
                 }
             }
