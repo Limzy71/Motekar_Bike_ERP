@@ -425,14 +425,14 @@ function openRightDrawerSO(so: SOHeader) {
     }
 
     backdrop.classList.remove('hidden');
-    drawer.classList.remove('translate-x-full');
+    drawer.classList.add('open');
 }
 
 document.getElementById('btn-close-drawer')?.addEventListener('click', () => {
     const drawer = document.getElementById('right-drawer');
     const backdrop = document.getElementById('right-drawer-backdrop');
     if (drawer && backdrop) {
-        drawer.classList.add('translate-x-full');
+        drawer.classList.remove('open');
         setTimeout(() => backdrop.classList.add('hidden'), 300);
     }
 });
@@ -441,7 +441,7 @@ document.getElementById('right-drawer-backdrop')?.addEventListener('click', () =
     const drawer = document.getElementById('right-drawer');
     const backdrop = document.getElementById('right-drawer-backdrop');
     if (drawer && backdrop) {
-        drawer.classList.add('translate-x-full');
+        drawer.classList.remove('open');
         setTimeout(() => backdrop.classList.add('hidden'), 300);
     }
 });
@@ -479,7 +479,7 @@ window.confirmDelivered = async (id: number) => {
         if (res.success) { 
             showToast(res.message); 
             loadSOs(); 
-            document.getElementById('right-drawer')?.classList.add('translate-x-full'); 
+            document.getElementById('right-drawer')?.classList.remove('open');
         } else { 
             showToast(res.message, 'error'); 
         }
@@ -509,7 +509,7 @@ window.reportFailed = async (id: number) => {
         if (res.success) { 
             showToast(res.message); 
             loadSOs(); 
-            document.getElementById('right-drawer')?.classList.add('translate-x-full'); 
+            document.getElementById('right-drawer')?.classList.remove('open');
         } else { 
             showToast(res.message, 'error'); 
         }
@@ -524,7 +524,7 @@ window.payAndShip = async (id: number) => {
             method: 'PATCH',
             body: JSON.stringify({ action: 'pay' })
         });
-        if (res.success) { showToast('Pembayaran Diterima & Stok Dipotong!', 'success'); loadSOs(); document.getElementById('right-drawer')?.classList.add('translate-x-full'); }
+        if (res.success) { showToast('Pembayaran Diterima & Stok Dipotong!', 'success'); loadSOs(); document.getElementById('right-drawer')?.classList.remove('open'); }
         else { showToast(res.message || 'Gagal', 'error'); }
     } catch (e: any) { showToast(e.message || 'Error Sistem', 'error'); }
 };
@@ -534,7 +534,7 @@ window.triggerWO = async (idDetail: number) => {
         const res = await apiFetch<{success: boolean, message: string}>(`penjualan/so/detail/${idDetail}/trigger-wo`, {
             method: 'POST'
         });
-        if (res.success) { showToast('Work Order Berhasil Diterbitkan ke MES!', 'success'); loadSOs(); document.getElementById('right-drawer')?.classList.add('translate-x-full'); }
+        if (res.success) { showToast('Work Order Berhasil Diterbitkan ke MES!', 'success'); loadSOs(); document.getElementById('right-drawer')?.classList.remove('open'); }
         else { showToast(res.message || 'Gagal menerbitkan WO', 'error'); }
     } catch (e: any) { showToast(e.message || 'Error Sistem', 'error'); }
 };
@@ -559,7 +559,7 @@ window.rescheduleDelivery = async (id: number) => {
         if (res.success) { 
             showToast('Penjadwalan Ulang Berhasil!', 'success'); 
             loadSOs(); 
-            document.getElementById('right-drawer')?.classList.add('translate-x-full'); 
+            document.getElementById('right-drawer')?.classList.remove('open'); 
         }
         else { showToast(res.message || 'Gagal jadwalkan ulang', 'error'); }
     } catch (e: any) { showToast(e.message || 'Error Sistem', 'error'); }
