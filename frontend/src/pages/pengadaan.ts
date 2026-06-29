@@ -1035,6 +1035,27 @@ function setupSRMModals(): void {
                 draggable: true
             });
 
+            // Hack Google Maps: Auto-select opsi pertama saat user menekan Enter
+            const _addEventListener = inputElement.addEventListener;
+            inputElement.addEventListener = function(type: string, listener: any, options?: any) {
+                if (type === "keydown") {
+                    const newListener = function(event: any) {
+                        const suggestionSelected = document.querySelector('.pac-item-selected');
+                        if (event.key === 'Enter' && !suggestionSelected) {
+                            const firstSuggestion = document.querySelector('.pac-item');
+                            if (firstSuggestion) {
+                                const evt = new KeyboardEvent('keydown', { keyCode: 40, bubbles: true } as any);
+                                inputElement.dispatchEvent(evt);
+                            }
+                        }
+                        listener.call(inputElement, event);
+                    };
+                    _addEventListener.call(inputElement, type, newListener, options);
+                } else {
+                    _addEventListener.call(inputElement, type, listener, options);
+                }
+            };
+
             autocompleteVendor = new (window as any).google.maps.places.Autocomplete(inputElement, {
                 fields: ["formatted_address", "geometry", "name"]
             });
@@ -1099,31 +1120,7 @@ function setupSRMModals(): void {
         });
 
         inputAlamat.addEventListener('keydown', (e) => {
-            if (e.key !== 'Enter') return;
-            e.preventDefault(); // Selalu blokir form submit
-
-            // Langsung geocode dari teks yang ada (termasuk paste dari Google Maps)
-            const address = inputAlamat.value.trim();
-            if (address && typeof (window as any).google !== 'undefined' && mapVendor) {
-                const geocoder = new (window as any).google.maps.Geocoder();
-                geocoder.geocode({ address }, (results: any, status: any) => {
-                    if (status === 'OK' && results && results[0]) {
-                        const mapEl = document.getElementById('srm-map-vendor');
-                        if (mapEl) mapEl.classList.remove('hidden');
-                        setTimeout(() => {
-                            (window as any).google.maps.event.trigger(mapVendor, 'resize');
-                            if (results[0].geometry.viewport) {
-                                mapVendor.fitBounds(results[0].geometry.viewport);
-                            } else {
-                                mapVendor.setCenter(results[0].geometry.location);
-                                mapVendor.setZoom(17);
-                            }
-                            markerVendor.setPosition(results[0].geometry.location);
-                            inputAlamat.value = results[0].formatted_address;
-                        }, 50);
-                    }
-                });
-            }
+            if (e.key === 'Enter') e.preventDefault();
         });
     }
 
