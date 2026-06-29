@@ -47,7 +47,7 @@ jobs:
 
             # Update backend
             cd backend
-            npm install
+            npm install --include=dev
             npm run build
             npm prune --omit=dev
 
