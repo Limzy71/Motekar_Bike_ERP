@@ -54,6 +54,8 @@ function showToast(message: string, type: 'success' | 'error' = 'success') {
     }, 3000);
 }
 
+(window as any).handleStateShift = handleStateShift;
+
 // ============================================================
 // 1. THE KANBAN DISPENSER
 // ============================================================
@@ -280,8 +282,42 @@ function openRightDrawer(wo: WorkOrder) {
     execBay.innerHTML = '';
 
     const stages: any[] = [
-        { id: 'DRAFT', label: 'Release Kitting', next: 'KITTING_RELEASED', icon: 'inventory' },
-        { id: 'KITTING_RELEASED', label: 'Mulai Sub-Assembly', next: 'SUB_ASSEMBLY', icon: 'build' },
+        { 
+            id: 'DRAFT', 
+            label: 'Release Kitting', 
+            next: 'KITTING_RELEASED', 
+            icon: 'inventory',
+            metadata: [
+                {
+                    title: "Tahap 1: Kitting & Pengambilan Material",
+                    time: "10 Menit",
+                    tools: "Troli Barang, Barcode Scanner, APD (Sarung Tangan)",
+                    checklist: [
+                        "Mengambil seluruh material komponen dari Gudang Master",
+                        "Memverifikasi kesesuaian fisik barang dengan data alokasi BOM",
+                        "Memindahkan komponen ke keranjang area transit (Shop Floor)"
+                    ]
+                }
+            ]
+        },
+        { 
+            id: 'KITTING_RELEASED', 
+            label: 'Mulai Sub-Assembly', 
+            next: 'SUB_ASSEMBLY', 
+            icon: 'build',
+            metadata: [
+                {
+                    title: "Tahap 1: Kitting & Pengambilan Material",
+                    time: "10 Menit",
+                    tools: "Troli Barang, Barcode Scanner, APD (Sarung Tangan)",
+                    checklist: [
+                        "Mengambil seluruh material komponen dari Gudang Master",
+                        "Memverifikasi kesesuaian fisik barang dengan data alokasi BOM",
+                        "Memindahkan komponen ke keranjang area transit (Shop Floor)"
+                    ]
+                }
+            ]
+        },
         { 
             id: 'SUB_ASSEMBLY', 
             label: 'Lanjut Final Assembly', 
@@ -289,16 +325,23 @@ function openRightDrawer(wo: WorkOrder) {
             icon: 'pedal_bike',
             metadata: [
                 {
-                    title: "Langkah 1: Frame Set Assy",
-                    time: "15 Menit",
-                    tools: "Hex Key Set (4,5,6 mm), Torque Wrench, Bike Repair Stand, Lithium Grease",
-                    checklist: ["Mengencangkan baut fork/stem/saddle", "Memastikan kekencangan torsi (Nm)", "Melumasi headtube & seat tube"]
+                    title: "Tahap 2.A: Perakitan WIP (Frame & Drivetrain)",
+                    time: "40 Menit",
+                    tools: "Hex Key Set (4,5,6 mm), Torque Wrench, Bike Repair Stand, Lithium Grease, Crank Puller",
+                    checklist: [
+                        "Memulai pembuatan 4 unit barang setengah jadi (WIP) dari komponen dasar",
+                        "Merakit Frame Set Assy (mengencangkan baut fork, stem, saddle)",
+                        "Merakit Drivetrain Assy (memasang crankset, rantai, dan cassette)"
+                    ]
                 },
                 {
-                    title: "Langkah 2: Drivetrain Assy",
-                    time: "25 Menit",
-                    tools: "Bottom Bracket Tool, Crank Puller, Chain Breaker Tool, Cassette Lockring Tool + Chain Whip",
-                    checklist: ["Memasang poros engkol pada frame", "Memasang lengan crankset", "Memotong & menyambung pin rantai", "Mengunci gir cassette"]
+                    title: "Tahap 2.B: Perakitan WIP (Wheel & Cockpit)",
+                    time: "35 Menit",
+                    tools: "Spoke Wrench, Tire Levers, Cable Puller Pliers, Hex Key Set",
+                    checklist: [
+                        "Merakit Wheel Set Assy (memasang ban luar, ban dalam, dan rims)",
+                        "Merakit Cockpit & Controls Assy (menyetel kemiringan stang & tuas rem)"
+                    ]
                 }
             ]
         },
@@ -309,16 +352,21 @@ function openRightDrawer(wo: WorkOrder) {
             icon: 'rule',
             metadata: [
                 {
-                    title: "Langkah 3: Cockpit & Controls Assy",
+                    title: "Tahap 3: Persiapan Final Assembly",
                     time: "15 Menit",
-                    tools: "Hex Key Set (4,5 mm), Cable Puller Pliers, Cable Cutter",
-                    checklist: ["Menyetel kemiringan stang & tuas rem", "Menarik kawat kabel rem/shifter hingga tegang", "Memotong sisa kawat dengan rapi"]
+                    tools: "Cable Cutter, Pliers, Hex Key",
+                    checklist: ["Menyiapkan ke-4 komponen WIP yang telah dirakit", "Memastikan alur kabel rem dan shifter sudah sesuai jalurnya"]
                 },
                 {
-                    title: "Langkah 4: Final Assembly",
+                    title: "Tahap 3: Final Assembly (Penyatuan Utama)",
                     time: "20 Menit",
                     tools: "Floor Pump with Pressure Gauge, Open-end Wrench (15 mm / QR), Obeng Plus/Minus (PH2)",
-                    checklist: ["Memompa ban sesuai PSI standar", "Memasang hub roda ke drop-out frame", "Menyetel baut pembatas (H/L limit screw) pada derailleur"]
+                    checklist: [
+                        "Menyatukan ke-4 barang setengah jadi (WIP) menjadi satu kesatuan unit Finished Good utuh",
+                        "Memompa ban sesuai PSI standar",
+                        "Memasang hub roda ke drop-out frame secara presisi",
+                        "Menyetel baut pembatas (H/L limit screw) pada derailleur"
+                    ]
                 }
             ]
         }
