@@ -326,144 +326,139 @@ function openRightDrawer(wo: WorkOrder) {
 
     if (wo.status === 'CANCELLED') {
         stepperBay.innerHTML = `<div class="w-full text-center py-2 text-rose-600 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">cancel</span> WO Dibatalkan</div>`;
-    } else if (wo.status === 'COMPLETED') {
-        stepperBay.innerHTML = `<div class="w-full text-center py-2 text-emerald-600 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">verified</span> Selesai Secara Permanen</div>`;
-        
-        execBay.innerHTML = `
-            <button class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2" onclick="printQCLabel(${JSON.stringify(wo).replace(/"/g, '&quot;')})">
-                <span class="material-symbols-outlined text-[18px]">print</span> Cetak Label QC
-            </button>
-        `;
-    } else if (wo.status === 'TUNING_QC') {
-        stepperBay.innerHTML = `<div class="w-full text-center py-2 text-amber-600 font-bold text-sm flex items-center justify-center gap-2"><span class="material-symbols-outlined">pending</span> Menunggu Inspeksi Divisi Mutu</div>`;
     } else {
-        const currentIndex = stages.findIndex(s => s.id === wo.status);
+        // Build Horizontal Stepper
+        const statusOrder = ['DRAFT', 'KITTING_RELEASED', 'SUB_ASSEMBLY', 'FINAL_ASSEMBLY', 'TUNING_QC', 'COMPLETED'];
+        let currentIndex = Math.max(0, statusOrder.indexOf(wo.status) - 1);
+        if (wo.status === 'DRAFT') currentIndex = 0; // special case
+
+        const timelineStages = [
+            { label: 'KITTING', icon: 'inventory' },
+            { label: 'SUB-ASSY', icon: 'build' },
+            { label: 'FINAL-ASSY', icon: 'pedal_bike' },
+            { label: 'TUNING QC', icon: 'rule' },
+            { label: 'SELESAI', icon: 'verified' }
+        ];
+
+        let stepperHTML = `<div class="flex items-center justify-between relative mb-6">
+            <div class="absolute left-6 right-6 top-5 h-[3px] bg-slate-200 -z-10"></div>`;
         
-        stages.forEach((stage, index) => {
-            const isPast = index < currentIndex;
-            const isCurrent = index === currentIndex;
+        timelineStages.forEach((stage, idx) => {
+            const isPast = idx < currentIndex;
+            const isCurrent = idx === currentIndex;
+            const circleColor = isPast ? 'bg-[#00288e] text-white' : (isCurrent ? 'bg-[#00288e] text-white ring-4 ring-indigo-100' : 'bg-white border-[2.5px] border-slate-200 text-slate-300');
+            const textColor = isPast || isCurrent ? 'text-[#00288e]' : 'text-slate-400';
             
-            const stageWrapper = document.createElement('div');
-            stageWrapper.className = 'flex flex-col gap-2 w-full';
-
-            let currentLabel = stage.label;
-            let currentNext = stage.next;
-            let currentIcon = stage.icon;
-
-            // OVERRIDE TOMBOL JIKA REWORK
-            if (wo.catatan_rework && isCurrent && (stage.id === 'SUB_ASSEMBLY' || stage.id === 'FINAL_ASSEMBLY')) {
-                currentLabel = 'Selesai Rework & Kembalikan ke QC';
-                currentNext = 'TUNING_QC';
-                currentIcon = 'assignment_return';
-            }
-
-            const btn = document.createElement('button');
-            const btnColorClass = wo.catatan_rework && isCurrent ? 'bg-rose-600 text-white shadow-md hover:bg-rose-700 hover:scale-[1.02]' : 'bg-primary text-white shadow-md hover:bg-primary-container hover:scale-[1.02]';
-
-            btn.className = `w-full py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-between ${
-                isPast ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-50' :
-                isCurrent ? btnColorClass :
-                'bg-white border border-slate-200 text-slate-400 opacity-50 cursor-not-allowed'
-            }`;
-            
-            btn.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <span class="material-symbols-outlined text-[20px]">${currentIcon}</span>
-                    <span>${currentLabel}</span>
+            stepperHTML += `
+                <div class="flex flex-col items-center gap-2 z-10 w-16">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${circleColor}">
+                        <span class="material-symbols-outlined text-[18px]">${stage.icon}</span>
+                    </div>
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-center ${textColor}">${stage.label}</span>
                 </div>
-                ${isPast ? '<span class="material-symbols-outlined text-[18px]">check</span>' : ''}
             `;
-            
-            if (isCurrent) {
-                btn.onclick = () => handleStateShift(wo.id, currentNext);
-            } else {
-                btn.disabled = true;
-            }
-            
-            stageWrapper.appendChild(btn);
-
-            // Render Metadata jika state sedang aktif
-            if (isCurrent && stage.metadata) {
-                const metaContainer = document.createElement('div');
-                metaContainer.className = 'ml-4 mt-1 pl-4 border-l-2 border-indigo-200 flex flex-col gap-3 animate-fade-in';
-                
-                let currentMetadata = stage.metadata;
-                
-                // OVERRIDE JIKA ADA REWORK
-                if (wo.catatan_rework && (stage.id === 'SUB_ASSEMBLY' || stage.id === 'FINAL_ASSEMBLY')) {
-                    currentMetadata = [{
-                        title: "INSTRUKSI REWORK (GAGAL QC)",
-                        time: "Prioritas",
-                        tools: "Fokus pada perbaikan defect berikut",
-                        checklist: wo.catatan_rework.split('\n').filter((line: string) => line.trim().length > 0),
-                        isRework: true
-                    }];
-                }
-                
-                currentMetadata.forEach((meta: any) => {
-                    let checklistHtml = meta.checklist.map((item: string) => `
-                        <li class="flex items-start gap-2 text-[11px] text-slate-600 group-hover:text-slate-800 transition-colors">
-                            <span class="material-symbols-outlined text-[14px] text-slate-300 mt-[1px]">check_box_outline_blank</span>
-                            <span class="leading-tight">${item}</span>
-                        </li>
-                    `).join('');
-
-                    const isRework = meta.isRework;
-                    
-                    const borderClass = isRework ? 'border-rose-300' : 'border-slate-200';
-                    const gradientClass = isRework ? 'from-rose-50/80' : 'from-indigo-50/50';
-                    const iconBgClass = isRework ? 'bg-rose-100 text-rose-700' : 'bg-indigo-50 text-indigo-600';
-                    const iconName = isRework ? 'build_circle' : 'assignment';
-                    const badgeClass = isRework ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-indigo-700 bg-indigo-50 border-indigo-100';
-
-                    metaContainer.innerHTML += `
-                        <div class="bg-white border ${borderClass} rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${gradientClass} to-transparent rounded-bl-full -z-10"></div>
-                            
-                            <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-                                <h4 class="text-xs font-bold ${isRework ? 'text-rose-700' : 'text-slate-800'} flex items-center gap-2">
-                                    <div class="w-5 h-5 rounded ${iconBgClass} flex items-center justify-center">
-                                        <span class="material-symbols-outlined text-[14px]">${iconName}</span>
-                                    </div>
-                                    ${meta.title}
-                                </h4>
-                                <span class="text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 border ${badgeClass}">
-                                    <span class="material-symbols-outlined text-[12px]">timer</span> ${meta.time}
-                                </span>
-                            </div>
-                            <div class="mb-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-[12px]">handyman</span> Alat Kerja
-                                </p>
-                                <p class="text-[11px] text-slate-700 font-medium leading-relaxed pl-1">
-                                    ${meta.tools}
-                                </p>
-                            </div>
-                            <div>
-                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-[12px]">checklist</span> Instruksi Kerja
-                                </p>
-                                <ul class="flex flex-col gap-2 pl-1">
-                                    ${checklistHtml}
-                                </ul>
-                            </div>
-                        </div>
-                    `;
-                });
-                stageWrapper.appendChild(metaContainer);
-            }
-
-            stepperBay.appendChild(stageWrapper);
         });
+        stepperHTML += `</div>`;
 
-        // Add Cancel Button for DRAFT and KITTING_RELEASED
-        if (wo.status === 'DRAFT' || wo.status === 'KITTING_RELEASED') {
-            const btnCancel = document.createElement('button');
-            btnCancel.className = 'w-full py-2.5 mt-2 bg-transparent text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl font-bold text-xs transition-colors flex justify-center items-center gap-2';
-            btnCancel.innerHTML = `<span class="material-symbols-outlined text-[16px]">cancel</span> Batalkan Work Order`;
-            btnCancel.onclick = () => handleStateShift(wo.id, 'CANCELLED');
-            execBay.appendChild(btnCancel);
+        // Render Metadata / Checklist
+        const stage = stages.find(s => s.id === wo.status);
+        if (stage && stage.metadata) {
+            let currentMetadata = stage.metadata;
+            
+            // OVERRIDE JIKA ADA REWORK
+            if (wo.catatan_rework && (stage.id === 'SUB_ASSEMBLY' || stage.id === 'FINAL_ASSEMBLY')) {
+                currentMetadata = [{
+                    title: "INSTRUKSI REWORK (GAGAL QC)",
+                    time: "Prioritas",
+                    tools: "Fokus pada perbaikan defect berikut",
+                    checklist: wo.catatan_rework.split('\n').filter((line: string) => line.trim().length > 0),
+                    isRework: true
+                }];
+            }
+            
+            let metaHTML = '<div class="flex flex-col gap-4 animate-fade-in">';
+            currentMetadata.forEach((meta: any) => {
+                let checklistHtml = meta.checklist.map((item: string) => `
+                    <li class="flex items-start gap-2 text-[11px] text-slate-600 group-hover:text-slate-800 transition-colors">
+                        <span class="material-symbols-outlined text-[14px] text-slate-300 mt-[1px]">check_box_outline_blank</span>
+                        <span class="leading-tight">${item}</span>
+                    </li>
+                `).join('');
+
+                const isRework = meta.isRework;
+                const borderClass = isRework ? 'border-rose-300' : 'border-slate-200';
+                const gradientClass = isRework ? 'from-rose-50/80' : 'from-slate-50/50';
+                const iconBgClass = isRework ? 'bg-rose-100 text-rose-700' : 'bg-indigo-50 text-[#00288e]';
+                const iconName = isRework ? 'build_circle' : 'assignment';
+                const badgeClass = isRework ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-indigo-700 bg-indigo-50 border-indigo-100';
+
+                metaHTML += `
+                    <div class="bg-white border ${borderClass} rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${gradientClass} to-transparent rounded-bl-full -z-10"></div>
+                        
+                        <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                            <h4 class="text-sm font-bold ${isRework ? 'text-rose-700' : 'text-slate-800'} flex items-center gap-2">
+                                <div class="w-6 h-6 rounded ${iconBgClass} flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-[16px]">${iconName}</span>
+                                </div>
+                                ${meta.title}
+                            </h4>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 border ${badgeClass}">
+                                <span class="material-symbols-outlined text-[12px]">timer</span> ${meta.time}
+                            </span>
+                        </div>
+                        <div class="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">handyman</span> Alat Kerja
+                            </p>
+                            <p class="text-[12px] text-slate-700 font-medium leading-relaxed pl-1">
+                                ${meta.tools}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">checklist</span> Instruksi Kerja
+                            </p>
+                            <ul class="flex flex-col gap-2.5 pl-1">
+                                ${checklistHtml}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            });
+            metaHTML += '</div>';
+            stepperHTML += metaHTML;
+        } else if (wo.status === 'TUNING_QC') {
+            stepperHTML += `<div class="w-full text-center py-8 text-amber-600 font-bold text-sm flex flex-col items-center justify-center gap-2 bg-amber-50 rounded-xl border border-amber-200 mt-4"><span class="material-symbols-outlined text-4xl">pending</span> Menunggu Inspeksi Divisi Mutu</div>`;
+        } else if (wo.status === 'COMPLETED') {
+            stepperHTML += `<div class="w-full text-center py-8 text-emerald-600 font-bold text-sm flex flex-col items-center justify-center gap-2 bg-emerald-50 rounded-xl border border-emerald-200 mt-4"><span class="material-symbols-outlined text-4xl">verified</span> Selesai Secara Permanen</div>`;
         }
+
+        stepperBay.innerHTML = stepperHTML;
+
+        // Render Action Buttons
+        let actionBtnHTML = '';
+        if (wo.status === 'DRAFT') {
+            actionBtnHTML = `<button class="w-full py-3.5 bg-[#00288e] hover:bg-indigo-800 text-white rounded-xl font-bold text-sm shadow-md transition-all flex justify-center items-center gap-2" onclick="handleStateShift(${wo.id}, 'KITTING_RELEASED')">Release Kitting</button>`;
+        } else if (wo.status === 'KITTING_RELEASED') {
+            actionBtnHTML = `<button class="w-full py-3.5 bg-[#00288e] hover:bg-indigo-800 text-white rounded-xl font-bold text-sm shadow-md transition-all flex justify-center items-center gap-2" onclick="handleStateShift(${wo.id}, 'SUB_ASSEMBLY')"><span class="material-symbols-outlined text-[18px]">build</span> Mulai Sub-Assembly</button>`;
+        } else if (wo.status === 'SUB_ASSEMBLY') {
+            actionBtnHTML = `<button class="w-full py-3.5 bg-[#00288e] hover:bg-indigo-800 text-white rounded-xl font-bold text-sm shadow-md transition-all flex justify-center items-center gap-2" onclick="handleStateShift(${wo.id}, 'FINAL_ASSEMBLY')"><span class="material-symbols-outlined text-[18px]">pedal_bike</span> Lanjut Final Assembly</button>`;
+        } else if (wo.status === 'FINAL_ASSEMBLY') {
+            actionBtnHTML = `<button class="w-full py-3.5 bg-[#00288e] hover:bg-indigo-800 text-white rounded-xl font-bold text-sm shadow-md transition-all flex justify-center items-center gap-2" onclick="handleStateShift(${wo.id}, 'TUNING_QC')"><span class="material-symbols-outlined text-[18px]">rule</span> Serahkan ke Divisi Mutu (QC)</button>`;
+        } else if (wo.status === 'COMPLETED') {
+            actionBtnHTML = `<button class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-md transition-all flex justify-center items-center gap-2" onclick="printQCLabel(${JSON.stringify(wo).replace(/"/g, '&quot;')})"><span class="material-symbols-outlined text-[18px]">print</span> Cetak Label QC</button>`;
+        }
+
+        if (wo.catatan_rework && (wo.status === 'SUB_ASSEMBLY' || wo.status === 'FINAL_ASSEMBLY')) {
+            actionBtnHTML = `<button class="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-sm shadow-md transition-all flex justify-center items-center gap-2" onclick="handleStateShift(${wo.id}, 'TUNING_QC')"><span class="material-symbols-outlined text-[18px]">assignment_return</span> Selesai Rework & Kembalikan ke QC</button>`;
+        }
+
+        if (wo.status === 'DRAFT' || wo.status === 'KITTING_RELEASED') {
+            actionBtnHTML += `<button class="w-full py-2.5 mt-2 bg-transparent text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl font-bold text-xs transition-colors flex justify-center items-center gap-2" onclick="handleStateShift(${wo.id}, 'CANCELLED')"><span class="material-symbols-outlined text-[16px]">cancel</span> Batalkan Work Order</button>`;
+        }
+        
+        execBay.innerHTML = actionBtnHTML;
     }
 
     // Slide in
