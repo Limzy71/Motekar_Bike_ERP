@@ -1048,14 +1048,17 @@ function setupSRMModals(): void {
                 const mapEl = document.getElementById('srm-map-vendor');
                 if (mapEl) mapEl.classList.remove('hidden');
 
-                if (place.geometry.viewport) {
-                    mapVendor.fitBounds(place.geometry.viewport);
-                } else {
-                    mapVendor.setCenter(place.geometry.location);
-                    mapVendor.setZoom(17);
-                }
-                markerVendor.setPosition(place.geometry.location);
-                if (place.formatted_address) inputElement.value = place.formatted_address;
+                setTimeout(() => {
+                    (window as any).google.maps.event.trigger(mapVendor, 'resize');
+                    if (place.geometry.viewport) {
+                        mapVendor.fitBounds(place.geometry.viewport);
+                    } else {
+                        mapVendor.setCenter(place.geometry.location);
+                        mapVendor.setZoom(17);
+                    }
+                    markerVendor.setPosition(place.geometry.location);
+                    if (place.formatted_address) inputElement.value = place.formatted_address;
+                }, 50);
             });
 
             markerVendor.addListener("dragend", () => {
