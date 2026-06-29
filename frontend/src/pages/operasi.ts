@@ -313,22 +313,35 @@ function openRightDrawer(wo: WorkOrder) {
             icon: 'pedal_bike',
             metadata: [
                 {
-                    title: "Tahap 2.A: Perakitan WIP (Frame & Drivetrain)",
-                    time: "40 Menit",
-                    tools: "Hex Key Set (4,5,6 mm), Torque Wrench, Bike Repair Stand, Lithium Grease, Crank Puller",
+                    title: "Langkah 1: Frame Set Assy",
+                    time: "15 Menit",
+                    tools: "Hex Key Set (Kunci Allen 4, 5, 6 mm), Torque Wrench (Kunci Torsi), Bike Repair Stand (Penyangga Sepeda), Lithium Grease (Pelumas)",
                     checklist: [
-                        "Memulai pembuatan 4 unit barang setengah jadi (WIP) dari komponen dasar",
-                        "Merakit Frame Set Assy (mengencangkan baut fork, stem, saddle)",
-                        "Merakit Drivetrain Assy (memasang crankset, rantai, dan cassette)"
+                        "Mengencangkan baut fork, stem, dan saddle",
+                        "Memastikan kekencangan baut sesuai spesifikasi (Nm)",
+                        "Menjepit frame agar stabil saat dirakit",
+                        "Melumasi headtube dan seat tube"
                     ]
                 },
                 {
-                    title: "Tahap 2.B: Perakitan WIP (Wheel & Cockpit)",
-                    time: "35 Menit",
-                    tools: "Spoke Wrench, Tire Levers, Cable Puller Pliers, Hex Key Set",
+                    title: "Langkah 2: Drivetrain Assy",
+                    time: "25 Menit",
+                    tools: "Bottom Bracket Tool, Crank Puller / Hex Tool 8 mm, Chain Breaker Tool (Pemotong Rantai), Cassette Lockring Tool + Chain Whip",
                     checklist: [
-                        "Merakit Wheel Set Assy (memasang ban luar, ban dalam, dan rims)",
-                        "Merakit Cockpit & Controls Assy (menyetel kemiringan stang & tuas rem)"
+                        "Memasang poros engkol pada frame",
+                        "Memasang lengan crankset",
+                        "Memotong dan menyambung pin rantai",
+                        "Mengunci gir cassette pada hub roda belakang"
+                    ]
+                },
+                {
+                    title: "Langkah 3: Cockpit & Controls Assy",
+                    time: "15 Menit",
+                    tools: "Hex Key Set (4, 5 mm), Cable Puller Pliers (Tang Penarik Kabel), Cable Cutter (Pemotong Kabel)",
+                    checklist: [
+                        "Menyetel kemiringan stang dan tuas rem",
+                        "Menarik kabel kawat rem dan shifter hingga tegang",
+                        "Memotong sisa kabel kawat dengan rapi"
                     ]
                 }
             ]
@@ -340,19 +353,13 @@ function openRightDrawer(wo: WorkOrder) {
             icon: 'rule',
             metadata: [
                 {
-                    title: "Tahap 3: Persiapan Final Assembly",
-                    time: "15 Menit",
-                    tools: "Cable Cutter, Pliers, Hex Key",
-                    checklist: ["Menyiapkan ke-4 komponen WIP yang telah dirakit", "Memastikan alur kabel rem dan shifter sudah sesuai jalurnya"]
-                },
-                {
-                    title: "Tahap 3: Final Assembly (Penyatuan Utama)",
+                    title: "Langkah 4: Final Assembly & QC",
                     time: "20 Menit",
-                    tools: "Floor Pump with Pressure Gauge, Open-end Wrench (15 mm / QR), Obeng Plus/Minus (PH2)",
+                    tools: "Floor Pump with Pressure Gauge, Open-end Wrench (Kunci Pas 15 mm / Quick Release), Obeng Plus/Minus (Screwdriver PH2)",
                     checklist: [
-                        "Menyatukan ke-4 barang setengah jadi (WIP) menjadi satu kesatuan unit Finished Good utuh",
-                        "Memompa ban sesuai PSI standar",
-                        "Memasang hub roda ke drop-out frame secara presisi",
+                        "Menyatukan 4 komponen WIP sehingga jadi sepeda utuh",
+                        "Memompa ban sesuai tekanan PSI standar",
+                        "Memasang hub roda ke drop-out frame/fork",
                         "Menyetel baut pembatas (H/L limit screw) pada derailleur"
                     ]
                 }
@@ -376,17 +383,17 @@ function openRightDrawer(wo: WorkOrder) {
             { label: 'SELESAI', icon: 'verified' }
         ];
 
-        let stepperHTML = `<div class="flex items-center justify-between relative mb-6">
-            <div class="absolute left-6 right-6 top-5 h-[3px] bg-slate-200 -z-10"></div>`;
+        let stepperHTML = `<div class="flex items-center justify-between relative mb-8">
+            <div class="absolute left-[8%] right-[8%] top-5 h-[2px] bg-slate-200" style="z-index: 1;"></div>`;
         
         timelineStages.forEach((stage, idx) => {
             const isPast = idx < currentIndex;
             const isCurrent = idx === currentIndex;
-            const circleColor = isPast ? 'bg-[#00288e] text-white' : (isCurrent ? 'bg-[#00288e] text-white ring-4 ring-indigo-100' : 'bg-white border-[2.5px] border-slate-200 text-slate-300');
+            const circleColor = isPast ? 'bg-[#00288e] text-white border-transparent' : (isCurrent ? 'bg-[#00288e] text-white ring-4 ring-indigo-100 border-transparent' : 'bg-white border-[2.5px] border-slate-200 text-slate-300');
             const textColor = isPast || isCurrent ? 'text-[#00288e]' : 'text-slate-400';
             
             stepperHTML += `
-                <div class="flex flex-col items-center gap-2 z-10 w-16">
+                <div class="flex flex-col items-center gap-2 w-16 relative" style="z-index: 2;">
                     <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${circleColor}">
                         <span class="material-symbols-outlined text-[18px]">${stage.icon}</span>
                     </div>
