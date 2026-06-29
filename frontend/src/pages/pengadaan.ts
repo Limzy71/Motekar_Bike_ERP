@@ -1070,6 +1070,27 @@ function setupSRMModals(): void {
         }
     };
 
+    const inputKontak = document.getElementById('srm-input-kontak') as HTMLInputElement;
+    if (inputKontak) {
+        inputKontak.addEventListener('input', () => {
+            let val = inputKontak.value;
+            val = val.replace(/\D/g, ''); // Hapus semua selain angka
+            if (val.length > 0 && val[0] !== '0') {
+                val = '0' + val; // Tambahkan 0 di awal jika tidak ada
+            }
+            inputKontak.value = val;
+        });
+    }
+
+    const inputAlamat = document.getElementById('srm-input-alamat') as HTMLInputElement;
+    if (inputAlamat) {
+        inputAlamat.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Mencegah form tersubmit otomatis
+            }
+        });
+    }
+
     document.getElementById('btn-create-vendor')?.addEventListener('click', () => {
         (document.getElementById('srm-vendor-modal-title') as HTMLElement).innerHTML = `<span class="material-symbols-outlined text-primary">domain_add</span> Tambah Vendor Baru`;
         (document.getElementById('srm-input-id-vendor') as HTMLInputElement).value = '';
@@ -1362,6 +1383,9 @@ document.addEventListener('DOMContentLoaded', () => {
           currentFilterMonthPR = (e.target as HTMLInputElement).value;
           currentPage = 1;
           renderTable();
+      });
+      filterMonthPr.addEventListener('click', function() {
+          try { (this as any).showPicker(); } catch (e) {}
       });
   }
 
