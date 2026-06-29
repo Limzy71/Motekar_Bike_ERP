@@ -304,19 +304,7 @@ function openRightDrawer(wo: WorkOrder) {
             id: 'KITTING_RELEASED', 
             label: 'Mulai Sub-Assembly', 
             next: 'SUB_ASSEMBLY', 
-            icon: 'build',
-            metadata: [
-                {
-                    title: "Tahap 1: Kitting & Pengambilan Material",
-                    time: "10 Menit",
-                    tools: "Troli Barang, Barcode Scanner, APD (Sarung Tangan)",
-                    checklist: [
-                        "Mengambil seluruh material komponen dari Gudang Master",
-                        "Memverifikasi kesesuaian fisik barang dengan data alokasi BOM",
-                        "Memindahkan komponen ke keranjang area transit (Shop Floor)"
-                    ]
-                }
-            ]
+            icon: 'build'
         },
         { 
             id: 'SUB_ASSEMBLY', 
@@ -480,6 +468,8 @@ function openRightDrawer(wo: WorkOrder) {
             stepperHTML += `<div class="w-full text-center py-8 text-amber-600 font-bold text-sm flex flex-col items-center justify-center gap-2 bg-amber-50 rounded-xl border border-amber-200 mt-4"><span class="material-symbols-outlined text-4xl">pending</span> Menunggu Inspeksi Divisi Mutu</div>`;
         } else if (wo.status === 'COMPLETED') {
             stepperHTML += `<div class="w-full text-center py-8 text-emerald-600 font-bold text-sm flex flex-col items-center justify-center gap-2 bg-emerald-50 rounded-xl border border-emerald-200 mt-4"><span class="material-symbols-outlined text-4xl">verified</span> Selesai Secara Permanen</div>`;
+        } else if (wo.status === 'KITTING_RELEASED') {
+            stepperHTML += `<div class="w-full text-center py-8 text-[#00288e] font-bold text-sm flex flex-col items-center justify-center gap-2 bg-indigo-50 rounded-xl border border-indigo-100 mt-4"><span class="material-symbols-outlined text-4xl">inventory_2</span> Material Siap Ditarik ke Lini Sub-Assembly</div>`;
         }
 
         stepperBay.innerHTML = stepperHTML;
