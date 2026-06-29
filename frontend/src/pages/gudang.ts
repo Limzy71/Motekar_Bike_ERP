@@ -1473,17 +1473,38 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-close-receipt-drawer-bottom')?.addEventListener('click', (window as any).closeReceiptDetailDrawer);
   document.getElementById('drawer-receipt-backdrop')?.addEventListener('click', (window as any).closeReceiptDetailDrawer);
   
+  const filterMonthReceipt = document.getElementById('filter-month-receipt') as HTMLInputElement;
+  if (filterMonthReceipt) {
+      filterMonthReceipt.addEventListener('change', (e) => {
+          currentFilterMonthReceipt = (e.target as HTMLInputElement).value;
+          currentHistoryPage = 1;
+          renderReceiptHistoryTable();
+      });
+  }
+
   const btnPrintReportReceipt = document.getElementById('btn-print-report-receipt');
   if (btnPrintReportReceipt) {
       btnPrintReportReceipt.addEventListener('click', () => {
-          if (receiptHistory.length === 0) {
+          let filteredData = receiptHistory;
+          if (currentFilterMonthReceipt) {
+              filteredData = filteredData.filter(item => {
+                  if (!item.tanggal_penerimaan) return false;
+                  const date = new Date(item.tanggal_penerimaan);
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const year = date.getFullYear();
+                  return `${year}-${month}` === currentFilterMonthReceipt;
+              });
+          }
+          if (filteredData.length === 0) {
               // @ts-ignore
               Swal.fire('Info', 'Tidak ada data riwayat penerimaan untuk dicetak.', 'info');
               return;
           }
+          
+          const subtitle = `Riwayat Purchase Order (PO) yang sudah masuk Master Stok${currentFilterMonthReceipt ? ' | Bulan ' + currentFilterMonthReceipt : ''}`;
           openReportWindow({
               title: 'Laporan Register Penerimaan Barang (GRN)',
-              subtitle: 'Riwayat Purchase Order (PO) yang sudah masuk Master Stok',
+              subtitle: subtitle,
               columns: [
                   { label: 'Tanggal (GR)', key: 'tanggal_penerimaan', format: (val) => new Date(val).toLocaleDateString('id-ID') },
                   { label: 'Referensi PO', key: 'nomor_po' },
@@ -1561,6 +1582,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let receiptHistory: any[] = [];
 let currentHistoryPage = 1;
+let currentFilterMonthReceipt = '';
 
 async function loadReceiptHistory(): Promise<void> {
     const tbody = document.getElementById('tbody-receipt-history');
@@ -1584,20 +1606,31 @@ function renderReceiptHistoryTable() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    if (receiptHistory.length === 0) {
+    let filteredData = receiptHistory;
+    if (currentFilterMonthReceipt) {
+        filteredData = filteredData.filter(item => {
+            if (!item.tanggal_penerimaan) return false;
+            const date = new Date(item.tanggal_penerimaan);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${year}-${month}` === currentFilterMonthReceipt;
+        });
+    }
+
+    if (filteredData.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Belum ada riwayat penerimaan.</td></tr>`;
         renderPaginationUI('history-pagination-pagination', 'history-pagination-info', 1, itemsPerPage, 0, () => {});
         return;
     }
 
-    const totalItems = receiptHistory.length;
+    const totalItems = filteredData.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     if (currentHistoryPage < 1) currentHistoryPage = 1;
     if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
 
     const startIndex = (currentHistoryPage - 1) * itemsPerPage;
     const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-    const currentItems = receiptHistory.slice(startIndex, endIndex);
+    const currentItems = filteredData.slice(startIndex, endIndex);
 
     currentItems.forEach(item => {
         const dateStr = new Date(item.tanggal_penerimaan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });

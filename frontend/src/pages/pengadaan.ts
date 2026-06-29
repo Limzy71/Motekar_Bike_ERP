@@ -76,6 +76,7 @@ let confirmMode: 'delete_single' | 'delete_all' | 'approve_all' | null = null;
 let currentPage = 1;
 const itemsPerPage = 10;
 let currentFilterPR = 'All';
+let currentFilterMonthPR = '';
 
 let currentSRMPage = 1;
 const srmItemsPerPage = 10;
@@ -157,7 +158,16 @@ function renderTable() {
 
   let filteredData = allPRData;
   if (currentFilterPR !== 'All') {
-    filteredData = allPRData.filter(pr => pr.status_pr === currentFilterPR);
+    filteredData = filteredData.filter(pr => pr.status_pr === currentFilterPR);
+  }
+  if (currentFilterMonthPR) {
+      filteredData = filteredData.filter(pr => {
+          if (!pr.created_at) return false;
+          const date = new Date(pr.created_at);
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          return `${year}-${month}` === currentFilterMonthPR;
+      });
   }
 
   if (filteredData.length === 0) {
@@ -1337,22 +1347,42 @@ document.addEventListener('DOMContentLoaded', () => {
           renderTable();
       });
   }
+  
+  const filterMonthPr = document.getElementById('filter-month-pr') as HTMLInputElement;
+  if (filterMonthPr) {
+      filterMonthPr.addEventListener('change', (e) => {
+          currentFilterMonthPR = (e.target as HTMLInputElement).value;
+          currentPage = 1;
+          renderTable();
+      });
+  }
 
   const btnPrintReportPr = document.getElementById('btn-print-report-pr');
   if (btnPrintReportPr) {
       btnPrintReportPr.addEventListener('click', () => {
           let filteredData = allPRData;
           if (currentFilterPR !== 'All') {
-              filteredData = allPRData.filter(pr => pr.status_pr === currentFilterPR);
+              filteredData = filteredData.filter(pr => pr.status_pr === currentFilterPR);
+          }
+          if (currentFilterMonthPR) {
+              filteredData = filteredData.filter(pr => {
+                  if (!pr.created_at) return false;
+                  const date = new Date(pr.created_at);
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const year = date.getFullYear();
+                  return `${year}-${month}` === currentFilterMonthPR;
+              });
           }
           if (filteredData.length === 0) {
               // @ts-ignore
               Swal.fire('Info', 'Tidak ada data PR untuk dicetak.', 'info');
               return;
           }
+          
+          const subtitle = `Filter: Status ${currentFilterPR}${currentFilterMonthPR ? ' | Bulan ' + currentFilterMonthPR : ''}`;
           openReportWindow({
               title: 'Laporan Rekapitulasi Purchase Requisition (PR)',
-              subtitle: `Filter: Status ${currentFilterPR}`,
+              subtitle: subtitle,
               columns: [
                   { label: 'Nomor PR', key: 'nomor_pr' },
                   { label: 'Nama Barang', key: 'items', format: (items: any[]) => {

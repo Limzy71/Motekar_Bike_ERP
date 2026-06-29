@@ -35,6 +35,7 @@ let inventoryItems: any[] = [];
 let currentPage = 1;
 const itemsPerPage = 10;
 let currentFilterPO = 'All';
+let currentFilterMonthPO = '';
 
 function showToast(message: string, type: 'success' | 'error' = 'success') {
     const toast = document.getElementById('toast');
@@ -256,6 +257,15 @@ function renderTable() {
             'Barang Diterima': 'COMPLETED'
         };
         filteredData = allPOs.filter(po => po.status === statusMap[currentFilterPO]);
+    }
+    if (currentFilterMonthPO) {
+        filteredData = filteredData.filter(po => {
+            if (!po.created_at) return false;
+            const date = new Date(po.created_at);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${year}-${month}` === currentFilterMonthPO;
+        });
     }
 
     if (filteredData.length === 0) {
@@ -985,6 +995,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const filterMonthPo = document.getElementById('filter-month-po') as HTMLInputElement;
+    if (filterMonthPo) {
+        filterMonthPo.addEventListener('change', (e) => {
+            currentFilterMonthPO = (e.target as HTMLInputElement).value;
+            currentPage = 1;
+            renderTable();
+        });
+    }
+
     const btnPrintReportPo = document.getElementById('btn-print-report-po');
     if (btnPrintReportPo) {
         btnPrintReportPo.addEventListener('click', () => {
@@ -997,6 +1016,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 filteredData = allPOs.filter(po => po.status === statusMap[currentFilterPO]);
             }
+            if (currentFilterMonthPO) {
+                filteredData = filteredData.filter(po => {
+                    if (!po.created_at) return false;
+                    const date = new Date(po.created_at);
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const year = date.getFullYear();
+                    return `${year}-${month}` === currentFilterMonthPO;
+                });
+            }
             
             if (filteredData.length === 0) {
                 // @ts-ignore
@@ -1004,9 +1032,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
+            const subtitle = `Filter: Status ${currentFilterPO}${currentFilterMonthPO ? ' | Bulan ' + currentFilterMonthPO : ''}`;
+            
             openReportWindow({
                 title: 'Laporan Rekapitulasi Purchase Order (PO)',
-                subtitle: `Filter: Status ${currentFilterPO}`,
+                subtitle: subtitle,
                 columns: [
                     { label: 'Nomor PO', key: 'nomor_po' },
                     { label: 'Tanggal', key: 'created_at', format: (val) => new Date(val).toLocaleDateString('id-ID') },
