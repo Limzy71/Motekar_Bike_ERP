@@ -609,11 +609,11 @@ async function handleStateShift(woId: number, newStatus: string, bypassModal: bo
     const today = new Date().toLocaleDateString('id-ID', {day: '2-digit', month: 'long', year: 'numeric'});
     const catatan = wo.catatan_rework ? wo.catatan_rework.replace(/\n/g, '<br>') : 'Tidak ada catatan khusus. Unit dirakit sesuai standar ISO 4210.';
     const teknisi = 'Tim Perakitan Motekar';
-    const bomRef = \`BOM-\${wo.kode_barang}\`;
+    const bomRef = `BOM-${wo.kode_barang}`;
 
     openPrintWindow({
         docType: 'Quality Control Certificate',
-        docNumber: \`QC-\${wo.nomor_wo}\`,
+        docNumber: `QC-${wo.nomor_wo}`,
         docDate: today,
         status: 'PASSED',
         headerFields: [
@@ -623,7 +623,7 @@ async function handleStateShift(woId: number, newStatus: string, bypassModal: bo
             { label: 'Kode Produk', value: wo.kode_barang },
             { label: 'Teknisi', value: teknisi },
             { label: 'Assembly Progress', value: '100% Completed' },
-            { label: 'Production Target', value: \`\${wo.jumlah_produksi} Unit\` },
+            { label: 'Production Target', value: `${wo.jumlah_produksi} Unit` },
             { label: 'QC Status', value: 'Approved / Passed' }
         ],
         columns: [
@@ -639,7 +639,7 @@ async function handleStateShift(woId: number, newStatus: string, bypassModal: bo
             { no: '4', parameter: 'Presisi Indexing Shifting', metode: 'Dynamic Shifting Test', hasil: '✅ PASS' },
             { no: '5', parameter: 'Verifikasi VIN & Estetika Cat', metode: 'Visual & Scanner', hasil: '✅ PASS' }
         ],
-        notes: \`<strong>Catatan Produksi:</strong><br>\${catatan}\`,
+        notes: `<strong>Catatan Produksi:</strong><br>${catatan}`,
         signatures: [
             { title: 'Quality Inspector', name: 'Tim QA Motekar' },
             { title: 'Production Manager', name: 'Manajer Produksi' }
