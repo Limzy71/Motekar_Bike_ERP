@@ -257,6 +257,7 @@ function setupFilters(): void {
           sectionReceipt?.classList.remove('hidden');
           localStorage.setItem('gudangLastTab', 'receipt');
           loadPendingPO();
+          loadReceiptHistory();
       }
   };
 
@@ -1244,6 +1245,7 @@ function setupModalReceipt(): void {
                 closeModal();
                 loadPendingPO(); // Refresh receipt list
                 loadGudang(); // Refresh real-time stock
+                loadReceiptHistory();
             } else {
                 showToast(response.message, true);
             }
@@ -1437,10 +1439,12 @@ function setupModalBulkReceipt(): void {
             closeModal();
             loadPendingPO();
             loadGudang();
+            loadReceiptHistory();
         } else {
             showToast(`${successCount} sukses, ${failCount} gagal diproses.`, true);
             loadPendingPO();
             loadGudang();
+            loadReceiptHistory();
         }
     });
 }
@@ -1472,7 +1476,10 @@ document.addEventListener('DOMContentLoaded', () => {
           loadFailedDeliveries();
           loadWriteOffs();
       }
-      else if (tab === 'receipt') loadPendingPO();
+      else if (tab === 'receipt') {
+          loadPendingPO();
+          loadReceiptHistory();
+      }
   }, 30000);
 });
 
@@ -1521,3 +1528,70 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Kesalahan jaringan.', true);
     }
 };
+
+let receiptHistory: any[] = [];
+let currentHistoryPage = 1;
+
+async function loadReceiptHistory(): Promise<void> {
+    const tbody = document.getElementById('tbody-receipt-history');
+    if (!tbody) return;
+
+    try {
+        const response = await apiFetch<any>('gudang/receipts');
+        if (response.success) {
+            receiptHistory = response.data;
+            renderReceiptHistoryTable();
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat riwayat.</td></tr>`;
+        }
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Kesalahan jaringan.</td></tr>`;
+    }
+}
+
+function renderReceiptHistoryTable() {
+    const tbody = document.getElementById('tbody-receipt-history');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (receiptHistory.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Belum ada riwayat penerimaan.</td></tr>`;
+        renderPaginationUI('history-pagination-pagination', 'history-pagination-info', 1, itemsPerPage, 0, () => {});
+        return;
+    }
+
+    const totalItems = receiptHistory.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (currentHistoryPage < 1) currentHistoryPage = 1;
+    if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
+
+    const startIndex = (currentHistoryPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const currentItems = receiptHistory.slice(startIndex, endIndex);
+
+    currentItems.forEach(item => {
+        const dateStr = new Date(item.tanggal_penerimaan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition-colors";
+        tr.innerHTML = `
+            <td class="px-4 py-3"><p class="text-slate-600">${dateStr}</p></td>
+            <td class="px-4 py-3 whitespace-nowrap"><p class="font-bold text-slate-700 font-data-mono">${item.nomor_po}</p></td>
+            <td class="px-4 py-3 font-data-mono font-bold text-slate-700">${item.no_surat_jalan || '-'}</td>
+            <td class="px-4 py-3 font-semibold text-slate-800">${item.penerima || '-'}</td>
+            <td class="px-4 py-3"><p class="text-slate-500 italic truncate max-w-[200px]" title="${item.catatan || ''}">${item.catatan || '-'}</p></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    renderPaginationUI(
+        'history-pagination-pagination',
+        'history-pagination-info',
+        currentHistoryPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentHistoryPage = newPage;
+            renderReceiptHistoryTable();
+        }
+    );
+}
