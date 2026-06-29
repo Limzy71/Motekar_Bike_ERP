@@ -254,8 +254,39 @@ export const updateWOStatus = async (req: Request, res: Response): Promise<void>
         await insertJurnal(connection, wo.nomor_wo, `Peleburan WIP ke Finished Goods - ${wo.nomor_wo}`, 'Aset_Persediaan', 'Kredit', totalKapitalisasi);
       }
 
+      // Check if there is an associated Sales Order Detail (MTO backorder flow)
+      const [soDetails]: any = await connection.query(
+        'SELECT id, id_so_header FROM penjualan_so_detail WHERE id_wo_terkait = ?',
+        [woId]
+      );
+
+      if (soDetails.length > 0) {
+        for (const detail of soDetails) {
+          // 1. Update the status of this item to 'TERSEDIA'
+          await connection.query(
+            'UPDATE penjualan_so_detail SET status_item = "TERSEDIA" WHERE id = ?',
+            [detail.id]
+          );
+
+          // 2. Check if all items in this SO header are now 'TERSEDIA'
+          const [allSoDetails]: any = await connection.query(
+            'SELECT status_item FROM penjualan_so_detail WHERE id_so_header = ?',
+            [detail.id_so_header]
+          );
+          
+          const hasDefisit = allSoDetails.some((d: any) => d.status_item === 'DEFISIT');
+          if (!hasDefisit) {
+            // Update the SO status to 'RESERVED'
+            await connection.query(
+              'UPDATE penjualan_so_header SET status_so = "RESERVED" WHERE id = ?',
+              [detail.id_so_header]
+            );
+          }
+        }
+      }
+
       await connection.query('UPDATE operasi_wo_header SET status = ? WHERE id = ?', [status, woId]);
-      await logAudit(userId, `WO ${wo.nomor_wo}: Completed (Backflush WIP -> FG)`, req.ip, 'Success');
+      await logAudit(userId, `WO ${wo.nomor_wo}: Completed (Backflush WIP -> FG) & Linked SO Updated`, req.ip, 'Success');
     }
     
     // TUNING_QC -> SUB_ASSEMBLY (Rework / QC Failed)

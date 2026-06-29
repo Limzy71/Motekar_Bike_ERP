@@ -210,8 +210,7 @@ export const triggerWO = async (req: Request, res: Response): Promise<void> => {
     if (selisihDefisit <= 0) throw new Error('Stok fisik saat ini cukup, tidak perlu Work Order. Silakan selaraskan data.');
 
     // 2. Generate WO Number
-    const [countRows]: any = await connection.query('SELECT COUNT(*) as count FROM operasi_wo_header');
-    const woNumber = `WO-MTK-${new Date().getFullYear()}-${String(countRows[0].count + 1).padStart(4, '0')}`;
+    const woNumber = `WO-M${Date.now().toString().slice(-5)}`;
 
     // 3. Create Work Order in Modul 2 (operasi_wo_header)
     const [woResult]: any = await connection.query(
