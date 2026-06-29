@@ -1100,20 +1100,9 @@ function setupSRMModals(): void {
 
         inputAlamat.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter') return;
+            e.preventDefault(); // Selalu blokir form submit
 
-            // Cek apakah dropdown saran Google Maps sedang terlihat
-            const pacContainer = document.querySelector('.pac-container') as HTMLElement | null;
-            const isSuggestionOpen = pacContainer && pacContainer.style.display !== 'none' && pacContainer.offsetHeight > 0;
-
-            if (isSuggestionOpen) {
-                // Dropdown ada → biarkan Google Maps handle (place_changed akan fire)
-                // Hanya blokir form submit, JANGAN blokir Google Maps
-                e.preventDefault();
-                return;
-            }
-
-            // Tidak ada dropdown → jalankan geocode manual dari teks yang di-paste
-            e.preventDefault();
+            // Langsung geocode dari teks yang ada (termasuk paste dari Google Maps)
             const address = inputAlamat.value.trim();
             if (address && typeof (window as any).google !== 'undefined' && mapVendor) {
                 const geocoder = new (window as any).google.maps.Geocoder();
