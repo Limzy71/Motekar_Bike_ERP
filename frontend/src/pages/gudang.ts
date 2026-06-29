@@ -1626,7 +1626,7 @@ function renderReceiptHistoryTable() {
     if (sjEl) sjEl.textContent = item.no_surat_jalan || '-';
     if (catatanEl) catatanEl.textContent = item.catatan || '-';
     if (statusEl) statusEl.textContent = `APPROVAL: ${item.status_po || 'UNKNOWN'}`;
-    if (termsEl) termsEl.textContent = item.term_of_payment || 'Net 30 (Default)';
+    if (termsEl) termsEl.textContent = item.term_of_payment ? `Net ${item.term_of_payment} Hari` : 'Net 30 Hari';
     
     if (totalEl) {
         const num = parseFloat(item.total_nilai || 0);
