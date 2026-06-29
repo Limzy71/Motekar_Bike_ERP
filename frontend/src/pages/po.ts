@@ -21,6 +21,8 @@ interface POHeader {
     catatan: string;
     created_at: string;
     nama_vendor: string;
+    alamat_vendor?: string;
+    kontak_vendor?: string;
     items: PODetail[];
 }
 
@@ -71,27 +73,70 @@ function fillPrintPO(po: any) {
     const elAlamat = document.getElementById('pdf-po-alamat');
     const elNo = document.getElementById('pdf-po-no');
     const elTgl = document.getElementById('pdf-po-tgl');
-    const elStatus = document.getElementById('pdf-po-status');
+    const elApproval = document.getElementById('pdf-po-approval');
+    const elPengiriman = document.getElementById('pdf-po-pengiriman');
+    const elPaymentTerms = document.getElementById('pdf-po-payment-terms');
     const elTbody = document.getElementById('pdf-po-tbody');
     const elGrandTotal = document.getElementById('pdf-po-grand-total');
 
     if (elMitra) elMitra.textContent = po.nama_vendor || '-';
     if (elAlamat) elAlamat.textContent = po.alamat_vendor || '-';
     if (elNo) elNo.textContent = po.nomor_po;
-    if (elTgl) elTgl.textContent = new Date(po.created_at).toLocaleDateString('id-ID');
-    if (elStatus) elStatus.textContent = po.status;
+    if (elTgl) elTgl.textContent = new Date(po.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    // Status Approval
+    let approvalLabel = 'Menunggu Persetujuan';
+    let approvalClass = 'text-amber-600';
+    if (po.status === 'DRAFT') {
+        approvalLabel = 'Draf / Belum Diajukan';
+        approvalClass = 'text-slate-500';
+    } else if (po.status === 'REJECTED') {
+        approvalLabel = 'Ditolak';
+        approvalClass = 'text-rose-600';
+    } else if (['APPROVED', 'SENT_TO_VENDOR', 'COMPLETED'].includes(po.status)) {
+        approvalLabel = 'Disetujui';
+        approvalClass = 'text-emerald-600';
+    }
+    if (elApproval) {
+        elApproval.textContent = approvalLabel;
+        elApproval.className = `py-1 font-bold ${approvalClass}`;
+    }
+
+    // Status Pengiriman
+    let pengirimanLabel = 'Belum Dikirim';
+    let pengirimanClass = 'text-slate-500';
+    if (po.status === 'SENT_TO_VENDOR') {
+        pengirimanLabel = 'Dalam Perjalanan / Dikirim';
+        pengirimanClass = 'text-indigo-600';
+    } else if (po.status === 'COMPLETED') {
+        pengirimanLabel = 'Telah Diterima (GRN Selesai)';
+        pengirimanClass = 'text-emerald-600';
+    }
+    if (elPengiriman) {
+        elPengiriman.textContent = pengirimanLabel;
+        elPengiriman.className = `py-1 font-bold ${pengirimanClass}`;
+    }
+
+    // Payment Terms (Default to Net 30, but can read from catatan if format match)
+    let paymentTerms = 'Net 30 Hari (Transfer Bank)';
+    if (po.catatan && po.catatan.toLowerCase().includes('termin')) {
+        paymentTerms = po.catatan;
+    }
+    if (elPaymentTerms) elPaymentTerms.textContent = paymentTerms;
+
     if (elGrandTotal) elGrandTotal.textContent = formatIndoNumber(parseFloat(po.total_nilai));
 
     if (elTbody && po.items) {
         elTbody.innerHTML = '';
         po.items.forEach((item: any, idx: number) => {
+            const subtotal = parseFloat(item.harga_satuan) * item.qty;
             elTbody.innerHTML += `
                 <tr>
                     <td class="py-4 px-2 font-medium">${idx + 1}</td>
                     <td class="py-4 px-2 font-bold text-slate-900">${item.nama_barang}</td>
                     <td class="py-4 px-2 text-center font-bold">${item.qty} ${item.satuan}</td>
                     <td class="py-4 px-2 text-right font-data-mono">${formatIndoNumber(parseFloat(item.harga_satuan))}</td>
-                    <td class="py-4 px-2 text-right font-data-mono font-bold text-slate-900">${formatIndoNumber(parseFloat(item.total_harga))}</td>
+                    <td class="py-4 px-2 text-right font-data-mono font-bold text-slate-900">${formatIndoNumber(subtotal)}</td>
                 </tr>
             `;
         });
