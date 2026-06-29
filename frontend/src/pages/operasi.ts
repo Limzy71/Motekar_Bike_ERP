@@ -870,10 +870,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initCreateModal();
 
     // Event Listeners for Filters and Report
-    const filterMonthWO = document.getElementById('filter-month-wo') as HTMLSelectElement;
+    const filterMonthWO = document.getElementById('filter-month-wo') as HTMLInputElement;
     if (filterMonthWO) {
         filterMonthWO.addEventListener('change', (e) => {
-            currentFilterMonthWO = (e.target as HTMLSelectElement).value;
+            currentFilterMonthWO = (e.target as HTMLInputElement).value;
             currentPage = 1;
             renderTable();
         });
