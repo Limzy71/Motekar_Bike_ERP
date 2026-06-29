@@ -6,7 +6,7 @@
 import { apiFetch, getUserData } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
 import { renderPaginationUI } from '../utils/pagination.js';
-import { openPrintWindow } from '../utils/printDocument.js';
+import { openPrintWindow, openReportWindow } from '../utils/printDocument.js';
 
 declare const Swal: any;
 
@@ -1335,6 +1335,31 @@ document.addEventListener('DOMContentLoaded', () => {
           currentFilterPR = (e.target as HTMLSelectElement).value;
           currentPage = 1;
           renderTable();
+      });
+  }
+
+  const btnPrintReportPr = document.getElementById('btn-print-report-pr');
+  if (btnPrintReportPr) {
+      btnPrintReportPr.addEventListener('click', () => {
+          let filteredData = allPRData;
+          if (currentFilterPR !== 'All') {
+              filteredData = allPRData.filter(pr => pr.status_pr === currentFilterPR);
+          }
+          if (filteredData.length === 0) {
+              showToast('Tidak ada data PR untuk dicetak.', true);
+              return;
+          }
+          openReportWindow({
+              title: 'Laporan Rekapitulasi Purchase Requisition (PR)',
+              subtitle: `Filter: Status ${currentFilterPR}`,
+              columns: [
+                  { label: 'Nomor PR', key: 'nomor_pr' },
+                  { label: 'Tanggal', key: 'created_at', format: (val) => new Date(val).toLocaleDateString('id-ID') },
+                  { label: 'Nama Vendor', key: 'nama_vendor' },
+                  { label: 'Status PR', key: 'status_pr', align: 'center' }
+              ],
+              data: filteredData
+          });
       });
   }
 

@@ -1,7 +1,7 @@
 import { initRBAC } from '../components/rbac.js';
 import { apiFetch, getUserData } from '../api.js';
 import { renderPaginationUI } from '../utils/pagination.js';
-import { openPrintWindow, formatRupiahPrint } from '../utils/printDocument.js';
+import { openPrintWindow, openReportWindow, formatRupiahPrint } from '../utils/printDocument.js';
 
 interface PODetail {
     id: number;
@@ -982,6 +982,40 @@ document.addEventListener('DOMContentLoaded', () => {
             currentFilterPO = (e.target as HTMLSelectElement).value;
             currentPage = 1;
             renderTable();
+        });
+    }
+
+    const btnPrintReportPo = document.getElementById('btn-print-report-po');
+    if (btnPrintReportPo) {
+        btnPrintReportPo.addEventListener('click', () => {
+            let filteredData = allPOs;
+            if (currentFilterPO !== 'All') {
+                const statusMap: Record<string, string> = {
+                    'Diterbitkan': 'ISSUED',
+                    'Dikirim ke Vendor': 'SENT_TO_VENDOR',
+                    'Barang Diterima': 'COMPLETED'
+                };
+                filteredData = allPOs.filter(po => po.status === statusMap[currentFilterPO]);
+            }
+            
+            if (filteredData.length === 0) {
+                // @ts-ignore
+                Swal.fire('Info', 'Tidak ada data PO untuk dicetak.', 'info');
+                return;
+            }
+            
+            openReportWindow({
+                title: 'Laporan Rekapitulasi Purchase Order (PO)',
+                subtitle: `Filter: Status ${currentFilterPO}`,
+                columns: [
+                    { label: 'Nomor PO', key: 'nomor_po' },
+                    { label: 'Tanggal', key: 'created_at', format: (val) => new Date(val).toLocaleDateString('id-ID') },
+                    { label: 'Nama Vendor', key: 'nama_vendor' },
+                    { label: 'Total Nilai', key: 'total_nilai', align: 'right', format: (val) => formatRupiahPrint(parseFloat(val)) },
+                    { label: 'Status PO', key: 'status', align: 'center' }
+                ],
+                data: filteredData
+            });
         });
     }
 

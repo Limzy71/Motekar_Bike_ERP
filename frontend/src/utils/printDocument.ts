@@ -441,5 +441,141 @@ export function openPrintWindow(options: PrintDocumentOptions): void {
         }, 500);
     }
 }
+export interface ReportColumn {
+    label: string;
+    key: string;
+    align?: 'left' | 'center' | 'right';
+    format?: (val: any) => string;
+}
+
+export interface ReportOptions {
+    title: string;
+    subtitle?: string;
+    columns: ReportColumn[];
+    data: any[];
+}
+
+export const openReportWindow = (options: ReportOptions) => {
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${options.title}</title>
+            <style>
+                @page { size: landscape; margin: 15mm; }
+                body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 0; }
+                h1 { font-size: 18px; margin: 0 0 5px 0; color: #0f172a; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+                p { font-size: 12px; margin: 0 0 20px 0; color: #64748b; text-align: center; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th { background-color: #f8fafc; border-bottom: 2px solid #cbd5e1; padding: 10px 8px; text-transform: uppercase; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #475569; }
+                td { border-bottom: 1px solid #e2e8f0; padding: 8px; color: #334155; }
+                .text-left { text-align: left; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                .footer { margin-top: 30px; font-size: 9px; color: #94a3b8; text-align: center; }
+                tr:nth-child(even) td { background-color: #fcfcfc; }
+            </style>
+        </head>
+        <body>
+            <h1>${options.title}</h1>
+            ${options.subtitle ? `<p>${options.subtitle}</p>` : ''}
+            
+            <table>
+                <thead>
+                    <tr>
+                        ${options.columns.map(c => `<th class="text-${c.align || 'left'}">${c.label}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${options.data.length > 0 ? options.data.map((row) => `
+                        <tr>
+                            ${options.columns.map(c => {
+                                let val = row[c.key];
+                                if (c.format) val = c.format(val);
+                                return `<td class="text-${c.align || 'left'}">${val !== undefined && val !== null ? val : '-'}</td>`;
+                            }).join('')}
+                        </tr>
+                    `).join('') : `<tr><td colspan="${options.columns.length}" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada data yang dicetak</td></tr>`}
+                </tbody>
+            </table>
+            
+            <div class="footer">
+                Dicetak oleh Sistem ERP Motekar Bike Assy pada ${new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    setTimeout(() => {
+                        window.print();
+                        window.close();
+                    }, 500);
+                }
+            </script>
+        </body>
+        </html>
+    `;
+
+    const iframeId = 'print-report-iframe';
+    let iframe = document.getElementById(iframeId) as HTMLIFrameElement;
+    
+    if (iframe) {
+        document.body.removeChild(iframe);
+    }
+
+    iframe = document.createElement('iframe');
+    iframe.id = iframeId;
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    
+    document.body.appendChild(iframe);
+
+    if (iframe.contentWindow) {
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        const originalTitle = document.title;
+        const safeTitle = options.title.replace(/[^a-zA-Z0-9_-]/g, '_');
+        document.title = safeTitle;
+
+        // Overlay blur
+        const overlay = document.createElement('div');
+        overlay.id = 'print-blur-overlay';
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.backgroundColor = 'rgba(15, 23, 42, 0.4)';
+        overlay.style.backdropFilter = 'blur(8px)';
+        overlay.style.zIndex = '999999';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.innerHTML = '<div style="background: white; padding: 20px 32px; border-radius: 12px; font-family: Inter, sans-serif; font-weight: 700; color: #0f172a; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 12px;"><svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Menyiapkan Laporan...</div>';
+        document.body.appendChild(overlay);
+
+        setTimeout(() => {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }
+            document.title = originalTitle;
+            
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            
+            setTimeout(() => {
+                const frameToRemove = document.getElementById(iframeId);
+                if (frameToRemove && frameToRemove.parentNode) {
+                    frameToRemove.parentNode.removeChild(frameToRemove);
+                }
+            }, 5000);
+        }, 800);
+    }
+}
 
 export { formatRupiahPrint };

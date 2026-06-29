@@ -6,7 +6,7 @@
 import { apiFetch } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
 import { renderPaginationUI } from '../utils/pagination.js';
-import { openPrintWindow } from '../utils/printDocument.js';
+import { openPrintWindow, openReportWindow } from '../utils/printDocument.js';
 
 interface InventoryItem {
   id: number;
@@ -1470,6 +1470,29 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-close-receipt-drawer')?.addEventListener('click', (window as any).closeReceiptDetailDrawer);
   document.getElementById('btn-close-receipt-drawer-bottom')?.addEventListener('click', (window as any).closeReceiptDetailDrawer);
   document.getElementById('drawer-receipt-backdrop')?.addEventListener('click', (window as any).closeReceiptDetailDrawer);
+  
+  const btnPrintReportReceipt = document.getElementById('btn-print-report-receipt');
+  if (btnPrintReportReceipt) {
+      btnPrintReportReceipt.addEventListener('click', () => {
+          if (receiptHistory.length === 0) {
+              showToast('Tidak ada data riwayat penerimaan untuk dicetak.', true);
+              return;
+          }
+          openReportWindow({
+              title: 'Laporan Register Penerimaan Barang (GRN)',
+              subtitle: 'Riwayat Purchase Order (PO) yang sudah masuk Master Stok',
+              columns: [
+                  { label: 'Tanggal (GR)', key: 'tanggal_penerimaan', format: (val) => new Date(val).toLocaleDateString('id-ID') },
+                  { label: 'Referensi PO', key: 'nomor_po' },
+                  { label: 'Surat Jalan', key: 'no_surat_jalan' },
+                  { label: 'Vendor', key: 'nama_vendor' },
+                  { label: 'Penerima', key: 'penerima' },
+                  { label: 'Catatan', key: 'catatan' }
+              ],
+              data: receiptHistory
+          });
+      });
+  }
 
   // Polling for Real-Time Experience (Every 30 seconds)
   setInterval(() => {
