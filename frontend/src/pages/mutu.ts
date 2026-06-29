@@ -480,7 +480,7 @@ function openQCModal(wo: WorkOrder): void {
                 const val = qcHistoryObj[`chk_${i}`];
                 if (val) {
                     const radio = form.querySelector(`input[name="chk_${i}"][value="${val}"]`) as HTMLInputElement;
-                    // if (radio) radio.checked = true; // DISABLED for fresh inspection
+                    if (radio) radio.checked = true;
                     if (val === 'Fail') hasFail = true;
                 }
             }
