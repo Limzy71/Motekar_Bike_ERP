@@ -1090,6 +1090,7 @@ function setupSRMModals(): void {
 
     const inputAlamat = document.getElementById('srm-input-alamat') as HTMLInputElement;
     if (inputAlamat) {
+        // Real-time: sembunyikan peta jika kolom dikosongkan
         inputAlamat.addEventListener('input', () => {
             if (inputAlamat.value.trim() === '') {
                 const mapEl = document.getElementById('srm-map-vendor');
@@ -1098,33 +1099,43 @@ function setupSRMModals(): void {
         });
 
         inputAlamat.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Mencegah form tersubmit otomatis
-                
-                const address = inputAlamat.value;
-                if (address && typeof (window as any).google !== 'undefined' && mapVendor) {
-                    const geocoder = new (window as any).google.maps.Geocoder();
-                    geocoder.geocode({ address: address }, (results: any, status: any) => {
-                        if (status === "OK" && results && results[0]) {
-                            const mapEl = document.getElementById('srm-map-vendor');
-                            if (mapEl) mapEl.classList.remove('hidden');
-                            
-                            setTimeout(() => {
-                                (window as any).google.maps.event.trigger(mapVendor, 'resize');
-                                if (results[0].geometry.viewport) {
-                                    mapVendor.fitBounds(results[0].geometry.viewport);
-                                } else {
-                                    mapVendor.setCenter(results[0].geometry.location);
-                                    mapVendor.setZoom(17);
-                                }
-                                markerVendor.setPosition(results[0].geometry.location);
-                                inputAlamat.value = results[0].formatted_address;
-                            }, 50);
-                        }
-                    });
-                }
+            if (e.key !== 'Enter') return;
+
+            // Cek apakah dropdown saran Google Maps sedang terlihat
+            const pacContainer = document.querySelector('.pac-container') as HTMLElement | null;
+            const isSuggestionOpen = pacContainer && pacContainer.style.display !== 'none' && pacContainer.offsetHeight > 0;
+
+            if (isSuggestionOpen) {
+                // Dropdown ada → biarkan Google Maps handle (place_changed akan fire)
+                // Hanya blokir form submit, JANGAN blokir Google Maps
+                e.preventDefault();
+                return;
             }
-        }, { capture: true }); // capture: true agar berjalan sebelum Google Maps stopPropagation
+
+            // Tidak ada dropdown → jalankan geocode manual dari teks yang di-paste
+            e.preventDefault();
+            const address = inputAlamat.value.trim();
+            if (address && typeof (window as any).google !== 'undefined' && mapVendor) {
+                const geocoder = new (window as any).google.maps.Geocoder();
+                geocoder.geocode({ address }, (results: any, status: any) => {
+                    if (status === 'OK' && results && results[0]) {
+                        const mapEl = document.getElementById('srm-map-vendor');
+                        if (mapEl) mapEl.classList.remove('hidden');
+                        setTimeout(() => {
+                            (window as any).google.maps.event.trigger(mapVendor, 'resize');
+                            if (results[0].geometry.viewport) {
+                                mapVendor.fitBounds(results[0].geometry.viewport);
+                            } else {
+                                mapVendor.setCenter(results[0].geometry.location);
+                                mapVendor.setZoom(17);
+                            }
+                            markerVendor.setPosition(results[0].geometry.location);
+                            inputAlamat.value = results[0].formatted_address;
+                        }, 50);
+                    }
+                });
+            }
+        });
     }
 
     document.getElementById('btn-create-vendor')?.addEventListener('click', () => {
