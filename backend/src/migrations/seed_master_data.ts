@@ -106,6 +106,14 @@ async function run() {
     await connection.query('TRUNCATE TABLE manufaktur_bom_header');
     await connection.query('TRUNCATE TABLE inventory_stok');
     await connection.query('TRUNCATE TABLE master_vendor');
+    await connection.query('TRUNCATE TABLE keuangan_jurnal');
+    
+    // Seed Opening Balance (Saldo Kas Awal 500jt)
+    await connection.query(
+      "INSERT INTO keuangan_jurnal (referensi_dokumen, keterangan, tipe_akun, posisi, nominal) VALUES (?, ?, ?, ?, ?)",
+      ['OB-2026', 'Setoran Modal Awal Perusahaan (Kas & Bank)', 'Kas_Bank', 'Debit', 500000000.00]
+    );
+    console.log('Opening balance (Rp 500jt) seeded.');
     
     // Seed Vendors
     for (const v of vendors) {
