@@ -1,7 +1,7 @@
 import { initRBAC } from '../components/rbac.js';
 import { apiFetch, getUserData } from '../api.js';
 import { renderPaginationUI } from '../utils/pagination.js';
-import { openPrintWindow } from '../utils/printDocument.js';
+import { openPrintWindow, openReportWindow } from '../utils/printDocument.js';
 interface MaterialAllocation {
     qty_kebutuhan: number;
     status_alokasi: string;
@@ -28,6 +28,7 @@ let currentOpenedWO: WorkOrder | null = null;
 
 let currentPage = 1;
 const itemsPerPage = 10;
+let currentFilterMonthWO = '';
 
 
 
@@ -107,20 +108,32 @@ function renderTable() {
     const tbody = document.getElementById('wo-table-body')!;
     tbody.innerHTML = '';
 
-    if (allWorkOrders.length === 0) {
+    let filteredWorkOrders = allWorkOrders;
+    
+    if (currentFilterMonthWO) {
+        filteredWorkOrders = filteredWorkOrders.filter(wo => {
+            if (!wo.created_at) return false;
+            const date = new Date(wo.created_at);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${year}-${month}` === currentFilterMonthWO;
+        });
+    }
+
+    if (filteredWorkOrders.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 italic font-medium">Belum ada data Work Order.</td></tr>`;
-    renderPaginationUI('operasi-pagination-pagination', 'operasi-pagination-info', 1, 10, 0, () => {});
+        renderPaginationUI('operasi-pagination-pagination', 'operasi-pagination-info', 1, itemsPerPage, 0, () => {});
         return;
     }
 
-    const totalItems = allWorkOrders.length;
+    const totalItems = filteredWorkOrders.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     if (currentPage < 1) currentPage = 1;
     if (currentPage > totalPages) currentPage = totalPages;
 
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-    const currentItems = allWorkOrders.slice(startIndex, endIndex);
+    const currentItems = filteredWorkOrders.slice(startIndex, endIndex);
 
     currentItems.forEach(wo => {
         // Status Badge
@@ -148,13 +161,14 @@ function renderTable() {
 
         tr.innerHTML = `
             <td class="py-3 px-4 font-bold font-data-mono text-primary">${wo.nomor_wo}</td>
-            <td class="py-3 px-4 text-slate-500">${dateStr}</td>
-            <td class="py-3 px-4 font-medium text-slate-800">${wo.produk}</td>
-            <td class="py-3 px-4 font-bold text-slate-700 text-right">${wo.jumlah_produksi} Unit</td>
+            <td class="py-3 px-4">${dateStr}</td>
+            <td class="py-3 px-4 font-semibold">${wo.produk} <span class="text-[10px] text-slate-400 font-normal ml-1 border rounded px-1">${wo.kode_barang}</span></td>
+            <td class="py-3 px-4 text-right font-data-mono font-bold text-slate-700">${wo.jumlah_produksi} Unit</td>
             <td class="py-3 px-4 text-center">${badgeHtml}</td>
         `;
         tbody.appendChild(tr);
     });
+
     renderPaginationUI(
         'operasi-pagination-pagination',
         'operasi-pagination-info',
@@ -639,7 +653,7 @@ async function handleStateShift(woId: number, newStatus: string, bypassModal: bo
             { no: '4', parameter: 'Presisi Indexing Shifting', metode: 'Dynamic Shifting Test', hasil: '✅ PASS' },
             { no: '5', parameter: 'Verifikasi VIN & Estetika Cat', metode: 'Visual & Scanner', hasil: '✅ PASS' }
         ],
-        notes: `<strong>Catatan Produksi:</strong><br>${catatan}`,
+        notes: catatan,
         signatures: [
             { title: 'Quality Inspector', name: 'Tim QA Motekar' },
             { title: 'Production Manager', name: 'Manajer Produksi' }
@@ -854,6 +868,55 @@ document.addEventListener('DOMContentLoaded', () => {
     // Init modules
     loadWorkOrders();
     initCreateModal();
+
+    // Event Listeners for Filters and Report
+    const filterMonthWO = document.getElementById('filter-month-wo') as HTMLSelectElement;
+    if (filterMonthWO) {
+        filterMonthWO.addEventListener('change', (e) => {
+            currentFilterMonthWO = (e.target as HTMLSelectElement).value;
+            currentPage = 1;
+            renderTable();
+        });
+    }
+
+    const btnPrintReportWO = document.getElementById('btn-print-report-wo');
+    if (btnPrintReportWO) {
+        btnPrintReportWO.addEventListener('click', () => {
+            let filteredData = allWorkOrders;
+            
+            if (currentFilterMonthWO) {
+                filteredData = filteredData.filter(wo => {
+                    if (!wo.created_at) return false;
+                    const date = new Date(wo.created_at);
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const year = date.getFullYear();
+                    return `${year}-${month}` === currentFilterMonthWO;
+                });
+            }
+            
+            if (filteredData.length === 0) {
+                // @ts-ignore
+                Swal.fire('Info', 'Tidak ada data Work Order untuk dicetak.', 'info');
+                return;
+            }
+            
+            const subtitle = currentFilterMonthWO ? `Filter: Bulan ${currentFilterMonthWO}` : 'Semua Work Order';
+            
+            openReportWindow({
+                title: 'Laporan Rekapitulasi Produksi (Work Order)',
+                subtitle: subtitle,
+                columns: [
+                    { label: 'Nomor WO', key: 'nomor_wo' },
+                    { label: 'Tanggal Mulai', key: 'created_at', format: (val) => new Date(val).toLocaleDateString('id-ID') },
+                    { label: 'Kode Item', key: 'kode_barang' },
+                    { label: 'Nama Produk', key: 'produk' },
+                    { label: 'Target', key: 'jumlah_produksi', align: 'center', format: (val) => `${val} Unit` },
+                    { label: 'Status WO', key: 'status', align: 'center' }
+                ],
+                data: filteredData
+            });
+        });
+    }
 
     // Polling for Real-Time Experience (Every 15 seconds for Shop Floor)
     setInterval(() => {

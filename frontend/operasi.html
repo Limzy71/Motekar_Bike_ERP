@@ -148,10 +148,21 @@
 
             <!-- ZONA 2: DATA TABLE -->
             <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50">
-                <div class="flex items-center justify-between mb-4" id="table-header-info">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4" id="table-header-info">
                     <div>
                         <h2 class="text-xl font-bold text-slate-900 tracking-tight">Daftar Work Order Aktif</h2>
                         <p class="text-xs text-slate-500 mt-0.5">Pantau status produksi secara real-time</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <select id="filter-month-wo" class="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-3 py-2.5 rounded-xl shadow-sm focus:ring-2 focus:ring-primary focus:border-primary w-40">
+                            <option value="">Semua Bulan</option>
+                            <option value="2026-06">Juni 2026</option>
+                            <option value="2026-07">Juli 2026</option>
+                            <option value="2026-08">Agustus 2026</option>
+                        </select>
+                        <button id="btn-print-report-wo" class="group bg-white border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 active:bg-indigo-100 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition-all">
+                            <span class="material-symbols-outlined text-[18px] text-slate-500 group-hover:text-indigo-600 transition-colors">print</span> Cetak Laporan
+                        </button>
                     </div>
                 </div>
 
