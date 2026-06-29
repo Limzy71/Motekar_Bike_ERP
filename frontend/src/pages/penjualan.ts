@@ -590,6 +590,23 @@ async function initCreateModal() {
     let mapPreview: any = null;
     let mapMarker: any = null;
 
+    const inputCustomer = document.getElementById('input-customer') as HTMLInputElement;
+    const errorCustomer = document.getElementById('error-customer')!;
+
+    inputCustomer.addEventListener('input', () => {
+        const val = inputCustomer.value.trim();
+        // Tampilkan error jika input tidak kosong DAN tidak memiliki huruf sama sekali
+        if (val.length > 0 && !/[a-zA-Z]/.test(val)) {
+            errorCustomer.classList.remove('hidden');
+            inputCustomer.classList.add('border-rose-500', 'focus:ring-rose-200', 'focus:border-rose-500');
+            inputCustomer.classList.remove('focus:ring-primary/20', 'focus:border-primary', 'border-slate-200');
+        } else {
+            errorCustomer.classList.add('hidden');
+            inputCustomer.classList.remove('border-rose-500', 'focus:ring-rose-200', 'focus:border-rose-500');
+            inputCustomer.classList.add('focus:ring-primary/20', 'focus:border-primary', 'border-slate-200');
+        }
+    });
+
     btnNewSO.onclick = () => {
         resetModal();
         modal.classList.remove('hidden');
@@ -898,6 +915,11 @@ async function initCreateModal() {
 
         if (!customer || !targetDate || !alamat || !select.value || parseInt(qtyInput.value) < 1) {
             showToast('Lengkapi semua data formulir dan pilih produk!', 'error');
+            return;
+        }
+
+        if (!/[a-zA-Z]/.test(customer)) {
+            showToast('Nama Customer tidak valid! Harus mengandung huruf.', 'error');
             return;
         }
 
