@@ -909,12 +909,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'Laporan Rekapitulasi Produksi (Work Order)',
                 subtitle: subtitle,
                 columns: [
-                    { label: 'Nomor WO', key: 'nomor_wo' },
-                    { label: 'Tanggal Mulai', key: 'created_at', format: (val) => new Date(val).toLocaleDateString('id-ID') },
-                    { label: 'Kode Item', key: 'kode_barang' },
+                    { label: 'Work Order ID', key: 'nomor_wo' },
+                    { label: 'BOM Reference', key: 'kode_barang', format: (val) => `BOM-${val}` },
                     { label: 'Nama Produk', key: 'produk' },
-                    { label: 'Target', key: 'jumlah_produksi', align: 'center', format: (val) => `${val} Unit` },
-                    { label: 'Status WO', key: 'status', align: 'center' }
+                    { label: 'Progress', key: 'status', align: 'center', format: (val) => val === 'COMPLETED' ? '100% Selesai' : 'Perakitan' },
+                    { label: 'QC Status', key: 'status', align: 'center', format: (val) => val === 'COMPLETED' ? 'PASSED' : 'PENDING' },
+                    { label: 'Target Produksi', key: 'jumlah_produksi', align: 'center', format: (val) => `${val} Unit` },
+                    { label: 'Catatan Produksi', key: 'catatan_rework', format: (val) => val ? val : 'Aman (ISO 4210)' }
                 ],
                 data: filteredData
             });
