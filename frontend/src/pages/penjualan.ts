@@ -875,7 +875,14 @@ async function initCreateModal() {
     }
 
     function resetModal() {
-        (document.getElementById('input-customer') as HTMLInputElement).value = '';
+        const inputCustomer = document.getElementById('input-customer') as HTMLInputElement;
+        inputCustomer.value = '';
+        inputCustomer.classList.remove('border-rose-500', 'focus:ring-rose-200', 'focus:border-rose-500');
+        inputCustomer.classList.add('focus:ring-primary/20', 'focus:border-primary', 'border-slate-200');
+        
+        const errorCustomer = document.getElementById('error-customer');
+        if (errorCustomer) errorCustomer.classList.add('hidden');
+
         (document.getElementById('input-alamat') as HTMLTextAreaElement).value = '';
         const targetDateInput = document.getElementById('input-target-date') as HTMLInputElement;
         targetDateInput.value = '';
