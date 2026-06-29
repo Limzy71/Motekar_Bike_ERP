@@ -6,6 +6,7 @@
 import { apiFetch } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
 import { renderPaginationUI } from '../utils/pagination.js';
+import { openPrintWindow } from '../utils/printDocument.js';
 
 interface InventoryItem {
   id: number;
@@ -328,9 +329,14 @@ function renderOutboundTable() {
         let aksiButtons = '';
         if (so.status_so === 'RESERVED') {
             aksiButtons = `
-                <button onclick="window.openDispatchModal(${so.id}, '${so.nomor_so}')" class="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
-                    <span class="material-symbols-outlined text-[16px]">local_shipping</span> Dispatch
-                </button>
+                <div class="flex flex-col gap-1.5 items-center">
+                    <button onclick="window.printPackingList(${so.id})" class="w-full px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-[16px]">print</span> Cetak Packing List
+                    </button>
+                    <button onclick="window.openDispatchModal(${so.id}, '${so.nomor_so}')" class="w-full px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-[16px]">local_shipping</span> Dispatch
+                    </button>
+                </div>
             `;
         } else if (so.status_so === 'SHIPPED') {
             aksiButtons = `
@@ -372,6 +378,54 @@ function renderOutboundTable() {
             modalContent.classList.remove('scale-95');
         }, 10);
     }
+};
+
+(window as any).printPackingList = (id: number) => {
+    const so = outboundSOs.find(s => s.id === id);
+    if (!so) { showToast('Data SO tidak ditemukan.', true); return; }
+
+    const shipmentId = `SHP/${so.nomor_so}`;
+    const docDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const trackingInfo = `${so.nomor_so} — Status: RESERVED (Siap Kirim)`;
+
+    const items = (so.items || []).map((item: any, idx: number) => ({
+        no: idx + 1,
+        kode_barang: item.kode_barang || item.kode || '-',
+        nama_barang: item.nama_barang,
+        qty: `${item.qty} ${item.satuan || 'unit'}`,
+        catatan: item.catatan || 'Kondisi Baik',
+    }));
+
+    openPrintWindow({
+        docType: 'Packing List / Surat Jalan',
+        docNumber: shipmentId,
+        docDate: docDate,
+        status: 'SIAP KIRIM',
+        headerFields: [
+            { label: 'Shipment ID', value: shipmentId },
+            { label: 'Nomor SO Referensi', value: so.nomor_so },
+            { label: 'Nama Retailer / Customer', value: so.nama_customer },
+            { label: 'Alamat Tujuan Pengiriman', value: so.alamat_pengiriman || '-' },
+            { label: 'Driver / Vendor Logistik (3PL)', value: 'Akan diisi saat Dispatch' },
+            { label: 'Delivery Status', value: 'RESERVED — Siap untuk Dikemas & Dikirim' },
+            { label: 'Tracking Information', value: trackingInfo },
+            { label: 'Tanggal Cetak', value: docDate },
+        ],
+        columns: [
+            { label: 'No', key: 'no', align: 'center' },
+            { label: 'Kode Barang', key: 'kode_barang', align: 'left' },
+            { label: 'Nama Barang', key: 'nama_barang', align: 'left' },
+            { label: 'Quantity', key: 'qty', align: 'center' },
+            { label: 'Catatan / Kondisi', key: 'catatan', align: 'left' },
+        ],
+        items,
+        signatures: [
+            { title: 'Dikemas Oleh', name: 'Staff Gudang / Picker' },
+            { title: 'Diserahkan Oleh', name: 'Kepala Gudang' },
+            { title: 'Diterima Oleh', name: 'Driver 3PL / Kurir' },
+        ],
+        footer: `Dokumen ini adalah Packing List resmi Motekar Bike Assy · ${shipmentId} · Tempel di luar kardus pengiriman.`,
+    });
 };
 
 function setupModalDispatch(): void {
