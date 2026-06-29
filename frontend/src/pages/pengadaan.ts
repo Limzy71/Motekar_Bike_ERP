@@ -841,6 +841,9 @@ function renderVendorsSRM(): void {
                 <p class="font-bold text-slate-800">${v.nama_vendor}</p>
                 <p class="text-[10px] text-slate-500">${v.kontak || '-'}</p>
             </td>
+            <td class="px-4 py-3">
+                <p class="text-xs text-slate-600 line-clamp-2 max-w-[220px]" title="${v.alamat || '-'}">${v.alamat || '<span class="italic text-slate-400">Belum diisi</span>'}</p>
+            </td>
             <td class="px-4 py-3 text-slate-600">${v.kategori || '-'}</td>
             <td class="px-4 py-3 text-center">
                 <span class="flex items-center justify-center gap-1 font-bold text-amber-500">

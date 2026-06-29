@@ -71,6 +71,29 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
         }
 
+        /* ====== PRINT STYLES ====== */
+        @media print {
+            body * { visibility: hidden; }
+            #lembar-po, #lembar-po * { visibility: visible; }
+            #lembar-po {
+                display: block !important;
+                position: fixed !important;
+                inset: 0 !important;
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 auto !important;
+                padding: 40px 48px !important;
+                background: #fff !important;
+                color: #0f172a !important;
+                font-family: 'Inter', sans-serif !important;
+                z-index: 9999 !important;
+            }
+            .print-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            .print-table th { border-bottom: 2px solid #1e293b; padding: 8px 6px; text-align: left; font-weight: 700; color: #1e293b; }
+            .print-table td { border-bottom: 1px solid #e2e8f0; padding: 10px 6px; vertical-align: top; }
+            .print-table tfoot td { border-top: 2px solid #1e293b; border-bottom: none; font-weight: 700; padding-top: 12px; }
+            @page { size: A4; margin: 0; }
+        }
     </style>
 </head>
 
@@ -352,80 +375,141 @@
 
     <script type="module" src="/src/pages/po.ts"></script>
 
-<!-- Lembar Print po -->
-<div id="lembar-po" class="hidden print:block w-[210mm] min-h-[297mm] bg-white text-slate-900 p-12 mx-auto font-sans absolute top-0 left-0 z-50">
+<!-- Lembar Print PO -->
+<div id="lembar-po" style="display:none;" class="w-[210mm] min-h-[297mm] bg-white text-slate-900 p-12 mx-auto font-sans">
+
     <!-- Kop Surat -->
-    <div class="flex justify-between items-end border-b-4 border-primary pb-6 mb-8">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom: 4px solid #00288e; padding-bottom: 20px; margin-bottom: 28px;">
         <div>
-            <h1 class="text-3xl font-black text-primary tracking-tighter">MOTEKAR BIKE ASSY</h1>
-            <p class="text-xs font-semibold text-slate-500 tracking-widest mt-1">SISTEM ERP TERPADU & MANUFAKTUR</p>
+            <div style="font-size:26px; font-weight:900; color:#00288e; letter-spacing:-1px;">MOTEKAR BIKE ASSY</div>
+            <div style="font-size:10px; font-weight:600; color:#64748b; letter-spacing:3px; margin-top:4px;">SISTEM ERP TERPADU &amp; MANUFAKTUR</div>
         </div>
-        <div class="text-right text-[10px] text-slate-500 leading-relaxed">
-            <p>Jl. Dr. Setiabudi No.193, Gegerkalong, Kec. Sukasari, Kota Bandung, Jawa Barat 40153</p>
-            <p>Telp: (021) 555-8899 | Email: sales@motekar.com</p>
-            <p>NPWP: 01.234.567.8-901.000</p>
+        <div style="text-align:right; font-size:10px; color:#64748b; line-height:1.8;">
+            <div>Jl. Dr. Setiabudi No.193, Gegerkalong, Kec. Sukasari</div>
+            <div>Kota Bandung, Jawa Barat 40153</div>
+            <div>Telp: (021) 555-8899 &nbsp;|&nbsp; Email: procurement@motekar.com</div>
+            <div>NPWP: 01.234.567.8-901.000</div>
         </div>
     </div>
 
-    <!-- Info Tujuan -->
-    <div class="flex justify-between mb-10 text-sm">
-        <div>
-            <p class="text-slate-500 mb-1">Kepada Yth.</p>
-            <p id="pdf-po-mitra" class="font-bold text-slate-900 text-lg">Nama Mitra</p>
-            <p id="pdf-po-alamat" class="text-slate-600 max-w-[250px] whitespace-pre-wrap">Alamat Mitra</p>
+    <!-- Judul Dokumen + Meta Info -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px;">
+        <!-- Kepada -->
+        <div style="flex:1;">
+            <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px;">Kepada Yth. (Supplier)</div>
+            <div id="pdf-po-mitra" style="font-size:17px; font-weight:800; color:#0f172a;">-</div>
+            <div id="pdf-po-alamat" style="font-size:11px; color:#475569; margin-top:4px; max-width:260px; white-space:pre-wrap;">-</div>
         </div>
-        <div class="text-right">
-            <h2 class="text-xl font-bold uppercase tracking-widest text-slate-800 mb-2">PURCHASE ORDER</h2>
-            <table class="text-left text-sm ml-auto">
-                <tr><td class="py-1 text-slate-500 w-36">Nomor PO</td><td id="pdf-po-no" class="py-1 font-bold">NOMOR</td></tr>
-                <tr><td class="py-1 text-slate-500">Tanggal</td><td id="pdf-po-tgl" class="py-1 font-bold">TANGGAL</td></tr>
-                <tr><td class="py-1 text-slate-500">Status Approval</td><td id="pdf-po-approval" class="py-1 font-bold text-amber-600">STATUS APPROVAL</td></tr>
-                <tr><td class="py-1 text-slate-500">Status Pengiriman</td><td id="pdf-po-pengiriman" class="py-1 font-bold text-slate-600">STATUS PENGIRIMAN</td></tr>
-                <tr><td class="py-1 text-slate-500">Payment Terms</td><td id="pdf-po-payment-terms" class="py-1 font-semibold text-slate-700">Net 30 Hari</td></tr>
+        <!-- Nomor & Status -->
+        <div style="text-align:right; min-width:260px;">
+            <div style="font-size:20px; font-weight:900; letter-spacing:2px; text-transform:uppercase; color:#1e293b; margin-bottom:10px;">PURCHASE ORDER</div>
+            <table style="font-size:11px; margin-left:auto; border-spacing:0;">
+                <tr>
+                    <td style="padding:3px 10px 3px 0; color:#64748b; white-space:nowrap;">Nomor PO</td>
+                    <td style="padding:3px 0;">:</td>
+                    <td id="pdf-po-no" style="padding:3px 0 3px 10px; font-weight:800; font-family:'JetBrains Mono',monospace; color:#00288e;">-</td>
+                </tr>
+                <tr>
+                    <td style="padding:3px 10px 3px 0; color:#64748b;">Tanggal Terbit</td>
+                    <td style="padding:3px 0;">:</td>
+                    <td id="pdf-po-tgl" style="padding:3px 0 3px 10px; font-weight:700;">-</td>
+                </tr>
+                <tr>
+                    <td style="padding:3px 10px 3px 0; color:#64748b;">Payment Terms</td>
+                    <td style="padding:3px 0;">:</td>
+                    <td id="pdf-po-payment-terms" style="padding:3px 0 3px 10px; font-weight:600;">Net 30 Hari</td>
+                </tr>
+                <tr>
+                    <td style="padding:3px 10px 3px 0; color:#64748b;">Status Approval</td>
+                    <td style="padding:3px 0;">:</td>
+                    <td id="pdf-po-approval" style="padding:3px 0 3px 10px; font-weight:700; color:#d97706;">-</td>
+                </tr>
+                <tr>
+                    <td style="padding:3px 10px 3px 0; color:#64748b;">Status Pengiriman</td>
+                    <td style="padding:3px 0;">:</td>
+                    <td id="pdf-po-pengiriman" style="padding:3px 0 3px 10px; font-weight:700; color:#475569;">-</td>
+                </tr>
             </table>
         </div>
     </div>
 
-    <!-- Deskripsi Surat -->
-    <div class="mb-8 text-sm text-slate-700 leading-relaxed space-y-4">
-        <p>Dengan hormat,</p>
-        <p>Bersama surat ini kami lampirkan rincian Purchase Order untuk pengadaan material/komponen dari perusahaan Anda.</p>
+    <!-- Deskripsi Pembuka -->
+    <div style="font-size:11.5px; color:#334155; line-height:1.7; margin-bottom:20px;">
+        <p style="margin:0 0 6px 0;">Dengan hormat,</p>
+        <p style="margin:0;">Bersama surat ini kami menyampaikan Purchase Order resmi untuk pengadaan material/komponen berikut. Mohon untuk dapat memproses pesanan sesuai spesifikasi dan ketentuan yang tercantum di bawah ini.</p>
     </div>
 
-    <!-- Tabel Rincian -->
-    <table class="w-full mb-8 text-sm border-collapse">
+    <!-- Tabel Daftar Barang -->
+    <table class="print-table" style="width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:24px;">
         <thead>
-            <tr class="border-b-2 border-slate-800 text-slate-800 text-left">
-                <th class="py-3 px-2">No</th>
-                <th class="py-3 px-2">Deskripsi Item</th>
-                <th class="py-3 px-2 text-center">Qty</th>
-                <th class="py-3 px-2 text-right">Harga Satuan (Rp)</th>
-                <th class="py-3 px-2 text-right">Total (Rp)</th>
+            <tr style="background-color:#f1f5f9;">
+                <th style="border-bottom:2px solid #1e293b; border-top:1px solid #cbd5e1; padding:9px 6px; text-align:center; font-weight:700; color:#1e293b; width:32px;">No</th>
+                <th style="border-bottom:2px solid #1e293b; border-top:1px solid #cbd5e1; padding:9px 8px; text-align:left; font-weight:700; color:#1e293b;">Deskripsi Barang</th>
+                <th style="border-bottom:2px solid #1e293b; border-top:1px solid #cbd5e1; padding:9px 6px; text-align:center; font-weight:700; color:#1e293b; width:80px;">Qty</th>
+                <th style="border-bottom:2px solid #1e293b; border-top:1px solid #cbd5e1; padding:9px 8px; text-align:right; font-weight:700; color:#1e293b; width:140px;">Harga Satuan (Rp)</th>
+                <th style="border-bottom:2px solid #1e293b; border-top:1px solid #cbd5e1; padding:9px 8px; text-align:right; font-weight:700; color:#1e293b; width:140px;">Total (Rp)</th>
             </tr>
         </thead>
-        <tbody id="pdf-po-tbody" class="divide-y divide-slate-200">
-            <!-- Rows injected here -->
+        <tbody id="pdf-po-tbody">
+            <!-- Rows injected by JS -->
         </tbody>
         <tfoot>
-            <tr class="border-t-2 border-slate-800 font-bold text-slate-900">
-                <td colspan="4" class="py-4 px-2 text-right uppercase">Grand Total</td>
-                <td id="pdf-po-grand-total" class="py-4 px-2 text-right font-data-mono text-lg">0</td>
+            <tr style="background-color:#f8fafc;">
+                <td colspan="3" style="border-top:2px solid #1e293b; padding:12px 8px; text-align:right; font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Subtotal Barang</td>
+                <td colspan="2" id="pdf-po-subtotal" style="border-top:2px solid #1e293b; padding:12px 8px; text-align:right; font-weight:700; font-family:'JetBrains Mono',monospace;">Rp 0</td>
+            </tr>
+            <tr>
+                <td colspan="3" style="padding:4px 8px; text-align:right; font-size:10px; color:#94a3b8;">PPN (0%)</td>
+                <td colspan="2" style="padding:4px 8px; text-align:right; font-size:10px; color:#94a3b8; font-family:'JetBrains Mono',monospace;">Rp 0</td>
+            </tr>
+            <tr style="background-color:#00288e;">
+                <td colspan="3" style="padding:12px 8px; text-align:right; font-weight:800; color:#ffffff; text-transform:uppercase; letter-spacing:1px; font-size:12px;">GRAND TOTAL</td>
+                <td colspan="2" id="pdf-po-grand-total" style="padding:12px 8px; text-align:right; font-weight:900; color:#ffffff; font-family:'JetBrains Mono',monospace; font-size:14px;">Rp 0</td>
             </tr>
         </tfoot>
     </table>
 
+    <!-- Catatan PO -->
+    <div id="pdf-po-catatan-wrap" style="margin-bottom:28px; padding:12px 16px; background:#fafafa; border:1px solid #e2e8f0; border-left:4px solid #00288e; border-radius:4px;">
+        <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:#94a3b8; margin-bottom:4px;">Catatan / Keterangan Khusus</div>
+        <div id="pdf-po-catatan" style="font-size:11px; color:#475569; font-style:italic;">-</div>
+    </div>
+
+    <!-- Syarat & Ketentuan -->
+    <div style="margin-bottom:36px; font-size:10px; color:#64748b; line-height:1.7;">
+        <div style="font-weight:700; margin-bottom:4px; color:#334155;">Syarat & Ketentuan:</div>
+        <ol style="margin:0; padding-left:16px;">
+            <li>Harga yang tercantum sudah termasuk ongkos kirim ke lokasi Motekar Bike Assy.</li>
+            <li>Pembayaran dilakukan sesuai Payment Terms yang disepakati setelah barang diterima dan GRN diverifikasi.</li>
+            <li>Barang yang tidak sesuai spesifikasi berhak dikembalikan kepada supplier.</li>
+            <li>PO ini sah dan mengikat setelah ditandatangani oleh pihak yang berwenang.</li>
+        </ol>
+    </div>
+
     <!-- Tanda Tangan -->
-    <div class="flex justify-between text-sm mt-20">
-        <div class="text-center w-48">
-            <p class="text-slate-500 mb-20">Diterima Oleh,</p>
-            <p class="font-bold text-slate-900 border-b border-slate-900 pb-1 mb-1">Nama / Stempel Pihak Kedua</p>
+    <div style="display:flex; justify-content:space-between; margin-top:16px;">
+        <div style="text-align:center; width:180px;">
+            <div style="font-size:10px; color:#64748b; margin-bottom:56px;">Diterima Oleh,</div>
+            <div style="border-top:1px solid #0f172a; padding-top:6px;">
+                <div style="font-weight:700; font-size:11px; color:#0f172a;">( ........................................... )</div>
+                <div style="font-size:9px; color:#94a3b8; margin-top:2px;">Nama & Stempel Supplier</div>
+            </div>
         </div>
-        <div class="text-center w-64">
-            <p class="text-slate-500 mb-20">Hormat Kami,</p>
-            <p class="font-bold text-slate-900 underline underline-offset-4 decoration-2">Manajemen Motekar</p>
-            <p class="text-xs text-slate-500 mt-1">Authorized Signature</p>
+        <div style="text-align:center; width:200px;">
+            <div style="font-size:10px; color:#64748b; margin-bottom:56px;">Disetujui & Diterbitkan Oleh,</div>
+            <div style="border-top:1px solid #0f172a; padding-top:6px;">
+                <div style="font-weight:800; font-size:11px; color:#0f172a;">Manajemen Motekar</div>
+                <div style="font-size:9px; color:#94a3b8; margin-top:2px;">Authorized Signature</div>
+            </div>
         </div>
     </div>
+
+    <!-- Footer Dokumen -->
+    <div style="margin-top:32px; padding-top:12px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; font-size:9px; color:#94a3b8;">
+        <span>Dokumen ini dicetak dari Sistem ERP Motekar Bike Assy</span>
+        <span id="pdf-po-printed-at"></span>
+    </div>
+
 </div>
 
 </body>

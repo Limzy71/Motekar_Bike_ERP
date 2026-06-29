@@ -1,6 +1,7 @@
 import { initRBAC } from '../components/rbac.js';
 import { apiFetch, getUserData } from '../api.js';
 import { renderPaginationUI } from '../utils/pagination.js';
+import { openPrintWindow, formatRupiahPrint } from '../utils/printDocument.js';
 
 interface PODetail {
     id: number;
@@ -78,65 +79,89 @@ function fillPrintPO(po: any) {
     const elPaymentTerms = document.getElementById('pdf-po-payment-terms');
     const elTbody = document.getElementById('pdf-po-tbody');
     const elGrandTotal = document.getElementById('pdf-po-grand-total');
+    const elSubtotal = document.getElementById('pdf-po-subtotal');
+    const elCatatan = document.getElementById('pdf-po-catatan');
+    const elPrintedAt = document.getElementById('pdf-po-printed-at');
 
     if (elMitra) elMitra.textContent = po.nama_vendor || '-';
     if (elAlamat) elAlamat.textContent = po.alamat_vendor || '-';
     if (elNo) elNo.textContent = po.nomor_po;
-    if (elTgl) elTgl.textContent = new Date(po.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    
+    if (elTgl) {
+        const d = po.created_at ? new Date(po.created_at) : new Date();
+        elTgl.textContent = isNaN(d.getTime()) ? '-' : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
     // Status Approval
     let approvalLabel = 'Menunggu Persetujuan';
-    let approvalClass = 'text-amber-600';
+    let approvalColor = '#d97706'; // amber
     if (po.status === 'DRAFT') {
         approvalLabel = 'Draf / Belum Diajukan';
-        approvalClass = 'text-slate-500';
+        approvalColor = '#64748b';
+    } else if (po.status === 'ISSUED') {
+        approvalLabel = 'Menunggu Persetujuan Executive';
+        approvalColor = '#d97706';
     } else if (po.status === 'REJECTED') {
         approvalLabel = 'Ditolak';
-        approvalClass = 'text-rose-600';
+        approvalColor = '#e11d48';
     } else if (['APPROVED', 'SENT_TO_VENDOR', 'COMPLETED'].includes(po.status)) {
-        approvalLabel = 'Disetujui';
-        approvalClass = 'text-emerald-600';
+        approvalLabel = 'Disetujui ✓';
+        approvalColor = '#059669';
     }
     if (elApproval) {
         elApproval.textContent = approvalLabel;
-        elApproval.className = `py-1 font-bold ${approvalClass}`;
+        (elApproval as HTMLElement).style.color = approvalColor;
     }
 
     // Status Pengiriman
     let pengirimanLabel = 'Belum Dikirim';
-    let pengirimanClass = 'text-slate-500';
+    let pengirimanColor = '#64748b';
     if (po.status === 'SENT_TO_VENDOR') {
-        pengirimanLabel = 'Dalam Perjalanan / Dikirim';
-        pengirimanClass = 'text-indigo-600';
+        pengirimanLabel = 'Dalam Perjalanan';
+        pengirimanColor = '#4f46e5';
     } else if (po.status === 'COMPLETED') {
-        pengirimanLabel = 'Telah Diterima (GRN Selesai)';
-        pengirimanClass = 'text-emerald-600';
+        pengirimanLabel = 'Telah Diterima (GRN Selesai) ✓';
+        pengirimanColor = '#059669';
     }
     if (elPengiriman) {
         elPengiriman.textContent = pengirimanLabel;
-        elPengiriman.className = `py-1 font-bold ${pengirimanClass}`;
+        (elPengiriman as HTMLElement).style.color = pengirimanColor;
     }
 
-    // Payment Terms (Default to Net 30, but can read from catatan if format match)
+    // Payment Terms
     let paymentTerms = 'Net 30 Hari (Transfer Bank)';
     if (po.catatan && po.catatan.toLowerCase().includes('termin')) {
         paymentTerms = po.catatan;
     }
     if (elPaymentTerms) elPaymentTerms.textContent = paymentTerms;
 
-    if (elGrandTotal) elGrandTotal.textContent = formatIndoNumber(parseFloat(po.total_nilai));
+    // Catatan
+    if (elCatatan) elCatatan.textContent = po.catatan || 'Tidak ada catatan khusus.';
+
+    // Timestamp cetak
+    if (elPrintedAt) {
+        const now = new Date();
+        elPrintedAt.textContent = `Dicetak: ${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} pukul ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
+    }
+
+    const totalNilai = parseFloat(po.total_nilai) || 0;
+    if (elGrandTotal) elGrandTotal.textContent = formatRupiah(totalNilai);
+    if (elSubtotal) elSubtotal.textContent = formatRupiah(totalNilai);
 
     if (elTbody && po.items) {
         elTbody.innerHTML = '';
         po.items.forEach((item: any, idx: number) => {
-            const subtotal = parseFloat(item.harga_satuan) * item.qty;
+            const harga = parseFloat(item.harga_satuan) || 0;
+            const subtotal = harga * item.qty;
             elTbody.innerHTML += `
                 <tr>
-                    <td class="py-4 px-2 font-medium">${idx + 1}</td>
-                    <td class="py-4 px-2 font-bold text-slate-900">${item.nama_barang}</td>
-                    <td class="py-4 px-2 text-center font-bold">${item.qty} ${item.satuan}</td>
-                    <td class="py-4 px-2 text-right font-data-mono">${formatIndoNumber(parseFloat(item.harga_satuan))}</td>
-                    <td class="py-4 px-2 text-right font-data-mono font-bold text-slate-900">${formatIndoNumber(subtotal)}</td>
+                    <td style="border-bottom:1px solid #e2e8f0; padding:10px 6px; text-align:center; color:#64748b; font-size:11px;">${idx + 1}</td>
+                    <td style="border-bottom:1px solid #e2e8f0; padding:10px 8px;">
+                        <div style="font-weight:700; color:#0f172a; font-size:12px;">${item.nama_barang}</div>
+                        <div style="font-size:9px; color:#94a3b8; margin-top:2px; font-family:'JetBrains Mono',monospace;">${item.kode_barang || ''}</div>
+                    </td>
+                    <td style="border-bottom:1px solid #e2e8f0; padding:10px 6px; text-align:center; font-weight:700; font-size:12px;">${item.qty} <span style="font-size:9px; color:#94a3b8;">${item.satuan || 'pcs'}</span></td>
+                    <td style="border-bottom:1px solid #e2e8f0; padding:10px 8px; text-align:right; font-family:'JetBrains Mono',monospace; font-size:11px; color:#475569;">${formatRupiah(harga)}</td>
+                    <td style="border-bottom:1px solid #e2e8f0; padding:10px 8px; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12px; color:#0f172a;">${formatRupiah(subtotal)}</td>
                 </tr>
             `;
         });
@@ -431,8 +456,69 @@ function openRightDrawer(po: POHeader) {
     btnPrint.className = 'w-full py-3 bg-slate-800 text-white hover:bg-slate-900 shadow-sm rounded-xl font-bold text-sm transition-colors flex justify-center items-center gap-2 mt-2';
     btnPrint.innerHTML = `<span class="material-symbols-outlined text-[18px]">print</span> Cetak Purchase Order`;
     btnPrint.onclick = () => {
-        fillPrintPO(po);
-        window.print();
+        // Status labels
+        let approvalLabel = 'Menunggu Persetujuan';
+        if (po.status === 'DRAFT') approvalLabel = 'Draf / Belum Diajukan';
+        else if (po.status === 'ISSUED') approvalLabel = 'Menunggu Persetujuan Executive';
+        else if (po.status === 'REJECTED') approvalLabel = 'Ditolak';
+        else if (['APPROVED', 'SENT_TO_VENDOR', 'COMPLETED'].includes(po.status)) approvalLabel = 'Disetujui ✓';
+
+        let pengirimanLabel = 'Belum Dikirim';
+        if (po.status === 'SENT_TO_VENDOR') pengirimanLabel = 'Dalam Perjalanan';
+        else if (po.status === 'COMPLETED') pengirimanLabel = 'Telah Diterima (GRN Selesai) ✓';
+
+        const paymentTerms = (po.catatan && po.catatan.toLowerCase().includes('termin'))
+            ? po.catatan
+            : 'Net 30 Hari (Transfer Bank)';
+
+        const docDate = po.created_at
+            ? new Date(po.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '-';
+
+        const totalNilai = parseFloat(po.total_nilai) || 0;
+
+        openPrintWindow({
+            docType: 'Purchase Order',
+            docNumber: po.nomor_po,
+            docDate: docDate,
+            status: approvalLabel,
+            headerFields: [
+                { label: 'Nama Supplier', value: po.nama_vendor || '-' },
+                { label: 'Alamat Supplier', value: po.alamat_vendor || '-' },
+                { label: 'Status Approval', value: approvalLabel },
+                { label: 'Status Pengiriman', value: pengirimanLabel },
+                { label: 'Payment Terms', value: paymentTerms },
+                { label: 'Catatan', value: po.catatan || 'Tidak ada catatan khusus' },
+            ],
+            columns: [
+                { label: 'No', key: 'no', align: 'center' },
+                { label: 'Kode Barang', key: 'kode_barang', align: 'left' },
+                { label: 'Nama Barang', key: 'nama_barang', align: 'left' },
+                { label: 'Qty', key: 'qty_display', align: 'center' },
+                { label: 'Harga Satuan (Rp)', key: 'harga_display', align: 'right' },
+                { label: 'Total (Rp)', key: 'subtotal_display', align: 'right' },
+            ],
+            items: (po.items || []).map((item: any, idx: number) => {
+                const harga = parseFloat(item.harga_satuan) || 0;
+                const subtotal = harga * item.qty;
+                return {
+                    no: idx + 1,
+                    kode_barang: item.kode_barang || '-',
+                    nama_barang: item.nama_barang,
+                    qty_display: `${item.qty} ${item.satuan || 'pcs'}`,
+                    harga_display: formatRupiahPrint(harga),
+                    subtotal_display: formatRupiahPrint(subtotal),
+                };
+            }),
+            totalLabel: 'GRAND TOTAL',
+            totalValue: formatRupiahPrint(totalNilai),
+            notes: po.catatan || undefined,
+            signatures: [
+                { title: 'Diterima Oleh', name: 'Nama & Stempel Supplier' },
+                { title: 'Disetujui & Diterbitkan Oleh', name: 'Manajemen Motekar' },
+            ],
+            footer: `Dokumen ini diterbitkan oleh Sistem ERP Motekar Bike Assy · ${po.nomor_po} · Dicetak: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+        });
     };
     execBay.appendChild(btnPrint);
 
