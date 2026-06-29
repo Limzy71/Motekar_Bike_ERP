@@ -46,6 +46,8 @@ let currentSearch: string = '';
 let outboundSOs: OutboundSO[] = [];
 
 let currentPage = 1;
+let currentOutboundPage = 1;
+let currentReceiptPage = 1;
 const itemsPerPage = 10;
 
 // ============================================================
@@ -317,10 +319,20 @@ function renderOutboundTable() {
 
     if (outboundSOs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada antrean pengiriman 3PL saat ini.</td></tr>`;
+        renderPaginationUI('outbound-pagination-pagination', 'outbound-pagination-info', 1, itemsPerPage, 0, () => {});
         return;
     }
 
-    outboundSOs.forEach(so => {
+    const totalItems = outboundSOs.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (currentOutboundPage < 1) currentOutboundPage = 1;
+    if (currentOutboundPage > totalPages) currentOutboundPage = totalPages;
+
+    const startIndex = (currentOutboundPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const currentItems = outboundSOs.slice(startIndex, endIndex);
+
+    currentItems.forEach(so => {
         let totalItems = 0;
         if (so.items) {
             totalItems = so.items.reduce((sum, item) => sum + parseInt(item.qty || '0', 10), 0);
@@ -359,6 +371,18 @@ function renderOutboundTable() {
         `;
         tbody.appendChild(tr);
     });
+
+    renderPaginationUI(
+        'outbound-pagination-pagination',
+        'outbound-pagination-info',
+        currentOutboundPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentOutboundPage = newPage;
+            renderOutboundTable();
+        }
+    );
 }
 
 (window as any).openDispatchModal = (id: number, no_so: string) => {
@@ -1017,12 +1041,22 @@ function renderReceiptTable() {
     if (pendingPOs.length === 0) {
         if (btnBulk) btnBulk.classList.add('hidden');
         tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada Purchase Order yang menunggu penerimaan.</td></tr>`;
+        renderPaginationUI('pending-pagination-pagination', 'pending-pagination-info', 1, itemsPerPage, 0, () => {});
         return;
     } else {
         if (btnBulk) btnBulk.classList.remove('hidden');
     }
 
-    pendingPOs.forEach(po => {
+    const totalItems = pendingPOs.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (currentReceiptPage < 1) currentReceiptPage = 1;
+    if (currentReceiptPage > totalPages) currentReceiptPage = totalPages;
+
+    const startIndex = (currentReceiptPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const currentItems = pendingPOs.slice(startIndex, endIndex);
+
+    currentItems.forEach(po => {
         let statusBadge = '';
         if (po.status === 'APPROVED') {
             statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-amber-50 text-amber-700 border-amber-200">APPROVED</span>`;
@@ -1048,6 +1082,18 @@ function renderReceiptTable() {
         `;
         tbody.appendChild(tr);
     });
+
+    renderPaginationUI(
+        'pending-pagination-pagination',
+        'pending-pagination-info',
+        currentReceiptPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentReceiptPage = newPage;
+            renderReceiptTable();
+        }
+    );
 }
 
 (window as any).openReceiptModal = async (id: number, no_po: string) => {
