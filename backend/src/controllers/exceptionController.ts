@@ -274,7 +274,7 @@ export const rejectWriteOff = async (req: Request, res: Response) => {
 export const getWriteOffs = async (req: Request, res: Response) => {
     try {
         const [rows] = await pool.query(`
-            SELECT w.id_writeoff, w.kode_item, w.qty_hilang, w.alasan_hilang, w.status_approval, w.created_at 
+            SELECT w.id_writeoff, w.kode_item, w.qty_hilang, w.alasan_hilang, w.bukti_berita_acara, w.status_approval, w.created_at 
             FROM exception_writeoff w
             WHERE w.status_approval = 'PENDING'
             OR EXISTS (

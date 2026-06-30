@@ -3,7 +3,7 @@
  * Memenuhi spesifikasi Motekar Enterprise Design System (MEDS).
  */
 
-import { apiFetch } from '../api.js';
+import { apiFetch, getUserData } from '../api.js';
 import { initRBAC, showToast } from '../components/rbac.js';
 import { renderPaginationUI } from '../utils/pagination.js';
 import { openPrintWindow, openReportWindow } from '../utils/printDocument.js';
@@ -893,6 +893,9 @@ async function loadWriteOffs() {
     const tbody = document.getElementById('tbody-writeoff');
     if (!tbody) return;
 
+    const user = getUserData();
+    const userRole = user ? user.divisi_role : '';
+
     try {
         const response = await apiFetch<any>('exception/writeoff');
         if (response.success) {
@@ -915,9 +918,9 @@ async function loadWriteOffs() {
                     <td class="px-4 py-3 text-slate-600 max-w-[200px] truncate" title="${wo.alasan_hilang}">${wo.alasan_hilang}</td>
                     <td class="px-4 py-3 text-center">${badge}</td>
                     <td class="px-4 py-3 text-center">
-                        ${wo.status_approval === 'PENDING' && (localStorage.getItem('userRole') === 'Owner' || localStorage.getItem('userRole') === 'General Manager') ? 
-                            `<button onclick="window.approveWriteoff(${wo.id_writeoff})" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold hover:bg-emerald-600 hover:text-white transition-colors mr-1">Approve</button>
-                             <button onclick="window.rejectWriteoff(${wo.id_writeoff})" class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold hover:bg-rose-600 hover:text-white transition-colors">Reject</button>`
+                        ${wo.status_approval === 'PENDING' && (userRole === 'Owner' || userRole === 'General Manager') ? 
+                            `<button onclick="window.approveWriteoff('${wo.id_writeoff}')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold hover:bg-emerald-600 hover:text-white transition-colors mr-1">Approve</button>
+                             <button onclick="window.rejectWriteoff('${wo.id_writeoff}')" class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold hover:bg-rose-600 hover:text-white transition-colors">Reject</button>`
                         : ''}
                         <button onclick="window.open('http://localhost:5050/uploads/exception/writeoff/${wo.bukti_berita_acara}', '_blank')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors ml-1">Cetak / Lihat</button>
                     </td>
@@ -1627,14 +1630,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 30000);
 });
 
-(window as any).approveWriteoff = async (id: number) => {
+(window as any).approveWriteoff = async (id: string | number) => {
             if (confirm('Approve write-off ini?')) {
                 const res = await apiFetch<any>(`exception/writeoff/${id}/approve`, { method: 'PATCH' });
                 showToast(res.message, !res.success);
                 if (res.success) loadWriteOffs();
             }
         };
-(window as any).rejectWriteoff = async (id: number) => {
+(window as any).rejectWriteoff = async (id: string | number) => {
             if (confirm('Reject write-off ini?')) {
                 const res = await apiFetch<any>(`exception/writeoff/${id}/reject`, { method: 'PATCH' });
                 showToast(res.message, !res.success);
