@@ -1658,19 +1658,50 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 (window as any).approveWriteoff = async (id: string | number) => {
-            if (confirm('Approve write-off ini?')) {
-                const res = await apiFetch<any>(`exception/writeoff/${id}/approve`, { method: 'PATCH' });
-                showToast(res.message, !res.success);
-                if (res.success) loadWriteOffs();
-            }
-        };
+    const result = await (window as any).Swal.fire({
+        title: 'Setujui Pengajuan Write-Off?',
+        text: 'Tindakan ini akan memotong jumlah persediaan stok barang secara permanen dan mencatat pengakuan beban kerugian pada sistem jurnal keuangan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Setujui',
+        cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await apiFetch<any>(`exception/writeoff/${id}/approve`, { method: 'PATCH' });
+        showToast(res.message, !res.success);
+        if (res.success) loadWriteOffs();
+    } catch (err) {
+        showToast('Gagal menyetujui pengajuan write-off.', true);
+    }
+};
+
 (window as any).rejectWriteoff = async (id: string | number) => {
-            if (confirm('Reject write-off ini?')) {
-                const res = await apiFetch<any>(`exception/writeoff/${id}/reject`, { method: 'PATCH' });
-                showToast(res.message, !res.success);
-                if (res.success) loadWriteOffs();
-            }
-        };
+    const result = await (window as any).Swal.fire({
+        title: 'Tolak Pengajuan Write-Off?',
+        text: 'Tindakan ini akan menolak penghapusan stok persediaan barang. Stok barang tidak akan mengalami pengurangan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Tolak',
+        cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await apiFetch<any>(`exception/writeoff/${id}/reject`, { method: 'PATCH' });
+        showToast(res.message, !res.success);
+        if (res.success) loadWriteOffs();
+    } catch (err) {
+        showToast('Gagal menolak pengajuan write-off.', true);
+    }
+};
 
 (window as any).rescheduleDelivery = async (id: number) => {
     const result = await (window as any).Swal.fire({
