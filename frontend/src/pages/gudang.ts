@@ -901,14 +901,33 @@ async function loadWriteOffs() {
         if (response.success) {
             tbody.innerHTML = '';
             if (response.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada antrean write-off.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada antrean write-off.</td></tr>`;
                 return;
             }
             response.data.forEach((wo: any) => {
                 let badge = '';
-                if (wo.status_approval === 'PENDING') badge = `<span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-100 text-amber-700">PENDING</span>`;
-                else if (wo.status_approval === 'APPROVED') badge = `<span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">APPROVED</span>`;
-                else badge = `<span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700">REJECTED</span>`;
+                if (wo.status_approval === 'PENDING') {
+                    badge = `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50 rounded-full">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                            PENDING
+                        </span>
+                    `;
+                } else if (wo.status_approval === 'APPROVED') {
+                    badge = `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50 rounded-full">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            APPROVED
+                        </span>
+                    `;
+                } else {
+                    badge = `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/50 rounded-full">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                            REJECTED
+                        </span>
+                    `;
+                }
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -917,19 +936,27 @@ async function loadWriteOffs() {
                     <td class="px-4 py-3 text-center font-data-mono font-bold">${wo.qty_hilang}</td>
                     <td class="px-4 py-3 text-slate-600 max-w-[200px] truncate" title="${wo.alasan_hilang}">${wo.alasan_hilang}</td>
                     <td class="px-4 py-3 text-center">${badge}</td>
-                    <td class="px-4 py-3 text-center">
-                        ${wo.status_approval === 'PENDING' && (userRole === 'Owner' || userRole === 'General Manager') ? 
-                            `<button onclick="window.approveWriteoff('${wo.id_writeoff}')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold hover:bg-emerald-600 hover:text-white transition-colors mr-1">Approve</button>
-                             <button onclick="window.rejectWriteoff('${wo.id_writeoff}')" class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold hover:bg-rose-600 hover:text-white transition-colors">Reject</button>`
-                        : ''}
-                        <button onclick="window.open('http://localhost:5050/uploads/exception/writeoff/${wo.bukti_berita_acara}', '_blank')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors ml-1">Cetak / Lihat</button>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center justify-center gap-1.5">
+                            ${wo.status_approval === 'PENDING' && (userRole === 'Owner' || userRole === 'General Manager') ? `
+                                <button onclick="window.approveWriteoff('${wo.id_writeoff}')" class="px-2.5 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-2xs flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">check_circle</span> Setuju
+                                </button>
+                                <button onclick="window.rejectWriteoff('${wo.id_writeoff}')" class="px-2.5 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-2xs flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">cancel</span> Tolak
+                                </button>
+                            ` : ''}
+                            <button onclick="window.open('http://localhost:5050/uploads/exception/writeoff/${wo.bukti_berita_acara}', '_blank')" class="px-2.5 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg font-bold text-xs transition-colors shadow-2xs flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">visibility</span> Lihat Dokumen
+                            </button>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat write-off.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat write-off.</td></tr>`;
     }
 }
 
