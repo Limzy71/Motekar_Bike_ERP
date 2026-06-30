@@ -358,7 +358,7 @@ export const fulfillSO = async (req: Request, res: Response): Promise<void> => {
 
     // 2. Check Detail Items "All-or-Nothing"
     const [detailRows]: any = await connection.query(
-      'SELECT id, id_inventory_barang_jadi, qty, status_item, hpp_satuan_tercatat FROM penjualan_so_detail WHERE id_so_header = ?',
+      'SELECT id, id_inventory_barang_jadi, qty, status_item, hpp_satuan_tercatat, id_wo_terkait FROM penjualan_so_detail WHERE id_so_header = ?',
       [soId]
     );
 
@@ -377,10 +377,19 @@ export const fulfillSO = async (req: Request, res: Response): Promise<void> => {
         throw new Error(`Stok fisik untuk ID Barang ${item.id_inventory_barang_jadi} mendadak kurang dari qty SO!`);
       }
 
-      await connection.query(
-        'UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE id = ?',
-        [item.qty, item.id_inventory_barang_jadi]
-      );
+      if (item.id_wo_terkait === null) {
+        // Jika diproduksi make-to-stock / soft-allocated dari awal, potong jumlah_stok & stok_committed
+        await connection.query(
+          'UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ?, stok_committed = GREATEST(0, stok_committed - ?) WHERE id = ?',
+          [item.qty, item.qty, item.id_inventory_barang_jadi]
+        );
+      } else {
+        // Jika hasil make-to-order (perakitan WO selesai), hanya potong jumlah_stok
+        await connection.query(
+          'UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE id = ?',
+          [item.qty, item.id_inventory_barang_jadi]
+        );
+      }
     }
 
     // 4. Update Status SO
