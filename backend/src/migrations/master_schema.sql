@@ -248,6 +248,7 @@ CREATE TABLE `operasi_wo_header` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `catatan_rework` text,
   `qc_history` json DEFAULT NULL,
+  `target_selesai` date DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `nomor_wo` (`nomor_wo`),
   KEY `id_inventory_fg` (`id_inventory_fg`),
