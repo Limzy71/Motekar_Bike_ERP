@@ -552,6 +552,14 @@ function setupModalDispatch(): void {
         }
     });
 
+    // Event listener to delete/clear selected photo in preview
+    const btnDeletePreview = document.getElementById('btn-delete-preview-3pl');
+    btnDeletePreview?.addEventListener('click', () => {
+        fileInput.value = '';
+        if (previewImg) previewImg.src = '';
+        previewContainer?.classList.add('hidden');
+    });
+
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -574,42 +582,29 @@ function setupModalDispatch(): void {
         if (spinner) { spinner.classList.remove('hidden'); spinner.classList.add('animate-spin'); }
 
         try {
-            // Convert file to Base64 (e-POD Digital Evidence)
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                const base64Foto = reader.result as string;
+            const formData = new FormData();
+            formData.append('vendor', vendor);
+            formData.append('resi', resi);
+            formData.append('supir', supir);
+            formData.append('plat', plat);
+            formData.append('no_telepon', no_telepon);
+            formData.append('foto_serah_terima_3pl', fileInput.files[0]);
 
-                try {
-                    const response = await apiFetch<ActionResponse>(`penjualan/so/${id}/ship`, {
-                      method: 'PATCH',
-                      body: JSON.stringify({ vendor, resi, foto: base64Foto, supir, plat, no_telepon })
-                    });
+            const response = await apiFetch<ActionResponse>(`penjualan/so/${id}/ship`, {
+                method: 'PATCH',
+                body: formData
+            });
 
-                    if (response.success) {
-                        showToast(response.message);
-                        closeModal();
-                        loadOutboundLogistics(); // Refresh table
-                    } else {
-                        showToast(response.message, true);
-                    }
-                } catch (apiErr) {
-                    showToast('Terjadi kesalahan koneksi API.', true);
-                } finally {
-                    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-80', 'cursor-wait'); }
-                    if (spinner) { spinner.classList.add('hidden'); spinner.classList.remove('animate-spin'); }
-                }
-            };
-            reader.onerror = () => {
-                showToast('Gagal membaca file foto.', true);
-                if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-80', 'cursor-wait'); }
-                if (spinner) { spinner.classList.add('hidden'); spinner.classList.remove('animate-spin'); }
-            };
-
-        } catch (err) {
-            showToast('Terjadi kesalahan memproses foto.', true);
+            if (response.success) {
+                showToast(response.message);
+                closeModal();
+                loadOutboundLogistics(); // Refresh table
+            } else {
+                showToast(response.message, true);
+            }
+        } catch (apiErr) {
+            showToast('Terjadi kesalahan koneksi API.', true);
+        } finally {
             if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-80', 'cursor-wait'); }
             if (spinner) { spinner.classList.add('hidden'); spinner.classList.remove('animate-spin'); }
         }

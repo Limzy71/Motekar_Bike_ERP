@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import pool from '../config/database.js';
 import { insertJurnal } from './keuanganController.js';
 import { resolveAllocations } from './operasiController.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Controller untuk Modul Penjualan & Penagihan (Order-to-Cash & Dual-Track Engine).
@@ -422,13 +424,26 @@ export const fulfillSO = async (req: Request, res: Response): Promise<void> => {
 export const shipSO = async (req: Request, res: Response): Promise<void> => {
   try {
     const soId = parseInt(req.params.id, 10);
-    const { vendor, resi, foto, supir, plat, no_telepon } = req.body;
+    const { vendor, resi, supir, plat, no_telepon } = req.body;
+    const file = req.file;
     
     if (isNaN(soId)) throw new Error('ID SO tidak valid.');
+    if (!file) throw new Error('Bukti foto serah terima (e-POD) wajib diunggah!');
     
-    const [headerRows]: any = await pool.query('SELECT status_so FROM penjualan_so_header WHERE id = ?', [soId]);
+    const foto = file.filename;
+    
+    const [headerRows]: any = await pool.query('SELECT status_so, foto_serah_terima_3pl FROM penjualan_so_header WHERE id = ?', [soId]);
     if (headerRows.length === 0) throw new Error('SO tidak ditemukan.');
     if (headerRows[0].status_so !== 'RESERVED') throw new Error('Hanya pesanan berstatus RESERVED yang bisa di-dispatch.');
+
+    // Hapus foto lama jika ada
+    const oldFoto = headerRows[0].foto_serah_terima_3pl;
+    if (oldFoto) {
+      const oldPath = path.join(process.cwd(), 'public/uploads/epod/ship', oldFoto);
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
 
     await pool.query(
       'UPDATE penjualan_so_header SET status_so = ?, vendor_3pl = ?, nomor_resi_3pl = ?, foto_serah_terima_3pl = ?, nama_supir = ?, plat_nomor = ?, no_telepon_supir = ? WHERE id = ?',
@@ -436,6 +451,36 @@ export const shipSO = async (req: Request, res: Response): Promise<void> => {
     );
 
     res.json({ success: true, message: `Berhasil di-dispatch via ${vendor}. Status menjadi SHIPPED.` });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================================
+// 4b. [DELETE] /api/penjualan/so/:id/ship-photo (Delete Dispatch Photo)
+// ============================================================
+export const deleteShipPhoto = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const soId = parseInt(req.params.id, 10);
+    if (isNaN(soId)) throw new Error('ID SO tidak valid.');
+
+    const [headerRows]: any = await pool.query('SELECT foto_serah_terima_3pl FROM penjualan_so_header WHERE id = ?', [soId]);
+    if (headerRows.length === 0) throw new Error('SO tidak ditemukan.');
+    
+    const foto = headerRows[0].foto_serah_terima_3pl;
+    if (foto) {
+      const filePath = path.join(process.cwd(), 'public/uploads/epod/ship', foto);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    await pool.query(
+      'UPDATE penjualan_so_header SET foto_serah_terima_3pl = NULL WHERE id = ?',
+      [soId]
+    );
+
+    res.json({ success: true, message: 'Foto bukti serah terima berhasil dihapus.' });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
