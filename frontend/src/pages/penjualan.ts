@@ -392,8 +392,8 @@ function openRightDrawerSO(so: SOHeader) {
             <button onclick="window.confirmDelivered(${so.id})" class="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-[18px]">check_circle</span> Konfirmasi Diterima (DELIVERED)
             </button>
-            <button onclick="window.reportFailed(${so.id})" class="flex-none px-4 py-2.5 bg-rose-100 text-rose-700 rounded-xl font-bold text-sm shadow-sm hover:bg-rose-200 transition-all flex items-center justify-center gap-2" title="Lapor Gagal Kirim">
-                <span class="material-symbols-outlined text-[18px]">warning</span>
+            <button onclick="window.reportFailed(${so.id})" class="flex-1 px-4 py-2.5 bg-rose-100 text-rose-700 rounded-xl font-bold text-sm shadow-sm hover:bg-rose-200 transition-all flex items-center justify-center gap-2" title="Lapor Gagal Kirim">
+                <span class="material-symbols-outlined text-[18px]">warning</span> Gagal Kirim
             </button>
         `;
     } else if (so.status_so === 'DELIVERED') {
