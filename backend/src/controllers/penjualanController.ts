@@ -57,6 +57,61 @@ export const getAllSO = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    // Self-healing check for BACKORDER SOs where stock is now available
+    const [backorderDetails]: any = await pool.query(`
+      SELECT d.id as id_detail, d.id_so_header, d.id_inventory_barang_jadi, d.qty,
+             i.jumlah_stok, i.stok_committed
+      FROM penjualan_so_detail d
+      JOIN penjualan_so_header h ON d.id_so_header = h.id
+      JOIN inventory_stok i ON d.id_inventory_barang_jadi = i.id
+      WHERE h.status_so = 'BACKORDER' AND d.status_item = 'DEFISIT' AND d.id_wo_terkait IS NULL
+    `);
+
+    if (backorderDetails.length > 0) {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        for (const item of backorderDetails) {
+          const qty = parseInt(item.qty);
+          const [stokRows]: any = await connection.query(
+            'SELECT jumlah_stok, stok_committed FROM inventory_stok WHERE id = ? FOR UPDATE',
+            [item.id_inventory_barang_jadi]
+          );
+          const stokFisik = stokRows[0].jumlah_stok;
+          const stokCommitted = stokRows[0].stok_committed || 0;
+          const stokAvailable = stokFisik - stokCommitted;
+
+          if (stokAvailable >= qty) {
+            await connection.query(
+              'UPDATE inventory_stok SET stok_committed = stok_committed + ? WHERE id = ?',
+              [qty, item.id_inventory_barang_jadi]
+            );
+            await connection.query(
+              'UPDATE penjualan_so_detail SET status_item = "TERSEDIA" WHERE id = ?',
+              [item.id_detail]
+            );
+            const [allDetails]: any = await connection.query(
+              'SELECT status_item FROM penjualan_so_detail WHERE id_so_header = ?',
+              [item.id_so_header]
+            );
+            const hasDefisit = allDetails.some((d: any) => d.status_item === 'DEFISIT');
+            if (!hasDefisit) {
+              await connection.query(
+                'UPDATE penjualan_so_header SET status_so = "RESERVED" WHERE id = ?',
+                [item.id_so_header]
+              );
+            }
+          }
+        }
+        await connection.commit();
+      } catch (err) {
+        await connection.rollback();
+        console.error('[getAllSO Self-Healing] Error:', err);
+      } finally {
+        connection.release();
+      }
+    }
+
     const [headers]: any = await pool.query(`
       SELECT id, nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, catatan, biaya_pengiriman, status_so, total_nilai, foto_bukti_terima_retailer, created_at,
              vendor_3pl, nomor_resi_3pl, nama_supir, plat_nomor, no_telepon_supir,

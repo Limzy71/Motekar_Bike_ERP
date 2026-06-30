@@ -180,11 +180,13 @@ async function loadPOs() {
         
         allPOs = response.data;
 
-        // Sort order: DITERBITKAN (ISSUED) -> DIKIRIM (SENT_TO_VENDOR) -> BARANG DITERIMA (COMPLETED) -> Lainnya
+        // Sort order: DRAFT -> ISSUED -> APPROVED -> SENT_TO_VENDOR -> COMPLETED -> Lainnya
         const statusWeight: Record<string, number> = {
-            'ISSUED': 1,
-            'SENT_TO_VENDOR': 2,
-            'COMPLETED': 3
+            'DRAFT': 1,
+            'ISSUED': 2,
+            'APPROVED': 3,
+            'SENT_TO_VENDOR': 4,
+            'COMPLETED': 5
         };
 
         allPOs.sort((a, b) => {

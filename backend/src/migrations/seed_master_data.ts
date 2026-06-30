@@ -135,9 +135,11 @@ async function run() {
          if (v) idVendor = v.insertedId;
       }
 
+      const initialStok = i.tipe === 'FG' ? 1 : 0;
+
       await connection.query(
         'INSERT INTO inventory_stok (kode_barang, nama_barang, kategori, satuan, tipe_item, harga_standar, harga_jual, jumlah_stok, id_vendor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [i.kode, i.nama, i.kategori, i.satuan, i.tipe, i.harga, i.jual || 0, 30, idVendor]
+        [i.kode, i.nama, i.kategori, i.satuan, i.tipe, i.harga, i.jual || 0, initialStok, idVendor]
       );
     }
     console.log('Inventory seeded with Vendor links.');

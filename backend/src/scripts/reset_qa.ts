@@ -174,15 +174,15 @@ async function main() {
         }
         console.log(`\n   📊 Hasil: ${truncatedCount} tabel dibersihkan, ${skippedCount} dilewati`);
 
-        // ─── FASE 3: Reset Stok Inventory ────────────────────
-        console.log('\n━━━ FASE 3: Reset Stok Inventory ke 0 ━━━');
+        // ─── FASE 3: Reset Stok Inventory (FG = 1, RM/SA = 0) ──────
+        console.log('\n━━━ FASE 3: Reset Stok Inventory (FG=1, RM/SA=0) ━━━');
         const [updateResult] = await connection.query(`
             UPDATE inventory_stok 
-            SET jumlah_stok = 0, 
+            SET jumlah_stok = CASE WHEN tipe_item = 'FG' THEN 1 ELSE 0 END, 
                 stok_committed = 0, 
                 stok_karantina = 0
         `) as any;
-        console.log(`   ✔ ${updateResult.affectedRows} baris inventory_stok di-reset ke 0`);
+        console.log(`   ✔ ${updateResult.affectedRows} baris inventory_stok di-reset (FG=1, RM/SA=0)`);
         console.log('   ℹ  Master barang (nama, kode, tipe) TETAP dipertahankan');
 
         // ─── FASE 4: Injeksi Modal Awal ──────────────────────

@@ -34,6 +34,10 @@ interface OutboundSO {
   alamat_pengiriman: string;
   status_so: string;
   items: any[];
+  vendor_3pl?: string;
+  nama_supir?: string;
+  plat_nomor?: string;
+  nomor_resi_3pl?: string;
 }
 
 interface ActionResponse {
@@ -46,9 +50,11 @@ let masterStok: InventoryItem[] = [];
 let currentFilter: string = 'Semua';
 let currentSearch: string = '';
 let outboundSOs: OutboundSO[] = [];
+let outboundHistorySOs: OutboundSO[] = [];
 
 let currentPage = 1;
 let currentOutboundPage = 1;
+let currentOutboundHistoryPage = 1;
 let currentReceiptPage = 1;
 const itemsPerPage = 10;
 
@@ -119,7 +125,18 @@ function renderTable(): void {
   currentItems.forEach(item => {
     // Dynamic Stock Badges (MEDS Kunci UX)
     let statusBadge = '';
-    const isKritis = item.jumlah_stok <= 10; // ROP logic simplified for now
+    let isKritis = false;
+    if (item.tipe_item === 'SA') {
+      // WIP / Barang Setengah Jadi: tidak di-stok (selalu aman)
+      isKritis = false;
+    } else if (item.tipe_item === 'FG') {
+      // Barang Jadi / Sepeda: aman jika ada minimal 1 sepeda (stok >= 1)
+      isKritis = item.jumlah_stok < 1;
+    } else {
+      // Komponen / RM: kritis jika stok <= 10
+      isKritis = item.jumlah_stok <= 10;
+    }
+
     if (isKritis) {
       statusBadge = `<span class="whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border bg-rose-50 text-rose-700 border-rose-200/80">Kritis</span>`;
     } else {
@@ -248,6 +265,7 @@ function setupFilters(): void {
           sectionOutbound?.classList.remove('hidden');
           localStorage.setItem('gudangLastTab', 'outbound');
           loadOutboundLogistics();
+          loadOutboundHistory();
       } else if (tabName === 'exception') {
           if (tabException) tabException.className = exceptionActiveClass + " flex items-center gap-2";
           sectionException?.classList.remove('hidden');
@@ -407,6 +425,108 @@ function renderOutboundTable() {
     );
 }
 
+async function loadOutboundHistory(): Promise<void> {
+  const tbody = document.getElementById('tbody-outbound-history');
+  if (!tbody) return;
+
+  try {
+      const response = await apiFetch<{success: boolean, data: OutboundSO[]}>('penjualan/so');
+      if (response && response.success) {
+          // Filter Shipped, Delivered, Paid, Completed, Failed Delivery
+          const historyStatuses = ['SHIPPED', 'DELIVERED', 'PAID', 'COMPLETED', 'FAILED_DELIVERY'];
+          outboundHistorySOs = response.data.filter(so => historyStatuses.includes(so.status_so));
+          renderOutboundHistoryTable();
+      } else {
+          tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat riwayat pengiriman.</td></tr>`;
+      }
+  } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-600">Kesalahan jaringan.</td></tr>`;
+  }
+}
+
+function renderOutboundHistoryTable() {
+    const tbody = document.getElementById('tbody-outbound-history');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (outboundHistorySOs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada riwayat pengiriman saat ini.</td></tr>`;
+        renderPaginationUI('outbound-history-pagination-pagination', 'outbound-history-pagination-info', 1, itemsPerPage, 0, () => {});
+        return;
+    }
+
+    const totalItems = outboundHistorySOs.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (currentOutboundHistoryPage < 1) currentOutboundHistoryPage = 1;
+    if (currentOutboundHistoryPage > totalPages) currentOutboundHistoryPage = totalPages;
+
+    const startIndex = (currentOutboundHistoryPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const currentItems = outboundHistorySOs.slice(startIndex, endIndex);
+
+    currentItems.forEach(so => {
+        let statusBadge = '';
+        if (so.status_so === 'SHIPPED') {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50 rounded-full">
+                    Dalam Perjalanan
+                </span>
+            `;
+        } else if (so.status_so === 'DELIVERED') {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50 rounded-full">
+                    Diterima
+                </span>
+            `;
+        } else if (so.status_so === 'PAID' || so.status_so === 'COMPLETED') {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/50 rounded-full">
+                    Selesai
+                </span>
+            `;
+        } else if (so.status_so === 'FAILED_DELIVERY') {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/50 rounded-full">
+                    Gagal Kirim
+                </span>
+            `;
+        }
+
+        const jasaKirim = so.vendor_3pl || '-';
+        const kurirPlat = so.nama_supir ? `${so.nama_supir} (${so.plat_nomor || '-'})` : '-';
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-100 transition-colors";
+        tr.innerHTML = `
+            <td class="px-4 py-4 whitespace-nowrap"><p class="font-bold text-blue-700">${so.nomor_so}</p></td>
+            <td class="px-4 py-4"><p class="font-semibold text-slate-800">${so.nama_customer}</p></td>
+            <td class="px-4 py-4"><p class="text-slate-700 font-medium">${jasaKirim}</p></td>
+            <td class="px-4 py-4"><p class="text-slate-600">${kurirPlat}</p></td>
+            <td class="px-4 py-4 text-center">${statusBadge}</td>
+            <td class="px-4 py-4 text-center">
+                <button onclick="window.printPackingList(${so.id})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-900 hover:text-white rounded-lg font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 mx-auto">
+                    <span class="material-symbols-outlined text-[16px]">print</span> Cetak Packing List
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    renderPaginationUI(
+        'outbound-history-pagination-pagination',
+        'outbound-history-pagination-info',
+        currentOutboundHistoryPage,
+        itemsPerPage,
+        totalItems,
+        (newPage) => {
+            currentOutboundHistoryPage = newPage;
+            renderOutboundHistoryTable();
+        }
+    );
+}
+
+(window as any).loadOutboundHistory = loadOutboundHistory;
+
 (window as any).openDispatchModal = (id: number, no_so: string) => {
     const modal = document.getElementById('modal-dispatch-3pl');
     const modalContent = document.getElementById('modal-dispatch-content');
@@ -435,12 +555,41 @@ function renderOutboundTable() {
 };
 
 (window as any).printPackingList = (id: number) => {
-    const so = outboundSOs.find(s => s.id === id);
+    const so = outboundSOs.find(s => s.id === id) || outboundHistorySOs.find(s => s.id === id);
     if (!so) { showToast('Data SO tidak ditemukan.', true); return; }
 
     const shipmentId = `SHP/${so.nomor_so}`;
     const docDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    const trackingInfo = `${so.nomor_so} — Status: RESERVED (Siap Kirim)`;
+    
+    // Dynamic tracking info based on actual 3PL data
+    const trackingInfo = so.nomor_resi_3pl 
+        ? `${so.nomor_so} — Resi: ${so.nomor_resi_3pl}` 
+        : `${so.nomor_so} — Status: ${so.status_so}`;
+        
+    // Dynamic driver / 3PL info
+    const driverVendor = so.vendor_3pl 
+        ? `${so.vendor_3pl} - ${so.nama_supir || 'Kurir'} (${so.plat_nomor || '-'})` 
+        : 'Akan diisi saat Dispatch';
+        
+    // Dynamic delivery status label
+    let deliveryStatus = 'RESERVED — Siap untuk Dikemas & Dikirim';
+    let docStatusLabel = 'SIAP KIRIM';
+    if (so.status_so === 'SHIPPED') {
+        deliveryStatus = 'SHIPPED — Dalam Perjalanan (In Transit)';
+        docStatusLabel = 'DALAM PERJALANAN';
+    } else if (so.status_so === 'DELIVERED') {
+        deliveryStatus = 'DELIVERED — Barang Diterima Retailer';
+        docStatusLabel = 'DITERIMA';
+    } else if (so.status_so === 'PAID') {
+        deliveryStatus = 'PAID — Pembayaran Diterima';
+        docStatusLabel = 'SELESAI';
+    } else if (so.status_so === 'COMPLETED') {
+        deliveryStatus = 'COMPLETED — Transaksi Selesai';
+        docStatusLabel = 'SELESAI';
+    } else if (so.status_so === 'FAILED_DELIVERY') {
+        deliveryStatus = 'FAILED_DELIVERY — Pengiriman Gagal';
+        docStatusLabel = 'GAGAL KIRIM';
+    }
 
     const items = (so.items || []).map((item: any, idx: number) => ({
         no: idx + 1,
@@ -454,14 +603,14 @@ function renderOutboundTable() {
         docType: 'Packing List / Surat Jalan',
         docNumber: shipmentId,
         docDate: docDate,
-        status: 'SIAP KIRIM',
+        status: docStatusLabel,
         headerFields: [
             { label: 'Shipment ID', value: shipmentId },
             { label: 'Nomor SO Referensi', value: so.nomor_so },
             { label: 'Nama Retailer / Customer', value: so.nama_customer },
             { label: 'Alamat Tujuan Pengiriman', value: so.alamat_pengiriman || '-' },
-            { label: 'Driver / Vendor Logistik (3PL)', value: 'Akan diisi saat Dispatch' },
-            { label: 'Delivery Status', value: 'RESERVED — Siap untuk Dikemas & Dikirim' },
+            { label: 'Driver / Vendor Logistik (3PL)', value: driverVendor },
+            { label: 'Delivery Status', value: deliveryStatus },
             { label: 'Tracking Information', value: trackingInfo },
             { label: 'Tanggal Cetak', value: docDate },
         ],
@@ -476,7 +625,7 @@ function renderOutboundTable() {
         signatures: [
             { title: 'Dikemas Oleh', name: 'Staff Gudang / Picker' },
             { title: 'Diserahkan Oleh', name: 'Kepala Gudang' },
-            { title: 'Diterima Oleh', name: 'Driver 3PL / Kurir' },
+            { title: 'Diterima Oleh', name: so.nama_supir || 'Driver 3PL / Kurir' },
         ],
         footer: `Dokumen ini adalah Packing List resmi Motekar Bike Assy · ${shipmentId} · Tempel di luar kardus pengiriman.`,
     });
