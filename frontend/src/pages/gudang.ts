@@ -309,10 +309,10 @@ async function loadOutboundLogistics(): Promise<void> {
           }
           renderOutboundTable();
       } else {
-          tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat data SO.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat data SO.</td></tr>`;
       }
   } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Kesalahan jaringan.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-600">Kesalahan jaringan.</td></tr>`;
   }
 }
 
@@ -322,7 +322,7 @@ function renderOutboundTable() {
     tbody.innerHTML = '';
 
     if (outboundSOs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada antrean pengiriman 3PL saat ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500 italic">Tidak ada antrean pengiriman 3PL saat ini.</td></tr>`;
         renderPaginationUI('outbound-pagination-pagination', 'outbound-pagination-info', 1, itemsPerPage, 0, () => {});
         return;
     }
@@ -340,6 +340,23 @@ function renderOutboundTable() {
         let totalItems = 0;
         if (so.items) {
             totalItems = so.items.reduce((sum, item) => sum + parseInt(item.qty || '0', 10), 0);
+        }
+
+        let statusBadge = '';
+        if (so.status_so === 'RESERVED') {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/50 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                    Siap Kirim
+                </span>
+            `;
+        } else if (so.status_so === 'SHIPPED') {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    Dalam Perjalanan
+                </span>
+            `;
         }
 
         let aksiButtons = '';
@@ -369,6 +386,7 @@ function renderOutboundTable() {
             <td class="px-4 py-4"><p class="font-semibold text-slate-800">${so.nama_customer}</p></td>
             <td class="px-4 py-4"><p class="text-slate-600 truncate max-w-[200px]" title="${so.alamat_pengiriman}">${so.alamat_pengiriman}</p></td>
             <td class="px-4 py-4 text-right"><p class="font-data-mono font-bold">${totalItems}</p></td>
+            <td class="px-4 py-4 text-center">${statusBadge}</td>
             <td class="px-4 py-4 text-center">
                 ${aksiButtons}
             </td>
