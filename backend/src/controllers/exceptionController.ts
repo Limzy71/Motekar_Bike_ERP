@@ -125,23 +125,13 @@ export const rescheduleDelivery = async (req: Request, res: Response) => {
         );
         const isReplacement = writeoffs.length > 0;
 
-        // Keluarkan dari karantina (atau potong stok baru jika replacement)
-        const [items]: any = await connection.query('SELECT id_inventory_barang_jadi as barang_id, qty FROM penjualan_so_detail WHERE id_so_header = ?', [id]);
-        for (const item of items) {
-            if (isReplacement) {
-                // Jika replacement, ambil stok fisik baru dari gudang
-                await connection.query(
-                    'UPDATE inventory_stok SET jumlah_stok = jumlah_stok - ? WHERE id = ?',
-                    [item.qty, item.barang_id]
-                );
-            } else {
-                // Jika normal reschedule, kembalikan dari karantina
-                await connection.query(
-                    'UPDATE inventory_stok SET stok_karantina = stok_karantina - ? WHERE id = ?',
-                    [item.qty, item.barang_id]
-                );
-            }
+        if (!isReplacement) {
+            throw new Error(`Gagal menjadwalkan ulang! Pengajuan Write-Off untuk barang hilang/rusak pada pesanan ${nomor_so} belum disetujui oleh Owner/General Manager.`);
         }
+
+        // Catatan: Barang lama yang hilang/rusak sudah dipotong dari jumlah_stok & stok_karantina 
+        // saat approval Write-Off. Barang pengganti yang dikirim sekarang akan memotong 
+        // jumlah_stok utama ketika SO ini di-fulfill / paid. Jadi tidak perlu memotong stok lagi di sini.
 
         await connection.commit();
         res.json({ success: true, message: `Pesanan ${nomor_so} berhasil dijadwalkan ulang.` });

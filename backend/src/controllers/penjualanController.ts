@@ -59,7 +59,9 @@ export const getAllSO = async (req: Request, res: Response): Promise<void> => {
 
     const [headers]: any = await pool.query(`
       SELECT id, nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, catatan, biaya_pengiriman, status_so, total_nilai, foto_bukti_terima_retailer, created_at,
-             vendor_3pl, nomor_resi_3pl, nama_supir, plat_nomor, no_telepon_supir
+             vendor_3pl, nomor_resi_3pl, nama_supir, plat_nomor, no_telepon_supir,
+             (SELECT COUNT(*) FROM exception_writeoff w WHERE w.alasan_hilang LIKE CONCAT('%', nomor_so, '%') AND w.status_approval = 'APPROVED') as writeoff_approved_count,
+             (SELECT COUNT(*) FROM exception_writeoff w WHERE w.alasan_hilang LIKE CONCAT('%', nomor_so, '%') AND w.status_approval = 'PENDING') as writeoff_pending_count
       FROM penjualan_so_header
       ORDER BY id DESC
     `);

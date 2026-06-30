@@ -28,6 +28,8 @@ interface SOHeader {
     catatan: string;
     created_at: string;
     items: SODetail[];
+    writeoff_approved_count?: number;
+    writeoff_pending_count?: number;
 }
 
 let allSOs: SOHeader[] = [];
@@ -417,11 +419,34 @@ function openRightDrawerSO(so: SOHeader) {
             `;
         }
     } else if (so.status_so === 'FAILED_DELIVERY') {
-        bay.innerHTML = `
-            <button onclick="window.rescheduleDelivery(${so.id})" class="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-rose-700 transition-all flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined text-[18px]">autorenew</span> Jadwalkan Ulang Pengiriman
-            </button>
-        `;
+        const approvedCount = so.writeoff_approved_count || 0;
+        const pendingCount = so.writeoff_pending_count || 0;
+
+        if (approvedCount > 0) {
+            bay.innerHTML = `
+                <button onclick="window.rescheduleDelivery(${so.id})" class="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-rose-700 transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">autorenew</span> Jadwalkan Ulang Pengiriman
+                </button>
+            `;
+        } else if (pendingCount > 0) {
+            bay.innerHTML = `
+                <div class="w-full text-center">
+                    <button disabled class="w-full px-4 py-2.5 bg-slate-200 text-slate-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed" title="Pengajuan write-off sedang menunggu persetujuan Owner.">
+                        <span class="material-symbols-outlined text-[18px]">hourglass_empty</span> Menunggu ACC Write-Off...
+                    </button>
+                    <p class="text-[11px] text-rose-500 font-semibold mt-1.5">Harap hubungi Owner/GM untuk menyetujui write-off barang hilang.</p>
+                </div>
+            `;
+        } else {
+            bay.innerHTML = `
+                <div class="w-full text-center">
+                    <button disabled class="w-full px-4 py-2.5 bg-slate-200 text-slate-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed" title="Silakan ajukan Write-Off di halaman Gudang terlebih dahulu.">
+                        <span class="material-symbols-outlined text-[18px]">block</span> Write-Off Belum Diajukan
+                    </button>
+                    <p class="text-[11px] text-rose-500 font-semibold mt-1.5">Harap ajukan Write-Off barang hilang di menu Gudang terlebih dahulu.</p>
+                </div>
+            `;
+        }
     }
 
     backdrop.classList.remove('hidden');
