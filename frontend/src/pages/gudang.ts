@@ -373,8 +373,8 @@ function renderOutboundTable() {
             `;
         } else if (so.status_so === 'SHIPPED') {
             aksiButtons = `
-                <button onclick="window.reportFailedDelivery(${so.id})" class="px-3 py-1.5 bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white rounded-lg font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 mx-auto">
-                    <span class="material-symbols-outlined text-[16px]">warning</span> Gagal Kirim
+                <button onclick="window.reportFailedDelivery(${so.id})" class="px-2.5 py-1.5 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg font-semibold text-[11px] transition-colors shadow-2xs flex items-center justify-center gap-1.5 mx-auto">
+                    <span class="material-symbols-outlined text-[14px]">warning</span> Laporkan Gagal Kirim
                 </button>
             `;
         }
