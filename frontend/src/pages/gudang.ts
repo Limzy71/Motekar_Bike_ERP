@@ -919,7 +919,7 @@ async function loadWriteOffs() {
                             `<button onclick="window.approveWriteoff(${wo.id_writeoff})" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold hover:bg-emerald-600 hover:text-white transition-colors mr-1">Approve</button>
                              <button onclick="window.rejectWriteoff(${wo.id_writeoff})" class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold hover:bg-rose-600 hover:text-white transition-colors">Reject</button>`
                         : ''}
-                        <button onclick="window.open('http://localhost:3000/uploads/${wo.bukti_berita_acara}', '_blank')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors ml-1">Cetak / Lihat</button>
+                        <button onclick="window.open('http://localhost:5050/uploads/exception/writeoff/${wo.bukti_berita_acara}', '_blank')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors ml-1">Cetak / Lihat</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
