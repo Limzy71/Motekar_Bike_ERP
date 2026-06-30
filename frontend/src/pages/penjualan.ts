@@ -995,8 +995,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSOs();
     initCreateModal();
 
-    // Polling for Real-Time Experience (Every 30 seconds)
+    // Polling for Real-Time Experience (Every 3 seconds)
     setInterval(() => {
         loadSOs();
-    }, 30000);
+    }, 3000);
 });

@@ -1790,7 +1790,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
-  // Polling for Real-Time Experience (Every 30 seconds)
+  // Polling for Real-Time Experience (Every 3 seconds)
   setInterval(() => {
       const tab = localStorage.getItem('gudangLastTab') || 'master';
       if (tab === 'master') loadGudang();
@@ -1803,7 +1803,7 @@ document.addEventListener('DOMContentLoaded', () => {
           loadPendingPO();
           loadReceiptHistory();
       }
-  }, 30000);
+  }, 3000);
 });
 
 (window as any).approveWriteoff = async (id: string | number) => {

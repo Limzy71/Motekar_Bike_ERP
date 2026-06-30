@@ -940,8 +940,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Polling for Real-Time Experience (Every 15 seconds for Shop Floor)
+    // Polling for Real-Time Experience (Every 3 seconds for Shop Floor)
     setInterval(() => {
         loadWorkOrders();
-    }, 15000);
+    }, 3000);
 });

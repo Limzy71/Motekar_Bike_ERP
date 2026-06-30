@@ -573,10 +573,10 @@ document.addEventListener('DOMContentLoaded', () => {
         loadInvestigasiKlaim();
     });
 
-    // Polling for Real-Time Experience (Every 30 seconds)
+    // Polling for Real-Time Experience (Every 3 seconds)
     setInterval(() => {
         const tab = localStorage.getItem('mutuLastTab') || 'inspeksi';
         if (tab === 'inspeksi') loadQCQueue();
         else if (tab === 'investigasi') loadInvestigasiKlaim();
-    }, 30000);
+    }, 3000);
 });

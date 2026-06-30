@@ -833,7 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Polling for Real-Time Experience (Every 30 seconds)
+    // Polling for Real-Time Experience (Every 3 seconds)
     setInterval(() => {
         const tab = localStorage.getItem('pemasaranLastTab') || 'pipeline';
         if (tab === 'pipeline') {
@@ -842,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (tab === 'campaigns') {
             loadCampaigns();
         }
-    }, 30000);
+    }, 3000);
 });
 
 // ============================================================

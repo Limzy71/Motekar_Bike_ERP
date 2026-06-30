@@ -302,12 +302,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Polling for Real-Time Experience (Every 30 seconds)
+  // Polling for Real-Time Experience (Every 3 seconds)
   setInterval(() => {
     if (user.divisi_role === 'IT Support') {
       loadITDashboard();
     } else {
       loadDashboard();
     }
-  }, 30000);
+  }, 3000);
 });

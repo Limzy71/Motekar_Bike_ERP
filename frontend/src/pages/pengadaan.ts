@@ -1481,10 +1481,14 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   setupSRMModals();
 
-  // Polling for Real-Time Experience (Every 30 seconds)
+  // Polling for Real-Time Experience (Every 3 seconds)
   setInterval(() => {
       const tab = localStorage.getItem('pengadaanLastTab') || 'pr';
-      if (tab === 'pr') loadPengadaan();
+      if (tab === 'pr') {
+          loadPengadaan();
+          loadRestockRequests();
+      }
       else if (tab === 'srm') loadVendorsSRM();
-  }, 30000);
+  }, 3000);
 });
+
