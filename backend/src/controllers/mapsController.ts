@@ -75,14 +75,33 @@ export const calculateShipping = async (req: Request, res: Response): Promise<vo
 
         const apiKey = process.env.GOOGLE_MAPS_API_KEY;
         if (!apiKey) {
-            // Jika API Key tidak ada, kembalikan response sukses tapi dengan jarak 0 agar UI fallback ke manual
-            res.json({ 
-                success: false, 
-                message: 'API Key Google Maps belum dikonfigurasi di backend. Gunakan input manual.',
-                jarak_km: 0,
-                ongkir: 0
-            });
-            return;
+            // Jika API Key tidak ada, berikan fallback tanpa memunculkan error toast merah.
+            if (latitude && longitude) {
+                const PABRIK_LAT = -6.8617;
+                const PABRIK_LNG = 107.5921;
+                const distanceKm = getHaversineDistance(PABRIK_LAT, PABRIK_LNG, parseFloat(latitude), parseFloat(longitude));
+                const pricing = calculateFinalShipping(distanceKm, true, qty);
+
+                res.json({
+                    success: true,
+                    message: 'Estimasi Tarif Logistik Jarak Jauh (Mode Kalkulasi Peta Offline)',
+                    jarak_km: parseFloat(distanceKm.toFixed(2)),
+                    ongkir: pricing.ongkir,
+                    keterangan_ongkir: pricing.pesan,
+                    origin_address: 'Pabrik Motekar',
+                    destination_address: 'Alamat Customer'
+                });
+                return;
+            } else {
+                res.json({ 
+                    success: true, 
+                    message: 'Mode Kalkulasi Manual Diaktifkan.',
+                    jarak_km: 0,
+                    ongkir: 0,
+                    keterangan_ongkir: 'Mode Offline: Silakan masukkan biaya pengiriman secara manual.'
+                });
+                return;
+            }
         }
 
         const origin = encodeURIComponent(ORIGIN_ADDRESS);

@@ -747,7 +747,11 @@ async function initCreateModal() {
                 } else {
                     teksOngkir.classList.add('hidden');
                 }
-                showToast(`Jarak: ${mapRes.jarak_km} KM. Ongkir 3PL otomatis diperbarui!`, 'success');
+                if (mapRes.message) {
+                    showToast(mapRes.message, 'success');
+                } else {
+                    showToast(`Jarak: ${mapRes.jarak_km} KM. Ongkir 3PL otomatis diperbarui!`, 'success');
+                }
             } else {
                 inputOngkir.value = '0';
                 if (teksOngkir) teksOngkir.classList.add('hidden');
