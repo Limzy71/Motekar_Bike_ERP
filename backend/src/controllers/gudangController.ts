@@ -32,15 +32,10 @@ export const getAllStok = async (req: Request, res: Response): Promise<void> => 
       params.push(searchParam, searchParam, searchParam);
     }
 
-    if (filter !== 'Semua') {
-      let tipeItem = '';
-      if (filter === 'Bahan Baku') tipeItem = 'RM';
-      else if (filter === 'Barang Setengah Jadi') tipeItem = 'SA';
-      else if (filter === 'Barang Jadi') tipeItem = 'FG';
-      
-      if (tipeItem) {
+    if (filter && filter !== 'Semua') {
+      if (['RM', 'SA', 'FG'].includes(filter)) {
         whereConditions.push('tipe_item = ?');
-        params.push(tipeItem);
+        params.push(filter);
       }
     }
 
