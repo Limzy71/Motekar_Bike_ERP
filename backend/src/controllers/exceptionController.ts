@@ -185,12 +185,22 @@ export const approveWriteOff = async (req: Request, res: Response) => {
         await connection.beginTransaction();
         const { id } = req.params;
         
-        const [rows]: any = await connection.query(`SELECT * FROM exception_writeoff WHERE id_writeoff = ?`, [id]);
+        const [rows]: any = await connection.query(`SELECT * FROM exception_writeoff WHERE id_writeoff = ? FOR UPDATE`, [id]);
         if (rows.length === 0) throw new Error('Data Write-Off tidak ditemukan.');
         const writeoff = rows[0];
 
         if (writeoff.status_approval === 'APPROVED') {
             throw new Error('Write-Off ini sudah disetujui sebelumnya.');
+        }
+
+        // [PESSIMISTIC LOCKING] Kunci baris inventory_stok sebelum memotong stok untuk mencegah race condition
+        const [stokRows]: any = await connection.query(
+            `SELECT jumlah_stok, stok_karantina, harga_standar FROM inventory_stok WHERE kode_barang = ? FOR UPDATE`,
+            [writeoff.kode_item]
+        );
+        if (stokRows.length === 0) throw new Error('Barang tidak ditemukan di inventori.');
+        if (stokRows[0].jumlah_stok < writeoff.qty_hilang) {
+            throw new Error('Gagal: Stok fisik tidak mencukupi untuk di-write-off.');
         }
 
         // 1. Approve
@@ -202,9 +212,9 @@ export const approveWriteOff = async (req: Request, res: Response) => {
             [writeoff.qty_hilang, writeoff.qty_hilang, writeoff.kode_item]
         );
 
-        // Fetch nominal kerugian (asumsikan harga standard atau just placeholder for now, ideally from item cost)
-        // For simplicity, we just use a generic cost of 10000 * qty
-        const nominal_kerugian = writeoff.qty_hilang * 10000; 
+        // Fetch nominal kerugian (gunakan harga_standar, fallback 10000)
+        const harga_standar = parseFloat(stokRows[0].harga_standar || 0);
+        const nominal_kerugian = writeoff.qty_hilang * (harga_standar > 0 ? harga_standar : 10000); 
         
         // Let's modify the ENUM of keuangan_jurnal safely using raw SQL if needed, but since it's hard to catch, we can just insert it if it exists or use HPP if it doesn't.
         // I will alter it here just in case.

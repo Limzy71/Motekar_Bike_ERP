@@ -22,6 +22,9 @@ router.post('/login', validateRequest(loginSchema), login);
 router.post('/auth/refresh', refreshToken);
 router.post('/auth/logout', logout);
 
+// Global JWT Authentication Middleware (Terapkan ke seluruh route di bawah ini)
+router.use(authenticate as any);
+
 // Endpoint untuk dashboard GET /api/dashboard (memerlukan autentikasi)
 router.get('/dashboard', authenticate, getDashboard);
 
@@ -110,11 +113,12 @@ router.patch('/operasi/wo/:id/status', operasiAuth, updateWOStatus);
 // ============================================================
 // MODUL KENDALI MUTU (ISO 4210 QC Gateway)
 // ============================================================
-import { submitInspeksi } from './controllers/mutuController.js';
+import { submitInspeksi, getSepedaSeri } from './controllers/mutuController.js';
 
 const mutuAuth = [authenticate, requireRole('Owner', 'General Manager', 'Kendali Mutu')];
 
 router.post('/mutu/inspeksi', mutuAuth, submitInspeksi);
+router.get('/mutu/sepeda-seri', operasiReadAuth, getSepedaSeri);
 
 // ============================================================
 // MODUL PENJUALAN & PENAGIHAN (O2C & Soft Allocation)

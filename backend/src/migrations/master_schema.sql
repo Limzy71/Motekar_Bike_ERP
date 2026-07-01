@@ -490,13 +490,19 @@ CREATE TABLE `penjualan_so_header` (
 DROP TABLE IF EXISTS `qc_inspeksi`;
 CREATE TABLE `qc_inspeksi` (
   `id` int NOT NULL AUTO_INCREMENT,
+  `wo_id` int DEFAULT NULL,
+  `id_inventory_fg` int DEFAULT NULL,
   `nomor_seri_sepeda` varchar(50) NOT NULL,
   `uji_pengereman` tinyint(1) NOT NULL DEFAULT '0',
   `uji_shifting` tinyint(1) NOT NULL DEFAULT '0',
   `uji_alignment` tinyint(1) NOT NULL DEFAULT '0',
   `catatan_inspektur` text,
   `waktu_inspeksi` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `wo_id` (`wo_id`),
+  KEY `id_inventory_fg` (`id_inventory_fg`),
+  CONSTRAINT `qc_inspeksi_ibfk_1` FOREIGN KEY (`wo_id`) REFERENCES `operasi_wo_header` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `qc_inspeksi_ibfk_2` FOREIGN KEY (`id_inventory_fg`) REFERENCES `inventory_stok` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 DROP TABLE IF EXISTS `qc_log`;

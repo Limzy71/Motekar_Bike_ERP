@@ -67,11 +67,17 @@ async function loadGudang(): Promise<void> {
   if (!tbody) return;
 
   try {
-    const response = await apiFetch<GudangResponse>('gudang');
+    const query = new URLSearchParams({
+      page: currentPage.toString(),
+      limit: itemsPerPage.toString(),
+      search: currentSearch || ''
+    });
+
+    const response = await apiFetch<any>(`gudang?${query.toString()}`);
 
     if (response.success) {
       masterStok = response.data;
-      renderTable();
+      renderTable(response.meta);
     } else {
       tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat data: ${response.message}</td></tr>`;
       showToast(response.message || 'Gagal memuat data Gudang', true);
@@ -83,44 +89,19 @@ async function loadGudang(): Promise<void> {
   }
 }
 
-function renderTable(): void {
+function renderTable(meta?: any): void {
   const tbody = document.getElementById('tbody-gudang');
   if (!tbody) return;
 
   tbody.innerHTML = '';
 
-  // Filter & Search Logic
-  const filteredData = masterStok.filter(item => {
-    // 1. Kategori Filter (Berdasarkan tipe_item)
-    let matchCategory = true;
-    if (currentFilter !== 'Semua') {
-      const filterTipe = currentFilter === 'WIP' ? 'SA' : currentFilter;
-      matchCategory = item.tipe_item === filterTipe;
-    }
-    
-    // 2. Search Filter (kode atau nama)
-    const searchTerm = currentSearch.toLowerCase();
-    const matchSearch = currentSearch === '' || 
-                        item.kode_barang.toLowerCase().includes(searchTerm) || 
-                        item.nama_barang.toLowerCase().includes(searchTerm);
-    
-    return matchCategory && matchSearch;
-  });
+  const currentItems = masterStok;
 
-  if (filteredData.length === 0) {
+  if (currentItems.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">Tidak ada data stok yang sesuai.</td></tr>`;
     renderPaginationUI('gudang-pagination-pagination', 'gudang-pagination-info', 1, 10, 0, () => {});
     return;
   }
-
-  const totalItems = filteredData.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  if (currentPage < 1) currentPage = 1;
-  if (currentPage > totalPages) currentPage = totalPages;
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const currentItems = filteredData.slice(startIndex, endIndex);
 
   currentItems.forEach(item => {
     // Dynamic Stock Badges (MEDS Kunci UX)
@@ -181,12 +162,12 @@ function renderTable(): void {
     renderPaginationUI(
         'gudang-pagination-pagination',
         'gudang-pagination-info',
-        currentPage,
+        meta ? meta.currentPage : 1,
         itemsPerPage,
-        totalItems,
+        meta ? meta.totalItems : 0,
         (newPage) => {
             currentPage = newPage;
-            renderTable();
+            loadGudang();
         }
     );
 }
@@ -201,10 +182,15 @@ function setupFilters(): void {
   // Search Input
   const searchInput = document.getElementById('search-input') as HTMLInputElement;
   if (searchInput) {
+    // Let's debounce slightly if typing fast, but for now just input event
+    let timeoutId: any;
     searchInput.addEventListener('input', (e) => {
+      clearTimeout(timeoutId);
       currentSearch = (e.target as HTMLInputElement).value;
       currentPage = 1;
-      renderTable(); // Instan re-render
+      timeoutId = setTimeout(() => {
+         loadGudang();
+      }, 300);
     });
   }
 
@@ -226,7 +212,8 @@ function setupFilters(): void {
       target.classList.add('bg-slate-900', 'text-white', 'shadow-2xs');
 
       currentPage = 1;
-      renderTable(); // Instan re-render
+      // Option: pass filter to backend if backend supports it, otherwise loadGudang will only search.
+      loadGudang();
     });
   });
 
@@ -591,13 +578,30 @@ function renderOutboundHistoryTable() {
         docStatusLabel = 'GAGAL KIRIM';
     }
 
-    const items = (so.items || []).map((item: any, idx: number) => ({
-        no: idx + 1,
-        kode_barang: item.kode_barang || item.kode || '-',
-        nama_barang: item.nama_barang,
-        qty: `${item.qty} ${item.satuan || 'unit'}`,
-        catatan: item.catatan || 'Kondisi Baik',
-    }));
+    const items: any[] = [];
+    let noCounter = 1;
+    (so.items || []).forEach((item: any) => {
+        const sns = item.assigned_serial_numbers || [];
+        if (sns.length > 0) {
+            sns.forEach((sn: string) => {
+                items.push({
+                    no: noCounter++,
+                    kode_barang: item.kode_barang || item.kode || '-',
+                    nama_barang: item.nama_barang,
+                    qty: `1 ${item.satuan || 'unit'}`,
+                    catatan: `S/N: ${sn}`
+                });
+            });
+        } else {
+            items.push({
+                no: noCounter++,
+                kode_barang: item.kode_barang || item.kode || '-',
+                nama_barang: item.nama_barang,
+                qty: `${item.qty} ${item.satuan || 'unit'}`,
+                catatan: item.catatan || 'Kondisi Baik'
+            });
+        }
+    });
 
     openPrintWindow({
         docType: 'Packing List / Surat Jalan',

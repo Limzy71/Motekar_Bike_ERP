@@ -40,11 +40,28 @@ interface ActionResponse {
     message: string;
 }
 
+interface SepedaSeri {
+    id: number;
+    nomor_seri_sepeda: string;
+    waktu_inspeksi: string;
+    uji_pengereman: number;
+    uji_shifting: number;
+    uji_alignment: number;
+    catatan_inspektur: string;
+    nomor_wo: string;
+    kode_sepeda: string;
+    nama_sepeda: string;
+}
+
 let masterWO: WorkOrder[] = [];
 let masterKlaim: Klaim[] = [];
+let masterSeri: SepedaSeri[] = [];
+let filteredSeri: SepedaSeri[] = [];
 
 let currentPage = 1;
 const itemsPerPage = 10;
+let currentSeriPage = 1;
+const itemsPerSeriPage = 10;
 
 // ============================================================
 // DATA FETCHING & RENDERING
@@ -155,6 +172,303 @@ function renderData(): void {
             renderData();
         }
     );
+}
+
+
+
+// ============================================================
+// ARSIP NOMOR PEMBUATAN (SERIAL NUMBER)
+// ============================================================
+
+async function loadSepedaSeri(): Promise<void> {
+    const tbody = document.getElementById('tbody-sepeda-seri');
+    if (!tbody) return;
+
+    try {
+        const response = await apiFetch<{success: boolean, data: SepedaSeri[], message?: string}>('mutu/sepeda-seri');
+        if (response.success) {
+            masterSeri = response.data;
+            applySeriFilterAndRender();
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Gagal memuat data: ${response.message || ''}</td></tr>`;
+        }
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">Kesalahan jaringan.</td></tr>`;
+    }
+}
+
+function applySeriFilterAndRender(): void {
+    const searchInput = document.getElementById('search-seri-input') as HTMLInputElement;
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+    if (query === '') {
+        filteredSeri = masterSeri;
+    } else {
+        filteredSeri = masterSeri.filter(s => 
+            s.nomor_seri_sepeda.toLowerCase().includes(query) ||
+            (s.nama_sepeda && s.nama_sepeda.toLowerCase().includes(query)) ||
+            (s.kode_sepeda && s.kode_sepeda.toLowerCase().includes(query)) ||
+            (s.nomor_wo && s.nomor_wo.toLowerCase().includes(query))
+        );
+    }
+    
+    currentSeriPage = 1;
+    renderSeriData();
+}
+
+function renderSeriData(): void {
+    const tbody = document.getElementById('tbody-sepeda-seri');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const totalItems = filteredSeri.length;
+    const totalPages = Math.ceil(totalItems / itemsPerSeriPage);
+    if (currentSeriPage < 1) currentSeriPage = 1;
+    if (currentSeriPage > totalPages && totalPages > 0) currentSeriPage = totalPages;
+
+    if (totalItems === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-xs font-medium text-slate-500">Tidak ada nomor pembuatan yang cocok.</td></tr>`;
+        renderPaginationUI('seri-pagination-pagination', 'seri-pagination-info', 1, itemsPerSeriPage, 0, () => {});
+        return;
+    }
+
+    const startIndex = (currentSeriPage - 1) * itemsPerSeriPage;
+    const endIndex = Math.min(startIndex + itemsPerSeriPage, totalItems);
+    const currentItems = filteredSeri.slice(startIndex, endIndex);
+
+    currentItems.forEach(s => {
+        const d = new Date(s.waktu_inspeksi);
+        const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-100 transition-colors duration-150 border-b border-slate-100 text-xs font-medium text-slate-600 last:border-b-0';
+        tr.innerHTML = `
+            <td class="px-4 py-3 font-semibold text-slate-900 font-data-mono">${s.nomor_seri_sepeda}</td>
+            <td class="px-4 py-3">
+                <p class="font-bold text-slate-700">${s.nama_sepeda || '-'}</p>
+                <p class="text-[10px] text-slate-400 font-data-mono">${s.kode_sepeda || '-'}</p>
+            </td>
+            <td class="px-4 py-3 font-data-mono">${s.nomor_wo || '-'}</td>
+            <td class="px-4 py-3">${dateStr}</td>
+            <td class="px-4 py-3 text-center">
+                <button class="btn-print-seri bg-primary/10 text-primary hover:bg-primary hover:text-white px-3 py-1 rounded-md transition-all font-semibold flex items-center justify-center gap-1 mx-auto" data-id="${s.id}">
+                    <span class="material-symbols-outlined text-[14px]">print</span> Cetak Label
+                </button>
+            </td>
+        `;
+
+        const btn = tr.querySelector('.btn-print-seri');
+        btn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            printSeriLabel(s);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    renderPaginationUI(
+        'seri-pagination-pagination',
+        'seri-pagination-info',
+        currentSeriPage,
+        itemsPerSeriPage,
+        totalItems,
+        (newPage) => {
+            currentSeriPage = newPage;
+            renderSeriData();
+        }
+    );
+}
+
+function printSeriLabel(s: SepedaSeri): void {
+    const dateStr = new Date(s.waktu_inspeksi).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    const barcodeHTML = Array.from({ length: 48 }).map(() => {
+        const thickness = Math.floor(Math.random() * 3) + 1;
+        const opacity = Math.random() > 0.15 ? 1 : 0;
+        return `<span style="display: inline-block; width: ${thickness}px; height: 35px; background: ${opacity ? '#000' : 'transparent'}; margin-right: 1px;"></span>`;
+    }).join('');
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Label ${s.nomor_seri_sepeda}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@700&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .label-sticker {
+            width: 80mm;
+            height: 50mm;
+            border: 2px solid #000;
+            padding: 4mm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            background: #fff;
+        }
+
+        .header {
+            border-bottom: 1.5px solid #000;
+            padding-bottom: 1.5mm;
+            margin-bottom: 1.5mm;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 11px;
+            font-weight: 900;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header .iso {
+            font-size: 8px;
+            font-weight: 700;
+            background: #000;
+            color: #fff;
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 1mm;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            line-height: 1.2;
+        }
+
+        .label {
+            color: #555;
+            font-weight: 600;
+        }
+
+        .value {
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .barcode-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 2mm;
+            border-top: 1px dashed #000;
+            padding-top: 2mm;
+        }
+
+        .barcode {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 35px;
+            overflow: hidden;
+            margin-bottom: 1mm;
+        }
+
+        .serial-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        @media print {
+            body { background: none; }
+            .label-sticker { border: 2px solid #000; }
+            @page { size: 80mm 50mm; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="label-sticker">
+        <div>
+            <div class="header">
+                <h1>Motekar Bike Assy</h1>
+                <span class="iso">ISO 4210</span>
+            </div>
+            <div class="content">
+                <div class="row">
+                    <span class="label">MODEL</span>
+                    <span class="value">${s.nama_sepeda || '-'} (${s.kode_sepeda || '-'})</span>
+                </div>
+                <div class="row">
+                    <span class="label">REF. WO</span>
+                    <span class="value">${s.nomor_wo || '-'}</span>
+                </div>
+                <div class="row">
+                    <span class="label">TGL LOLOS QC</span>
+                    <span class="value">${dateStr}</span>
+                </div>
+            </div>
+        </div>
+        <div class="barcode-section">
+            <div class="barcode">
+                ${barcodeHTML}
+            </div>
+            <div class="serial-text">${s.nomor_seri_sepeda}</div>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        // Tunggu sedikit agar font dan css selesai di-render
+        setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            
+            // Bersihkan iframe setelah dialog cetak muncul/selesai
+            setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
+            }, 1000);
+        }, 500);
+    } else {
+        showToast('Gagal memuat modul printer.', true);
+    }
 }
 
 
@@ -407,7 +721,7 @@ function setupModalLogic(): void {
             });
 
             if (response.success) {
-                showToast(response.message);
+                showSuccessPopup(finalResult === 'Pass' ? 'Unit Berhasil Lolos QC!' : 'Unit Masuk Daftar Rework!');
                 closeModal();
                 loadQCQueue(); // Re-render tabel
             } else {
@@ -427,6 +741,43 @@ function setupModalLogic(): void {
 
     // Expose close to window for manual calls if needed
     (window as any).closeQCModal = closeModal;
+}
+
+function showSuccessPopup(message: string, duration: number = 1500): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 duration-300';
+    
+    const popup = document.createElement('div');
+    popup.className = 'bg-white rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col items-center max-w-sm w-full mx-4 transform scale-90 opacity-0 transition-all duration-300';
+    
+    popup.innerHTML = `
+        <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined text-[36px] text-emerald-500">check_circle</span>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 mb-2 text-center">Tersimpan</h3>
+        <p class="text-sm text-slate-500 text-center">${message}</p>
+    `;
+    
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    
+    requestAnimationFrame(() => {
+        overlay.classList.remove('opacity-0');
+        popup.classList.remove('scale-90', 'opacity-0');
+        popup.classList.add('scale-100', 'opacity-100');
+    });
+    
+    setTimeout(() => {
+        overlay.classList.add('opacity-0');
+        popup.classList.remove('scale-100', 'opacity-100');
+        popup.classList.add('scale-90', 'opacity-0');
+        
+        setTimeout(() => {
+            if (document.body.contains(overlay)) {
+                document.body.removeChild(overlay);
+            }
+        }, 300);
+    }, duration);
 }
 
 function openQCModal(wo: WorkOrder): void {
@@ -515,35 +866,51 @@ function openQCModal(wo: WorkOrder): void {
 function setupTabs(): void {
     const tabInspeksi = document.getElementById('tab-inspeksi');
     const tabInvestigasi = document.getElementById('tab-investigasi');
+    const tabSeri = document.getElementById('tab-seri');
+    
     const viewInspeksi = document.getElementById('view-inspeksi');
     const viewInvestigasi = document.getElementById('view-investigasi');
+    const viewSeri = document.getElementById('view-seri');
     
     const activeClass = 'pb-3 px-2 text-sm font-bold text-primary border-b-2 border-primary transition-colors';
     const inactiveClass = 'pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors';
 
-    const switchTab = (tabName: 'inspeksi' | 'investigasi') => {
+    const switchTab = (tabName: 'inspeksi' | 'investigasi' | 'seri') => {
+        // Reset classes
+        tabInspeksi!.className = inactiveClass;
+        tabInvestigasi!.className = inactiveClass;
+        tabSeri!.className = inactiveClass;
+        
+        viewInspeksi?.classList.add('hidden');
+        viewInvestigasi?.classList.add('hidden');
+        viewSeri?.classList.add('hidden');
+
         if (tabName === 'inspeksi') {
             tabInspeksi!.className = activeClass;
-            tabInvestigasi!.className = inactiveClass;
             viewInspeksi?.classList.remove('hidden');
-            viewInvestigasi?.classList.add('hidden');
             localStorage.setItem('mutuLastTab', 'inspeksi');
-        } else {
+        } else if (tabName === 'investigasi') {
             tabInvestigasi!.className = activeClass;
-            tabInspeksi!.className = inactiveClass;
             viewInvestigasi?.classList.remove('hidden');
-            viewInspeksi?.classList.add('hidden');
             localStorage.setItem('mutuLastTab', 'investigasi');
             loadInvestigasiKlaim();
+        } else {
+            tabSeri!.className = activeClass;
+            viewSeri?.classList.remove('hidden');
+            localStorage.setItem('mutuLastTab', 'seri');
+            loadSepedaSeri();
         }
     };
 
     tabInspeksi?.addEventListener('click', () => switchTab('inspeksi'));
     tabInvestigasi?.addEventListener('click', () => switchTab('investigasi'));
+    tabSeri?.addEventListener('click', () => switchTab('seri'));
 
-    const lastTab = localStorage.getItem('mutuLastTab');
+    const lastTab = localStorage.getItem('mutuLastTab') as 'inspeksi' | 'investigasi' | 'seri';
     if (lastTab === 'investigasi') {
         switchTab('investigasi');
+    } else if (lastTab === 'seri') {
+        switchTab('seri');
     } else {
         switchTab('inspeksi');
     }
@@ -562,7 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupInvestigasiLogic();
     loadQCQueue();
 
-    // Setup Refresh Button
+    // Setup Refresh Buttons
     const btnRefresh = document.getElementById('btn-refresh');
     btnRefresh?.addEventListener('click', () => {
         loadQCQueue();
@@ -573,10 +940,22 @@ document.addEventListener('DOMContentLoaded', () => {
         loadInvestigasiKlaim();
     });
 
+    const btnRefreshSeri = document.getElementById('btn-refresh-seri');
+    btnRefreshSeri?.addEventListener('click', () => {
+        loadSepedaSeri();
+    });
+
+    // Setup Search input for Serial Number
+    const searchSeri = document.getElementById('search-seri-input') as HTMLInputElement;
+    searchSeri?.addEventListener('input', () => {
+        applySeriFilterAndRender();
+    });
+
     // Polling for Real-Time Experience (Every 3 seconds)
     setInterval(() => {
         const tab = localStorage.getItem('mutuLastTab') || 'inspeksi';
         if (tab === 'inspeksi') loadQCQueue();
         else if (tab === 'investigasi') loadInvestigasiKlaim();
+        else if (tab === 'seri') loadSepedaSeri();
     }, 3000);
 });

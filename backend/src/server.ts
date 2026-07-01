@@ -45,6 +45,23 @@ app.get('/api/health', async (req: Request, res: Response) => {
 // Registrasi Global Error Handling Middleware (WAJIB di akhir)
 app.use(errorMiddleware);
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`[Server]: Backend running at http://127.0.0.1:${PORT}`);
+  
+  // Auto-upgrade database schema for qc_inspeksi if needed
+  try {
+    const [columns]: any = await pool.query("SHOW COLUMNS FROM `qc_inspeksi` LIKE 'wo_id'");
+    if (columns.length === 0) {
+      console.log("[Server]: Upgrading qc_inspeksi schema...");
+      await pool.query("ALTER TABLE `qc_inspeksi` ADD COLUMN `wo_id` int DEFAULT NULL AFTER `id` ");
+      await pool.query("ALTER TABLE `qc_inspeksi` ADD COLUMN `id_inventory_fg` int DEFAULT NULL AFTER `wo_id` ");
+      await pool.query("ALTER TABLE `qc_inspeksi` ADD KEY `wo_id` (`wo_id`)");
+      await pool.query("ALTER TABLE `qc_inspeksi` ADD KEY `id_inventory_fg` (`id_inventory_fg`)");
+      await pool.query("ALTER TABLE `qc_inspeksi` ADD CONSTRAINT `qc_inspeksi_ibfk_1` FOREIGN KEY (`wo_id`) REFERENCES `operasi_wo_header` (`id`) ON DELETE SET NULL");
+      await pool.query("ALTER TABLE `qc_inspeksi` ADD CONSTRAINT `qc_inspeksi_ibfk_2` FOREIGN KEY (`id_inventory_fg`) REFERENCES `inventory_stok` (`id`) ON DELETE SET NULL");
+      console.log("[Server]: qc_inspeksi schema upgraded successfully.");
+    }
+  } catch (err: any) {
+    console.error("[Server]: Schema upgrade failed or already run:", err.message);
+  }
 });

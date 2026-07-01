@@ -14,6 +14,7 @@ interface SODetail {
     nama_barang: string;
     kode_barang: string;
     satuan: string;
+    assigned_serial_numbers?: string[];
 }
 
 interface SOHeader {
@@ -128,11 +129,16 @@ function fillPrintSO(so: any) {
 // ============================================================
 async function loadSOs() {
     try {
-        const response = await apiFetch<{ success: boolean; data: SOHeader[] }>('penjualan/so');
+        const query = new URLSearchParams({
+            page: currentPage.toString(),
+            limit: itemsPerPage.toString(),
+            search: '' // Tidak ada form pencarian di UI saat ini, tapi endpoint mendukungnya
+        });
+        const response = await apiFetch<any>(`penjualan/so?${query.toString()}`);
         if (!response.success) throw new Error('Gagal mengambil data SO');
         
         allSOs = response.data;
-        renderTable();
+        renderTable(response.meta);
         updateKPIs();
     } catch (error) {
         // Mock fallback if API not ready
@@ -166,24 +172,17 @@ function updateKPIs() {
     }
 }
 
-function renderTable() {
+function renderTable(meta?: any) {
     const tbody = document.getElementById('so-table-body')!;
     tbody.innerHTML = '';
 
-    if (allSOs.length === 0) {
+    const currentItems = allSOs;
+
+    if (currentItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 italic font-medium">Belum ada Sales Order</td></tr>`;
-    renderPaginationUI('penjualan-pagination-pagination', 'penjualan-pagination-info', 1, 10, 0, () => {});
+        renderPaginationUI('penjualan-pagination-pagination', 'penjualan-pagination-info', 1, 10, 0, () => {});
         return;
     }
-
-    const totalItems = allSOs.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (currentPage < 1) currentPage = 1;
-    if (currentPage > totalPages) currentPage = totalPages;
-
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-    const currentItems = allSOs.slice(startIndex, endIndex);
 
     currentItems.forEach(so => {
         const dateStr = new Date(so.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -243,12 +242,12 @@ function renderTable() {
     renderPaginationUI(
         'penjualan-pagination-pagination',
         'penjualan-pagination-info',
-        currentPage,
+        meta ? meta.currentPage : 1,
         itemsPerPage,
-        totalItems,
+        meta ? meta.totalItems : 0,
         (newPage) => {
             currentPage = newPage;
-            renderTable();
+            loadSOs();
         }
     );
 }
@@ -314,11 +313,21 @@ function openRightDrawerSO(so: SOHeader) {
                 ? '<span class="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold ml-2">DEFISIT</span>'
                 : '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold ml-2">TERSEDIA</span>';
 
+            let snHtml = '';
+            if (item.assigned_serial_numbers && Array.isArray(item.assigned_serial_numbers) && item.assigned_serial_numbers.length > 0) {
+                snHtml = '<div class="mt-1.5 flex flex-wrap gap-1">';
+                item.assigned_serial_numbers.forEach((sn: string) => {
+                    snHtml += `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200" title="Nomor Seri / Serial Number"><span class="material-symbols-outlined text-[10px] mr-0.5">barcode</span>${sn}</span>`;
+                });
+                snHtml += '</div>';
+            }
+
             return `
-            <tr class="hover:bg-slate-100 transition-colors">
+            <tr class="hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-0">
                 <td class="py-3 px-3">
-                    <p class="font-bold text-slate-800">${item.nama_barang} ${statusBadge}</p>
+                    <p class="font-bold text-slate-800 flex items-center flex-wrap gap-1">${item.nama_barang} ${statusBadge}</p>
                     <p class="text-[10px] text-slate-500 font-data-mono mt-0.5">${item.kode_barang}</p>
+                    ${snHtml}
                 </td>
                 <td class="py-3 px-3 text-right">
                     <span class="font-bold text-slate-800">${item.qty}</span>

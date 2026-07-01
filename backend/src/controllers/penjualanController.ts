@@ -112,32 +112,76 @@ export const getAllSO = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    const [headers]: any = await pool.query(`
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || '';
+    const offset = (page - 1) * limit;
+
+    let countQuery = 'SELECT COUNT(*) as total FROM penjualan_so_header';
+    let query = `
       SELECT id, nomor_so, nama_customer, alamat_pengiriman, tanggal_target_kirim, catatan, biaya_pengiriman, status_so, total_nilai, foto_bukti_terima_retailer, created_at,
              vendor_3pl, nomor_resi_3pl, nama_supir, plat_nomor, no_telepon_supir,
              (SELECT COUNT(*) FROM exception_writeoff w WHERE w.alasan_hilang LIKE CONCAT('%', nomor_so, '%') AND w.status_approval = 'APPROVED') as writeoff_approved_count,
              (SELECT COUNT(*) FROM exception_writeoff w WHERE w.alasan_hilang LIKE CONCAT('%', nomor_so, '%') AND w.status_approval = 'PENDING') as writeoff_pending_count
       FROM penjualan_so_header
-      ORDER BY id DESC
-    `);
+    `;
+    const params: any[] = [];
+    
+    if (search) {
+      const searchParam = `%${search}%`;
+      const whereClause = ' WHERE nomor_so LIKE ? OR nama_customer LIKE ? OR status_so LIKE ?';
+      query += whereClause;
+      countQuery += whereClause;
+      params.push(searchParam, searchParam, searchParam);
+    }
+    
+    query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
+    
+    const [countResult]: any = await pool.query(countQuery, params);
+    const totalItems = countResult[0].total;
+    const totalPages = Math.ceil(totalItems / limit);
 
-    const [details]: any = await pool.query(`
-      SELECT d.id, d.id_so_header, d.id_inventory_barang_jadi, d.qty,
-             d.harga_satuan, d.subtotal, d.status_item, d.hpp_satuan_tercatat, d.id_wo_terkait,
-             i.kode_barang, i.nama_barang, i.satuan
-      FROM penjualan_so_detail d
-      LEFT JOIN inventory_stok i ON d.id_inventory_barang_jadi = i.id
-    `);
+    const queryParams = [...params, limit, offset];
+    const [headers]: any = await pool.query(query, queryParams);
 
-    const result = headers.map((h: any) => {
-      const items = details.filter((d: any) => d.id_so_header === h.id);
-      return {
-        ...h,
-        items
-      };
+    let result = [];
+    if (headers.length > 0) {
+      const headerIds = headers.map((h: any) => h.id);
+      
+      // Menggunakan query builder manual untuk IN clause agar aman
+      const placeholders = headerIds.map(() => '?').join(',');
+      const [details]: any = await pool.query(`
+        SELECT d.id, d.id_so_header, d.id_inventory_barang_jadi, d.qty,
+               d.harga_satuan, d.subtotal, d.status_item, d.hpp_satuan_tercatat, d.id_wo_terkait,
+               d.assigned_serial_numbers,
+               i.kode_barang, i.nama_barang, i.satuan
+        FROM penjualan_so_detail d
+        LEFT JOIN inventory_stok i ON d.id_inventory_barang_jadi = i.id
+        WHERE d.id_so_header IN (${placeholders})
+      `, headerIds);
+
+      result = headers.map((h: any) => {
+        const items = details.filter((d: any) => d.id_so_header === h.id).map((d: any) => {
+            let sns = [];
+            try { sns = d.assigned_serial_numbers ? JSON.parse(d.assigned_serial_numbers) : []; } catch(e){}
+            return { ...d, assigned_serial_numbers: sns };
+        });
+        return {
+          ...h,
+          items
+        };
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      data: result,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: page
+      }
     });
-
-    res.json({ success: true, data: result });
   } catch (error: any) {
     console.error('[getAllSO] Error:', error);
     res.status(500).json({ success: false, message: `Server error: ${error.message}` });
@@ -236,9 +280,17 @@ export const createSO = async (req: Request, res: Response): Promise<void> => {
         );
       }
 
+      let sns: string[] = [];
+      if (!hasDefisit) {
+         // Auto-generate serial numbers for available stock (in a real system, picked via barcode scan)
+         for (let i = 0; i < qty; i++) {
+             sns.push(`MKB-${stokData[0].kode_barang || 'FG'}-${Date.now().toString().slice(-4)}-${i+1}`);
+         }
+      }
+
       await connection.query(
-        'INSERT INTO penjualan_so_detail (id_so_header, id_inventory_barang_jadi, qty, harga_satuan, subtotal, status_item, hpp_satuan_tercatat) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [soHeaderId, id_inventory, qty, hargaSatuan, subtotal, statusItem, hppSatuan]
+        'INSERT INTO penjualan_so_detail (id_so_header, id_inventory_barang_jadi, qty, harga_satuan, subtotal, status_item, hpp_satuan_tercatat, assigned_serial_numbers) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [soHeaderId, id_inventory, qty, hargaSatuan, subtotal, statusItem, hppSatuan, JSON.stringify(sns)]
       );
     }
 
@@ -413,7 +465,64 @@ export const fulfillSO = async (req: Request, res: Response): Promise<void> => {
         return;
     }
 
-    // 2. Check Detail Items "All-or-Nothing"
+    // 4. Update Status SO
+    await connection.query(
+      'UPDATE penjualan_so_header SET status_so = ? WHERE id = ?',
+      ['PAID', soId]
+    );
+
+    // 5. JURNAL AKUNTANSI PENJUALAN (2 Baris: Kas vs Pendapatan)
+    const totalPendapatan = parseFloat(soHeader.total_nilai || 0);
+    if (totalPendapatan > 0) {
+        await insertJurnal(connection, soHeader.nomor_so, `Pelunasan Piutang / Penjualan ${soHeader.nomor_so}`, 'Kas_Bank', 'Debit', totalPendapatan);
+        await insertJurnal(connection, soHeader.nomor_so, `Pendapatan Operasional ${soHeader.nomor_so}`, 'Pendapatan', 'Kredit', totalPendapatan);
+    }
+
+    await connection.commit();
+    res.json({ success: true, message: `Fulfillment sukses! Pembayaran divalidasi dan SO berstatus PAID.` });
+
+  } catch (error: any) {
+    await connection.rollback();
+    console.error('[fulfillSO] Transaction Error:', error);
+    res.status(400).json({ success: false, message: error.message });
+  } finally {
+    connection.release();
+  }
+};
+
+// ============================================================
+// 4. [PATCH] /api/penjualan/so/:id/ship (Dispatch 3PL)
+// ============================================================
+export const shipSO = async (req: Request, res: Response): Promise<void> => {
+  const connection = await pool.getConnection();
+  try {
+    const soId = parseInt(req.params.id, 10);
+    const { vendor, resi, supir, plat, no_telepon } = req.body;
+    const file = req.file;
+    
+    if (isNaN(soId)) throw new Error('ID SO tidak valid.');
+    if (!file) throw new Error('Bukti foto serah terima (e-POD) wajib diunggah!');
+    
+    const foto = file.filename;
+    
+    await connection.beginTransaction();
+
+    const [headerRows]: any = await connection.query('SELECT nomor_so, status_so, foto_serah_terima_3pl FROM penjualan_so_header WHERE id = ? FOR UPDATE', [soId]);
+    if (headerRows.length === 0) throw new Error('SO tidak ditemukan.');
+    if (headerRows[0].status_so !== 'RESERVED') throw new Error('Hanya pesanan berstatus RESERVED yang bisa di-dispatch.');
+
+    const soHeader = headerRows[0];
+
+    // Hapus foto lama jika ada
+    const oldFoto = soHeader.foto_serah_terima_3pl;
+    if (oldFoto) {
+      const oldPath = path.join(process.cwd(), 'public/uploads/epod/ship', oldFoto);
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
+
+    // --- Hard Consume Stok (Barang keluar dari gudang) ---
     const [detailRows]: any = await connection.query(
       'SELECT id, id_inventory_barang_jadi, qty, status_item, hpp_satuan_tercatat, id_wo_terkait FROM penjualan_so_detail WHERE id_so_header = ?',
       [soId]
@@ -421,10 +530,10 @@ export const fulfillSO = async (req: Request, res: Response): Promise<void> => {
 
     const isDefisit = detailRows.some((d: any) => d.status_item === 'DEFISIT');
     if (isDefisit) {
-      throw new Error('All-or-Nothing Fulfillment Error: Masih ada baris detail yang berstatus DEFISIT. Harap tunggu WO diselesaikan.');
+      throw new Error('Gagal Dispatch: Masih ada baris detail yang berstatus DEFISIT. Harap tunggu WO diselesaikan.');
     }
 
-    // 3. Hard Consume Stok
+    let totalHPP = 0;
     for (const item of detailRows) {
       const [stokData]: any = await connection.query(
         'SELECT jumlah_stok FROM inventory_stok WHERE id = ? FOR UPDATE',
@@ -447,78 +556,27 @@ export const fulfillSO = async (req: Request, res: Response): Promise<void> => {
           [item.qty, item.id_inventory_barang_jadi]
         );
       }
+      totalHPP += parseFloat(item.hpp_satuan_tercatat || 0) * item.qty;
     }
 
-    // 4. Update Status SO
-    await connection.query(
-      'UPDATE penjualan_so_header SET status_so = ? WHERE id = ?',
-      ['PAID', soId] // After paid, eventually to COMPLETED. Here we set to PAID to reflect money received.
-    );
-
-    // 5. JURNAL AKUNTANSI PENJUALAN (4 Baris: Kas vs Pendapatan, HPP vs Persediaan)
-    const totalPendapatan = parseFloat(soHeader.total_nilai || 0);
-    if (totalPendapatan > 0) {
-        await insertJurnal(connection, soHeader.nomor_so, `Pelunasan Piutang / Penjualan ${soHeader.nomor_so}`, 'Kas_Bank', 'Debit', totalPendapatan);
-        await insertJurnal(connection, soHeader.nomor_so, `Pendapatan Operasional ${soHeader.nomor_so}`, 'Pendapatan', 'Kredit', totalPendapatan);
-    }
-    
-    let totalHPP = 0;
-    for (const item of detailRows) {
-        totalHPP += parseFloat(item.hpp_satuan_tercatat || 0) * item.qty;
-    }
-
+    // JURNAL AKUNTANSI PENGIRIMAN (HPP vs Persediaan)
     if (totalHPP > 0) {
         await insertJurnal(connection, soHeader.nomor_so, `Pengakuan HPP ${soHeader.nomor_so}`, 'HPP', 'Debit', totalHPP);
         await insertJurnal(connection, soHeader.nomor_so, `Pelepasan Persediaan ${soHeader.nomor_so}`, 'Aset_Persediaan', 'Kredit', totalHPP);
     }
 
-    await connection.commit();
-    res.json({ success: true, message: `Fulfillment sukses! Pembayaran divalidasi, stok di-hard consume dan SO berstatus PAID.` });
-
-  } catch (error: any) {
-    await connection.rollback();
-    console.error('[fulfillSO] Transaction Error:', error);
-    res.status(400).json({ success: false, message: error.message });
-  } finally {
-    connection.release();
-  }
-};
-
-// ============================================================
-// 4. [PATCH] /api/penjualan/so/:id/ship (Dispatch 3PL)
-// ============================================================
-export const shipSO = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const soId = parseInt(req.params.id, 10);
-    const { vendor, resi, supir, plat, no_telepon } = req.body;
-    const file = req.file;
-    
-    if (isNaN(soId)) throw new Error('ID SO tidak valid.');
-    if (!file) throw new Error('Bukti foto serah terima (e-POD) wajib diunggah!');
-    
-    const foto = file.filename;
-    
-    const [headerRows]: any = await pool.query('SELECT status_so, foto_serah_terima_3pl FROM penjualan_so_header WHERE id = ?', [soId]);
-    if (headerRows.length === 0) throw new Error('SO tidak ditemukan.');
-    if (headerRows[0].status_so !== 'RESERVED') throw new Error('Hanya pesanan berstatus RESERVED yang bisa di-dispatch.');
-
-    // Hapus foto lama jika ada
-    const oldFoto = headerRows[0].foto_serah_terima_3pl;
-    if (oldFoto) {
-      const oldPath = path.join(process.cwd(), 'public/uploads/epod/ship', oldFoto);
-      if (fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
-      }
-    }
-
-    await pool.query(
+    await connection.query(
       'UPDATE penjualan_so_header SET status_so = ?, vendor_3pl = ?, nomor_resi_3pl = ?, foto_serah_terima_3pl = ?, nama_supir = ?, plat_nomor = ?, no_telepon_supir = ? WHERE id = ?',
       ['SHIPPED', vendor, resi, foto, supir, plat, no_telepon, soId]
     );
 
-    res.json({ success: true, message: `Berhasil di-dispatch via ${vendor}. Status menjadi SHIPPED.` });
+    await connection.commit();
+    res.json({ success: true, message: `Berhasil di-dispatch via ${vendor}. Status menjadi SHIPPED dan stok dikurangi.` });
   } catch (error: any) {
+    await connection.rollback();
     res.status(400).json({ success: false, message: error.message });
+  } finally {
+    connection.release();
   }
 };
 

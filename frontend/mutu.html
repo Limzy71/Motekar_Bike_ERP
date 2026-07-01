@@ -93,11 +93,7 @@
             var lastTab = localStorage.getItem('mutuLastTab') || 'inspeksi';
             var s = document.createElement('style');
             s.id = 'anti-flicker';
-            if (lastTab === 'investigasi') {
-                s.innerHTML = '#view-inspeksi { display: none !important; } #view-investigasi { display: block !important; }';
-            } else {
-                s.innerHTML = '#view-investigasi { display: none !important; } #view-inspeksi { display: block !important; }';
-            }
+            s.innerHTML = '#view-inspeksi, #view-investigasi, #view-seri { display: none !important; } #view-' + lastTab + ' { display: block !important; }';
             document.head.appendChild(s);
         })();
     </script>
@@ -199,6 +195,8 @@
                     <button id="tab-investigasi"
                         class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Investigasi
                         Klaim Garansi</button>
+                    <button id="tab-seri"
+                        class="pb-3 px-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Arsip Nomor Pembuatan (Serial Number)</button>
                 </div>
 
                 <!-- TAB 1: INSPEKSI -->
@@ -302,6 +300,57 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- TAB 3: NOMOR PEMBUATAN (SERIAL NUMBER) -->
+                <div id="view-seri" class="hidden">
+                    <div class="bg-white border border-slate-200/80 rounded-xl shadow-2xs overflow-hidden flex flex-col mb-8">
+                        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
+                            <h3 class="font-bold text-slate-800 text-sm">Daftar Nomor Pembuatan Terbit (Serial Number)</h3>
+                            <div class="flex items-center gap-3">
+                                <div class="relative w-64">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span class="material-symbols-outlined text-slate-400 text-[18px]">search</span>
+                                    </div>
+                                    <input type="text" id="search-seri-input" placeholder="Cari serial / model / WO..." 
+                                           class="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:border-slate-400 focus:ring-0 outline-none transition-colors">
+                                </div>
+                                <button id="btn-refresh-seri"
+                                    class="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200/50">
+                                    <span class="material-symbols-outlined text-[18px]">refresh</span>
+                                </button>
+                            </div>
+                        </div>
+                        <table class="w-full border-collapse table-auto">
+                            <colgroup>
+                                <col style="width: 25%">
+                                <col style="width: 20%">
+                                <col style="width: 15%">
+                                <col style="width: 20%">
+                                <col style="width: 20%">
+                            </colgroup>
+                            <thead>
+                                <tr class="border-b border-slate-200/80 bg-slate-50/75">
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">NOMOR PEMBUATAN / SERI</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">MODEL SEPEDA</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">REFERENSI WO</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-left">TANGGAL LOLOS QC</th>
+                                    <th class="text-[11px] font-bold uppercase tracking-wider text-slate-400 py-3 px-4 text-center">TINDAKAN</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-sepeda-seri" class="divide-y divide-slate-100 text-xs">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-xs font-medium text-slate-500">Memuat data serial number...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <!-- Pagination Seri -->
+                        <div class="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between rounded-b-xl">
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest" id="seri-pagination-info">Menampilkan 0-0 dari 0 data</span>
+                            <div class="flex items-center gap-1.5" id="seri-pagination-pagination"></div>
+                        </div>
                     </div>
                 </div>
 

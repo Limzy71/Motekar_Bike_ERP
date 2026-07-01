@@ -13,12 +13,40 @@ import { asyncHandler } from '../helpers/asyncHandler.js';
 // ============================================================
 export const getAllStok = async (req: Request, res: Response): Promise<void> => {
   try {
-    const [rows] = await pool.query(
-      'SELECT id, kode_barang, nama_barang, kategori, tipe_item, jumlah_stok, stok_committed, (jumlah_stok - stok_committed) as stok_available, satuan, last_updated FROM inventory_stok ORDER BY jumlah_stok ASC, nama_barang ASC'
-    );
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || '';
+    const offset = (page - 1) * limit;
+
+    let query = 'SELECT id, kode_barang, nama_barang, kategori, tipe_item, jumlah_stok, stok_committed, (jumlah_stok - stok_committed) as stok_available, satuan, last_updated FROM inventory_stok';
+    let countQuery = 'SELECT COUNT(*) as total FROM inventory_stok';
+    const params: any[] = [];
+
+    if (search) {
+      const searchParam = `%${search}%`;
+      const whereClause = ' WHERE kode_barang LIKE ? OR nama_barang LIKE ? OR kategori LIKE ?';
+      query += whereClause;
+      countQuery += whereClause;
+      params.push(searchParam, searchParam, searchParam);
+    }
+
+    query += ' ORDER BY jumlah_stok ASC, nama_barang ASC LIMIT ? OFFSET ?';
+    
+    const [countResult]: any = await pool.query(countQuery, params);
+    const totalItems = countResult[0].total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const queryParams = [...params, limit, offset];
+    const [rows] = await pool.query(query, queryParams);
+
     res.json({
       success: true,
-      data: rows
+      data: rows,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: page
+      }
     });
   } catch (error: any) {
     console.error('[getAllStok] Error:', error);

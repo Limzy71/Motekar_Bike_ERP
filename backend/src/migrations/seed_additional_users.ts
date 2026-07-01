@@ -22,6 +22,7 @@ async function seedAdditionalUsers() {
       { username: 'keuangan',  nama_lengkap: 'Tim Keuangan',              email: 'keuangan@motekar.com',   divisi_role: 'Keuangan & Akuntansi' },
       { username: 'penjualan', nama_lengkap: 'Pemasaran & Penjualan',     email: 'penjualan@motekar.com',  divisi_role: 'Pemasaran & Penjualan' },
       { username: 'legal',     nama_lengkap: 'Legal & Kepatuhan',         email: 'legal@motekar.com',      divisi_role: 'Legal & Kepatuhan' },
+      { username: 'testing',   nama_lengkap: 'Testing / Guest',           email: 'guest@motekar.com',      divisi_role: 'Owner' },
     ];
 
     for (const user of newUsers) {

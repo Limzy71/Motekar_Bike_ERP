@@ -270,7 +270,7 @@ let toastTimeout: ReturnType<typeof setTimeout>;
  * @param message - Pesan yang akan ditampilkan
  * @param isError - Apakah toast ini untuk error (warna merah)
  */
-export function showToast(message: string, isError: boolean = false): void {
+export function showToast(message: string, isError: boolean = false, customDuration?: number): void {
   const toast = document.getElementById('toast');
   if (!toast) return;
 
@@ -303,10 +303,11 @@ export function showToast(message: string, isError: boolean = false): void {
   toast.classList.remove('opacity-0');
   toast.classList.add('opacity-100');
 
+  const duration = customDuration || 3500;
   toastTimeout = setTimeout(() => {
     toast.classList.remove('show', 'opacity-100');
     toast.classList.add('opacity-0');
-  }, 3500);
+  }, duration);
 }
 
 // ============================================================

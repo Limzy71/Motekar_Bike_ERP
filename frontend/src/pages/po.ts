@@ -758,8 +758,8 @@ async function initCreateModal() {
     // Hanya Pengadaan / Owner yang bisa melihat tombol Buat PO
     if (role === 'Pengadaan' || role === 'Owner') {
         const btnNewPO = document.createElement('button');
-        btnNewPO.className = 'bg-primary hover:bg-primary-container text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-all';
-        btnNewPO.innerHTML = `<span class="material-symbols-outlined text-[20px]">post_add</span> Buat PO Baru`;
+        btnNewPO.className = 'bg-primary hover:bg-primary-container text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-all';
+        btnNewPO.innerHTML = `<span class="material-symbols-outlined text-[18px]">post_add</span> Buat PO Baru`;
         
         const modal = document.getElementById('modal-create-po')!;
         btnNewPO.onclick = () => {

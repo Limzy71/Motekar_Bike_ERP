@@ -135,7 +135,10 @@ async function run() {
          if (v) idVendor = v.insertedId;
       }
 
-      const initialStok = i.tipe === 'FG' ? 1 : 0;
+      let initialStok = 0;
+      if (i.tipe === 'RM') initialStok = 30;
+      else if (i.tipe === 'SA') initialStok = 0;
+      else if (i.tipe === 'FG') initialStok = 5;
 
       await connection.query(
         'INSERT INTO inventory_stok (kode_barang, nama_barang, kategori, satuan, tipe_item, harga_standar, harga_jual, jumlah_stok, id_vendor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',

@@ -72,14 +72,36 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
       // 3. Tambah stok gudang (Barang Jadi)
       await connection.query('UPDATE inventory_stok SET jumlah_stok = jumlah_stok + ? WHERE id = ?', [wo.jumlah_produksi, wo.id_inventory_fg]);
 
+      // Ambil nomor WO untuk referensi dokumen
+      const [woRef]: any = await connection.query('SELECT nomor_wo FROM operasi_wo_header WHERE id = ?', [woId]);
+      const refDoc = woRef.length > 0 ? woRef[0].nomor_wo : `WO-${woId}`;
+
+      // 3b. GENERATOR NOMOR PEMBUATAN / SERIAL NUMBER SEPEDA
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const dateStr = `${year}${month}${day}`;
+      const cleanModelCode = wo.kode_sepeda.replace(/[^a-zA-Z0-9]/g, '');
+      const serialNumbers: string[] = [];
+
+      for (let i = 1; i <= wo.jumlah_produksi; i++) {
+        const sequenceStr = String(i).padStart(2, '0');
+        const serialNo = `MKB-${cleanModelCode}-${dateStr}-${String(woId).padStart(3, '0')}-${sequenceStr}`;
+        
+        await connection.query(
+          `INSERT INTO qc_inspeksi (wo_id, id_inventory_fg, nomor_seri_sepeda, uji_pengereman, uji_shifting, uji_alignment, catatan_inspektur)
+           VALUES (?, ?, ?, 1, 1, 1, ?)`,
+          [woId, wo.id_inventory_fg, serialNo, `Lolos inspeksi otomatis via WO ${refDoc}`]
+        );
+        
+        serialNumbers.push(serialNo);
+      }
+
       // 4. AUTOMATED FINANCIAL LEDGER — Jurnal Kapitalisasi Manufaktur (WIP ke FG)
       const [fgData]: any = await connection.query('SELECT harga_standar FROM inventory_stok WHERE id = ?', [wo.id_inventory_fg]);
       const hargaStandar = parseFloat(fgData[0]?.harga_standar || 0);
       const totalKapitalisasi = hargaStandar * wo.jumlah_produksi;
-
-      // Ambil nomor WO untuk referensi dokumen
-      const [woRef]: any = await connection.query('SELECT nomor_wo FROM operasi_wo_header WHERE id = ?', [woId]);
-      const refDoc = woRef.length > 0 ? woRef[0].nomor_wo : `WO-${woId}`;
 
       if (totalKapitalisasi > 0) {
         await insertJurnal(connection, refDoc, `Kapitalisasi WIP ke Finished Good (${wo.jumlah_produksi} Unit)`, 'Aset_Persediaan', 'Debit', totalKapitalisasi);
@@ -88,7 +110,10 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
 
       await connection.commit();
       connection.release();
-      res.json({ success: true, message: 'Inspeksi Pass. Work Order Closed, Stok & Jurnal Keuangan telah diperbarui.' });
+      res.json({ 
+        success: true, 
+        message: `Inspeksi Pass. Work Order Closed, Stok & Jurnal Keuangan telah diperbarui. Terbit ${wo.jumlah_produksi} nomor pembuatan: ${serialNumbers.join(', ')}` 
+      });
 
     } else if (result === 'Fail') {
       // SKENARIO B: TOLAK / REWORK
@@ -119,5 +144,22 @@ export const submitInspeksi = async (req: Request, res: Response): Promise<void>
     }
     console.error('[submitInspeksi] Transaction Error:', error);
     res.status(500).json({ success: false, message: `Transaksi Gagal di-Rollback: ${error.message}` });
+  }
+};
+
+export const getSepedaSeri = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [rows]: any = await pool.query(
+      `SELECT q.id, q.nomor_seri_sepeda, q.waktu_inspeksi, q.uji_pengereman, q.uji_shifting, q.uji_alignment, q.catatan_inspektur,
+              w.nomor_wo, i.kode_barang as kode_sepeda, i.nama_barang as nama_sepeda
+       FROM qc_inspeksi q
+       LEFT JOIN operasi_wo_header w ON q.wo_id = w.id
+       LEFT JOIN inventory_stok i ON q.id_inventory_fg = i.id
+       ORDER BY q.waktu_inspeksi DESC`
+    );
+    res.json({ success: true, data: rows });
+  } catch (error: any) {
+    console.error('[getSepedaSeri] Error:', error);
+    res.status(500).json({ success: false, message: `Gagal mengambil data serial number: ${error.message}` });
   }
 };
