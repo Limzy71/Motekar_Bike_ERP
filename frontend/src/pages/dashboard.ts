@@ -318,6 +318,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Dynamic Header Title
+  const pageTitle = document.getElementById('page-title');
+  if (pageTitle) {
+    if (user.divisi_role === 'IT Support') {
+      pageTitle.textContent = 'Manajemen Sistem';
+    } else if (['Owner', 'General Manager'].includes(user.divisi_role)) {
+      pageTitle.textContent = 'Ringkasan Eksekutif';
+    } else {
+      pageTitle.textContent = 'Ringkasan Operasional';
+    }
+  }
+
   // 2. Load dashboard data based on role
   if (user.divisi_role === 'IT Support') {
     if (dashOps) dashOps.classList.add('hidden');
