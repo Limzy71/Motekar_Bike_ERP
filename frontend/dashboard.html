@@ -140,8 +140,8 @@
 
                 <div class="p-8 space-y-6">
 
-                    <!-- 4 KPI CARDS -->
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- KPI EXECUTIVE (Owner / GM) -->
+                    <div id="kpi-executive-container" class="grid grid-cols-2 lg:grid-cols-4 gap-4 hidden">
 
                         <!-- KPI 1: Valuasi Aset -->
                         <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
@@ -200,6 +200,70 @@
                                     <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
                                 </p>
                                 <p class="text-[10px] text-slate-400 mt-2">Klaim Garansi Pending</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI OPERASIONAL (Gudang, Pengadaan, dll) -->
+                    <div id="kpi-operational-container" class="grid grid-cols-2 lg:grid-cols-4 gap-4 hidden">
+
+                        <!-- KPI 1: PR Aktif -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-blue-50 -translate-y-8 translate-x-8"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-[20px]">shopping_cart</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total PR Aktif</p>
+                                <p class="text-2xl font-black text-slate-900 font-data-mono leading-none truncate" id="kpi-pr">
+                                    <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Purchase Requisition</p>
+                            </div>
+                        </div>
+
+                        <!-- KPI 2: Invoice -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-emerald-50 -translate-y-8 translate-x-8"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Invoice</p>
+                                <p class="text-2xl font-black text-slate-900 font-data-mono leading-none truncate" id="kpi-invoice">
+                                    <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Faktur Penjualan</p>
+                            </div>
+                        </div>
+
+                        <!-- KPI 3: Job Selesai -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-teal-50 -translate-y-8 translate-x-8"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-[20px]">task_alt</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Job Selesai</p>
+                                <p class="text-2xl font-black text-slate-900 font-data-mono leading-none truncate" id="kpi-job">
+                                    <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Work Order Completed</p>
+                            </div>
+                        </div>
+
+                        <!-- KPI 4: Stok Komponen -->
+                        <div class="kpi-card bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-amber-50 -translate-y-8 translate-x-8"></div>
+                            <div class="relative z-10">
+                                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stok Komponen</p>
+                                <p class="text-2xl font-black text-slate-900 font-data-mono leading-none truncate" id="kpi-stok">
+                                    <span class="skeleton inline-block w-10 h-7">&nbsp;</span>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-2">Item di Gudang</p>
                             </div>
                         </div>
                     </div>

@@ -61,22 +61,39 @@ interface DashboardResponse {
 /**
  * Fetch data dashboard dari backend dan render KPI + Charts.
  */
-async function loadDashboard(): Promise<void> {
+async function loadDashboard(role: string): Promise<void> {
   try {
-    const [response, execResponse] = await Promise.all([
+    const isExecutive = ['Owner', 'General Manager'].includes(role);
+    const execContainer = document.getElementById('kpi-executive-container');
+    const opsContainer = document.getElementById('kpi-operational-container');
+
+    if (isExecutive) {
+      execContainer?.classList.remove('hidden');
+      opsContainer?.classList.add('hidden');
+    } else {
+      execContainer?.classList.add('hidden');
+      opsContainer?.classList.remove('hidden');
+    }
+
+    const promises: [Promise<DashboardResponse | null>, Promise<any | null>] = [
       apiFetch<DashboardResponse>('dashboard'),
-      apiFetch<any>('dashboard/executive')
-    ]);
+      isExecutive ? apiFetch<any>('dashboard/executive') : Promise.resolve({ success: true, data: null })
+    ];
+
+    const [response, execResponse] = await Promise.all(promises);
 
     if (!response || !execResponse) { showToast('Gagal menghubungi server', true); return; }
     
     if (response.success && execResponse.success) {
       const charts = response.data?.charts;
-      const executiveMetrics = execResponse.data;
-
-      if (!charts || !executiveMetrics) { showToast('Data dashboard tidak lengkap', true); return; }
+      if (!charts) { showToast('Data dashboard tidak lengkap', true); return; }
       
-      renderKPI(executiveMetrics);
+      if (isExecutive) {
+        if (execResponse.data) renderExecutiveKPI(execResponse.data);
+      } else {
+        if (response.data?.kpi) renderOperationalKPI(response.data.kpi);
+      }
+
       renderKanbanChart(charts.kanban_status);
       renderStokChart(charts.stok_kategori);
       
@@ -115,7 +132,7 @@ function formatRupiah(amount: number): string {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 }
 
-function renderKPI(metrics: any): void {
+function renderExecutiveKPI(metrics: any): void {
   const elAsset = document.getElementById('kpi-asset');
   if (elAsset) elAsset.innerText = formatRupiah(metrics.asset_valuation);
 
@@ -127,6 +144,20 @@ function renderKPI(metrics: any): void {
 
   const elAftersales = document.getElementById('kpi-aftersales');
   if (elAftersales) elAftersales.innerText = String(metrics.aftersales_claims);
+}
+
+function renderOperationalKPI(kpi: DashboardKPI): void {
+  const kpiElements: Record<string, number> = {
+    'kpi-pr': kpi.total_pr || 0,
+    'kpi-invoice': kpi.total_invoice || 0,
+    'kpi-job': kpi.job_selesai || 0,
+    'kpi-stok': kpi.stok_komponen || 0,
+  };
+
+  Object.entries(kpiElements).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = String(value);
+  });
 }
 
 // ============================================================
@@ -295,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     if (dashOps) dashOps.classList.remove('hidden');
     if (dashIT) dashIT.classList.add('hidden');
-    loadDashboard();
+    loadDashboard(role);
   }
 
   // 3. Tombol "Segarkan Data"
@@ -305,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (user.divisi_role === 'IT Support') {
         loadITDashboard();
       } else {
-        loadDashboard();
+        loadDashboard(role);
       }
     });
   }
@@ -315,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (user.divisi_role === 'IT Support') {
       loadITDashboard();
     } else {
-      loadDashboard();
+      loadDashboard(role);
     }
   }, 3000);
 });

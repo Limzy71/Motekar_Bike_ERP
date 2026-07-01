@@ -27,7 +27,7 @@ router.use(authenticate as any);
 
 // Endpoint untuk dashboard GET /api/dashboard (memerlukan autentikasi)
 router.get('/dashboard', authenticate, getDashboard);
-router.get('/dashboard/executive', authenticate, getExecutiveMetrics);
+router.get('/dashboard/executive', executiveAuth, getExecutiveMetrics);
 
 // ============================================================
 // MODUL PENGADAAN (Purchase Requisition)
