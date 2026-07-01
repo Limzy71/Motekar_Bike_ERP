@@ -55,7 +55,12 @@ declare namespace google {
 // Global callback for Google Maps authentication failure
 (window as any).gm_authFailure = () => {
     console.error('Google Maps Auth Failure');
-    showToast('API Key Google Maps ditolak. Tunggu propagasi 5-15 menit atau pastikan Places API telah di-Enable di Google Cloud Console.', 'error');
+    showToast('API Key Google Maps ditolak/bermasalah. Beralih ke Mode Manual (Offline).', 'error');
+    if (typeof (window as any).enableManualShippingInput === 'function') {
+        (window as any).enableManualShippingInput();
+    } else {
+        (window as any).gm_auth_failed_flag = true;
+    }
 };
 
 function showToast(message: string, type: 'success' | 'error' = 'success') {
@@ -717,6 +722,33 @@ async function initCreateModal() {
         }
     });
 
+    const enableManualShippingInput = () => {
+        const inputOngkir = document.getElementById('input-biaya-pengiriman') as HTMLInputElement;
+        if (inputOngkir) {
+            inputOngkir.removeAttribute('readonly');
+            inputOngkir.className = "w-full bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm font-data-mono focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-text";
+            
+            inputOngkir.oninput = () => {
+                const raw = inputOngkir.value.replace(/\D/g, '');
+                const parsed = parseInt(raw, 10) || 0;
+                inputOngkir.value = parsed.toLocaleString('id-ID');
+                updateAllTotalHarga();
+            };
+        }
+        const teksOngkir = document.getElementById('teks-keterangan-ongkir');
+        if (teksOngkir) {
+            teksOngkir.textContent = '⚠️ Mode Manual Aktif: Masukkan biaya pengiriman secara manual.';
+            teksOngkir.classList.remove('hidden', 'text-primary');
+            teksOngkir.classList.add('text-amber-600');
+        }
+    };
+    (window as any).enableManualShippingInput = enableManualShippingInput;
+
+    // Check if auth failed before initialization
+    if ((window as any).gm_auth_failed_flag) {
+        enableManualShippingInput();
+    }
+
     const calculateShippingCost = async () => {
         const lat = inputLat.value;
         const lng = inputLng.value;
@@ -755,13 +787,15 @@ async function initCreateModal() {
             } else {
                 inputOngkir.value = '0';
                 if (teksOngkir) teksOngkir.classList.add('hidden');
-                showToast(mapRes.message || 'Gagal hitung ongkir.', 'error');
+                showToast(mapRes.message || 'Gagal hitung ongkir. Beralih ke Mode Manual.', 'error');
+                enableManualShippingInput();
             }
         } catch (e) {
             inputOngkir.value = '0';
             const teksOngkir = document.getElementById('teks-keterangan-ongkir');
             if (teksOngkir) teksOngkir.classList.add('hidden');
-            showToast('Gagal terhubung ke kalkulator ongkir.', 'error');
+            showToast('Gagal terhubung ke kalkulator ongkir. Beralih ke Mode Manual.', 'error');
+            enableManualShippingInput();
         }
         
         updateAllTotalHarga();
@@ -814,9 +848,12 @@ async function initCreateModal() {
                 }
                 await calculateShippingCost();
             });
+        } else {
+            enableManualShippingInput();
         }
     } catch (e) {
         console.warn('Google Maps script is not loaded or key is invalid.');
+        enableManualShippingInput();
     }
 
     // Event listeners untuk dynamic rows

@@ -177,7 +177,7 @@ export const calculateShipping = async (req: Request, res: Response): Promise<vo
         } else {
             res.json({
                 success: false,
-                message: 'Gagal menghitung rute dan koordinat tidak tersedia.',
+                message: 'Kalkulasi otomatis gagal (API Google Maps bermasalah atau koordinat tidak tersedia). Silakan masukkan ongkir secara manual.',
                 jarak_km: 0,
                 ongkir: 0
             });
