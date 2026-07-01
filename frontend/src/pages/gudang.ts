@@ -70,7 +70,8 @@ async function loadGudang(): Promise<void> {
     const query = new URLSearchParams({
       page: currentPage.toString(),
       limit: itemsPerPage.toString(),
-      search: currentSearch || ''
+      search: currentSearch || '',
+      filter: currentFilter || 'Semua'
     });
 
     const response = await apiFetch<any>(`gudang?${query.toString()}`);

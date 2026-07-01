@@ -18,16 +18,36 @@ export const getAllStok = async (req: Request, res: Response): Promise<void> => 
     const search = (req.query.search as string) || '';
     const offset = (page - 1) * limit;
 
+    const filter = (req.query.filter as string) || 'Semua';
+
     let query = 'SELECT id, kode_barang, nama_barang, kategori, tipe_item, jumlah_stok, stok_committed, (jumlah_stok - stok_committed) as stok_available, satuan, last_updated FROM inventory_stok';
     let countQuery = 'SELECT COUNT(*) as total FROM inventory_stok';
+    
+    let whereConditions: string[] = [];
     const params: any[] = [];
 
     if (search) {
       const searchParam = `%${search}%`;
-      const whereClause = ' WHERE kode_barang LIKE ? OR nama_barang LIKE ? OR kategori LIKE ?';
+      whereConditions.push('(kode_barang LIKE ? OR nama_barang LIKE ? OR kategori LIKE ?)');
+      params.push(searchParam, searchParam, searchParam);
+    }
+
+    if (filter !== 'Semua') {
+      let tipeItem = '';
+      if (filter === 'Bahan Baku') tipeItem = 'RM';
+      else if (filter === 'Barang Setengah Jadi') tipeItem = 'SA';
+      else if (filter === 'Barang Jadi') tipeItem = 'FG';
+      
+      if (tipeItem) {
+        whereConditions.push('tipe_item = ?');
+        params.push(tipeItem);
+      }
+    }
+
+    if (whereConditions.length > 0) {
+      const whereClause = ' WHERE ' + whereConditions.join(' AND ');
       query += whereClause;
       countQuery += whereClause;
-      params.push(searchParam, searchParam, searchParam);
     }
 
     query += ' ORDER BY jumlah_stok ASC, nama_barang ASC LIMIT ? OFFSET ?';
