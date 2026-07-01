@@ -1,9 +1,0 @@
-# Audit Punchlist Modul 1: Procurement-to-Pay (P2P)
-
-| ID Bug | Lokasi File | Tingkat Keparahan | Akar Masalah | Rencana Solusi Koding |
-|---|---|---|---|---|
-| ~~**BUG-P2P-01**~~ *(FIXED)* | `backend/src/controllers/mrpController.ts` | **Critical** | Terdapat *fallback hardcode* `const vId = po.id_vendor \|\| 1;` pada fungsi MRP Explosion, yang dapat menyebabkan kebocoran alokasi vendor jika `id_vendor` kosong. (Melanggar aturan Strict AVL). | Menghapus *fallback* `1`. Menambahkan validasi `if (!po.id_vendor) throw new Error("Item tidak memiliki relasi Vendor AVL");` sehingga meledakkan BOM gagal jika data Master Inventory tidak valid. |
-| ~~**BUG-P2P-02**~~ *(FIXED)* | `backend/src/controllers/poController.ts` | **Critical** | Fungsi `updatePOStatus` tidak memvalidasi status PO saat ini (*current state*). Pengguna dapat mengubah PO secara acak (misal melompat dari 'Draft' langsung ke 'Completed', atau menekan 'Cancelled' pada PO yang sudah selesai). | Mengimplementasikan validasi *State Machine* (misal: hanya PO status 'Draft' atau 'Issued' yang boleh di-'Cancelled'). Membaca status saat ini dari database sebelum melakukan eksekusi UPDATE. |
-| ~~**BUG-P2P-03**~~ *(FIXED)* | `backend/src/controllers/poController.ts` | **Critical** | Celah pada proses GRN (Goods Receipt Note). Karena `updatePOStatus` tidak mengecek status PO sebelumnya, jika endpoint dipanggil dua kali dengan status `Completed`, sistem akan terus menyuntikkan (menambahkan) stok ke `inventory_stok` berkali-kali tanpa batas (*infinite stock glitch*). | Menambahkan proteksi: `if (currentStatus === 'Completed') throw new Error("PO sudah diterima sebelumnya");` di dalam blok transaksi sebelum mengeksekusi penambahan stok ke `inventory_stok`. |
-
-**✅ SPK Modul 1 selesai dieksekusi. Seluruh 3/3 Bug Critical telah diperbaiki. — 22 Juni 2026**
