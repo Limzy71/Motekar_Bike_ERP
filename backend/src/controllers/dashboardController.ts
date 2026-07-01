@@ -102,3 +102,80 @@ export const getDashboard = async (req: AuthenticatedRequest, res: Response): Pr
     });
   }
 };
+
+export const getExecutiveMetrics = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const queryAsset = `SELECT SUM(jumlah_stok * harga_standar) as total_valuasi FROM inventory_stok`;
+    
+    // Using created_at for operasi_wo_header since tanggal_dibuat doesn't exist
+    const queryProduction = `
+      SELECT status, COUNT(*) as count 
+      FROM operasi_wo_header 
+      WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) 
+        AND YEAR(created_at) = YEAR(CURRENT_DATE())
+      GROUP BY status
+    `;
+
+    const querySales = `
+      SELECT SUM(total_nilai) as total_pendapatan 
+      FROM penjualan_so_header 
+      WHERE status_so IN ('DELIVERED', 'COMPLETED')
+    `;
+
+    // aftersales_klaim uses status_klaim with 'SUBMITTED', 'IN_INSPECTION'
+    const queryAftersales = `
+      SELECT COUNT(*) as total_klaim 
+      FROM aftersales_klaim 
+      WHERE status_klaim IN ('SUBMITTED', 'IN_INSPECTION')
+    `;
+
+    // Run queries in parallel
+    const [
+      [assetResult],
+      [productionResult],
+      [salesResult],
+      [aftersalesResult]
+    ] = await Promise.all([
+      pool.query(queryAsset),
+      pool.query(queryProduction),
+      pool.query(querySales),
+      pool.query(queryAftersales)
+    ]) as any;
+
+    // Format Asset Valuation
+    const totalAssetValuation = parseFloat(assetResult[0]?.total_valuasi || 0);
+
+    // Format Production Health
+    let completedWO = 0;
+    let inProgressWO = 0;
+    productionResult.forEach((row: any) => {
+      if (row.status === 'COMPLETED') completedWO = row.count;
+      else if (['IN_PROGRESS', 'KITTING_RELEASED', 'SUB_ASSEMBLY', 'FINAL_ASSEMBLY', 'TUNING_QC'].includes(row.status)) {
+        inProgressWO += row.count; // Grouping all active progress statuses
+      }
+    });
+
+    // Format Sales Performance
+    const totalSalesRevenue = parseFloat(salesResult[0]?.total_pendapatan || 0);
+
+    // Format Aftersales Load
+    const totalPendingClaims = aftersalesResult[0]?.total_klaim || 0;
+
+    res.json({
+      success: true,
+      data: {
+        asset_valuation: totalAssetValuation,
+        production_health: {
+          completed: completedWO,
+          in_progress: inProgressWO
+        },
+        sales_revenue: totalSalesRevenue,
+        aftersales_claims: totalPendingClaims
+      }
+    });
+
+  } catch (error: any) {
+    console.error('[getExecutiveMetrics] Error:', error);
+    res.status(500).json({ success: false, message: `Server error: ${error.message}` });
+  }
+};

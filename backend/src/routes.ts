@@ -4,7 +4,7 @@ import { validateRequest } from './middlewares/validateRequest.js';
 import { loginSchema } from './schemas/authSchema.js';
 import { authenticate, requireRole } from './middlewares/authMiddleware.js';
 import { upload } from './middlewares/upload.js';
-import { getDashboard } from './controllers/dashboardController.js';
+import { getDashboard, getExecutiveMetrics } from './controllers/dashboardController.js';
 import { getAllPR, createPR, approvePR, bulkApprovePR, deletePR, bulkDeletePR, getVendors, getItems, createRestockRequest, getPendingRequests, completeRequest, getReorderAlerts, autoGeneratePR } from './controllers/pengadaanController.js';
 import { generatePO, updatePOStatus, getAllPO, getPODetails, bulkGeneratePO, createDirectPO, deletePO, bulkReceivePO, bulkApprovePO, bulkIssuePO } from './controllers/poController.js';
 import { getAllStok, stokMasuk, opnameStok, getPendingPO, getPendingPODetails, receiveGoods, getReceiptHistory } from './controllers/gudangController.js';
@@ -27,6 +27,7 @@ router.use(authenticate as any);
 
 // Endpoint untuk dashboard GET /api/dashboard (memerlukan autentikasi)
 router.get('/dashboard', authenticate, getDashboard);
+router.get('/dashboard/executive', authenticate, getExecutiveMetrics);
 
 // ============================================================
 // MODUL PENGADAAN (Purchase Requisition)

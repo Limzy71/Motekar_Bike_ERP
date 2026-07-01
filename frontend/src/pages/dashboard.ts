@@ -63,20 +63,28 @@ interface DashboardResponse {
  */
 async function loadDashboard(): Promise<void> {
   try {
-    const response = await apiFetch<DashboardResponse>('dashboard');
-    if (!response) { showToast('Gagal menghubungi server', true); return; }
-    if (response.success) {
-      const kpi = response.data?.kpi;
+    const [response, execResponse] = await Promise.all([
+      apiFetch<DashboardResponse>('dashboard'),
+      apiFetch<any>('dashboard/executive')
+    ]);
+
+    if (!response || !execResponse) { showToast('Gagal menghubungi server', true); return; }
+    
+    if (response.success && execResponse.success) {
       const charts = response.data?.charts;
-      if (!kpi || !charts) { showToast('Data dashboard tidak lengkap', true); return; }
-      renderKPI(kpi);
+      const executiveMetrics = execResponse.data;
+
+      if (!charts || !executiveMetrics) { showToast('Data dashboard tidak lengkap', true); return; }
+      
+      renderKPI(executiveMetrics);
       renderKanbanChart(charts.kanban_status);
       renderStokChart(charts.stok_kategori);
+      
       // Update last-updated timestamp
       const el = document.getElementById('last-updated');
       if (el) el.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     } else {
-      showToast('Server error: ' + (response.message || 'Unknown'), true);
+      showToast('Server error: ' + (response.message || execResponse.message || 'Unknown'), true);
     }
   } catch (err: any) {
     console.error('Dashboard error:', err);
@@ -103,22 +111,22 @@ async function loadITDashboard(): Promise<void> {
   }
 }
 
-function renderKPI(kpi: DashboardKPI): void {
-  const kpiElements: Record<string, number> = {
-    'kpi-pr': kpi.total_pr || 0,
-    'kpi-invoice': kpi.total_invoice || 0,
-    'kpi-job': kpi.job_selesai || 0,
-    'kpi-stok': kpi.stok_komponen || 0,
-  };
+function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+}
 
-  Object.entries(kpiElements).forEach(([id, value]) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.innerText = String(value);
-    } else {
-      console.warn(`KPI element not found: #${id}`);
-    }
-  });
+function renderKPI(metrics: any): void {
+  const elAsset = document.getElementById('kpi-asset');
+  if (elAsset) elAsset.innerText = formatRupiah(metrics.asset_valuation);
+
+  const elProduction = document.getElementById('kpi-production');
+  if (elProduction) elProduction.innerHTML = `<span class="text-emerald-500">${metrics.production_health.completed}</span> / <span class="text-amber-500">${metrics.production_health.in_progress}</span>`;
+
+  const elSales = document.getElementById('kpi-sales');
+  if (elSales) elSales.innerText = formatRupiah(metrics.sales_revenue);
+
+  const elAftersales = document.getElementById('kpi-aftersales');
+  if (elAftersales) elAftersales.innerText = String(metrics.aftersales_claims);
 }
 
 // ============================================================
