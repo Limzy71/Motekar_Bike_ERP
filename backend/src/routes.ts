@@ -8,7 +8,7 @@ import { getDashboard, getExecutiveMetrics } from './controllers/dashboardContro
 import { getAllPR, createPR, approvePR, bulkApprovePR, deletePR, bulkDeletePR, getVendors, getItems, createRestockRequest, getPendingRequests, completeRequest, getReorderAlerts, autoGeneratePR } from './controllers/pengadaanController.js';
 import { generatePO, updatePOStatus, getAllPO, getPODetails, bulkGeneratePO, createDirectPO, deletePO, bulkReceivePO, bulkApprovePO, bulkIssuePO } from './controllers/poController.js';
 import { getAllStok, stokMasuk, opnameStok, getPendingPO, getPendingPODetails, receiveGoods, getReceiptHistory } from './controllers/gudangController.js';
-import { getVendorsSRM, createVendor, updateVendor, updateVendorStatus } from './controllers/vendorController.js';
+import { getVendorsSRM, createVendor, updateVendor, updateVendorStatus, deleteVendor } from './controllers/vendorController.js';
 import { createVendorSchema, updateVendorStatusSchema } from './schemas/vendorSchema.js';
 import { goodsReceiptSchema } from './schemas/inventorySchema.js';
 
@@ -79,6 +79,7 @@ router.get('/vendor', pengadaanStrictAuth, getVendorsSRM);
 router.post('/vendor', pengadaanStrictAuth, validateRequest(createVendorSchema), createVendor);
 router.put('/vendor/:id', pengadaanStrictAuth, validateRequest(createVendorSchema), updateVendor);
 router.patch('/vendor/:id/status', pengadaanStrictAuth, validateRequest(updateVendorStatusSchema), updateVendorStatus);
+router.delete('/vendor/:id', pengadaanStrictAuth, deleteVendor);
 
 // ============================================================
 // MODUL GUDANG (Inventory Stok)

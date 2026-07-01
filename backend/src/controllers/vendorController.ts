@@ -86,3 +86,18 @@ export const updateVendorStatus = asyncHandler(async (req: Request, res: Respons
 
     res.json({ success: true, message: `Status vendor berhasil diubah menjadi ${status_vendor}.` });
 });
+
+// ============================================================
+// [DELETE] /api/vendor/:id — Hapus Vendor
+// ============================================================
+export const deleteVendor = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    const [result]: any = await pool.query('DELETE FROM master_vendor WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+        throw new AppError('Vendor tidak ditemukan.', 404);
+    }
+
+    res.json({ success: true, message: 'Vendor berhasil dihapus secara permanen dari sistem.' });
+});

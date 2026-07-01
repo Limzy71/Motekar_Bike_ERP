@@ -872,7 +872,12 @@ function renderVendorsSRM(): void {
             </td>
             <td class="px-4 py-3 text-center">${statusBadge}</td>
             <td class="px-4 py-3 text-center relative z-10">
-                <button class="btn-srm-status text-slate-400 group-hover:text-primary group-hover:bg-primary-container/30 px-2 py-1 rounded transition-colors" data-id="${v.id}" onclick="event.stopPropagation();">Kelola Status</button>
+                <div class="flex items-center justify-center gap-1">
+                    <button class="btn-srm-status text-slate-400 hover:text-primary hover:bg-primary-container/30 px-2 py-1 rounded transition-colors" data-id="${v.id}" onclick="event.stopPropagation();">Kelola Status</button>
+                    <button class="btn-srm-delete text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition-colors" data-id="${v.id}" onclick="event.stopPropagation();" title="Hapus Vendor">
+                        <span class="material-symbols-outlined text-[16px] pointer-events-none">delete</span>
+                    </button>
+                </div>
             </td>
         `;
 
@@ -880,6 +885,12 @@ function renderVendorsSRM(): void {
         btnStatus?.addEventListener('click', (e) => {
             e.stopPropagation();
             openSRMStatusModal(v);
+        });
+
+        const btnDelete = tr.querySelector('.btn-srm-delete');
+        btnDelete?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteVendorWithPopup(v);
         });
 
         tbody.appendChild(tr);
@@ -895,6 +906,48 @@ function renderVendorsSRM(): void {
             renderVendorsSRM();
         }
     );
+}
+
+function deleteVendorWithPopup(v: SRMVendor): void {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Hapus Vendor?',
+            html: `Anda yakin ingin menghapus vendor <b>${v.nama_vendor}</b> secara permanen? Data transaksi yang terkait mungkin akan terpengaruh.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then(async (result: any) => {
+            if (result.isConfirmed) {
+                try {
+                    const response = await apiFetch<ActionResponse>(`vendor/${v.id}`, { method: 'DELETE' });
+                    if (response.success) {
+                        Swal.fire('Terhapus!', response.message, 'success');
+                        loadVendorsSRM();
+                        loadDropdownData();
+                    } else {
+                        Swal.fire('Gagal!', response.message, 'error');
+                    }
+                } catch (err) {
+                    Swal.fire('Error!', 'Terjadi kesalahan jaringan.', 'error');
+                }
+            }
+        });
+    } else {
+        if (confirm(`Hapus vendor ${v.nama_vendor}?`)) {
+            apiFetch<ActionResponse>(`vendor/${v.id}`, { method: 'DELETE' }).then(res => {
+                if (res.success) {
+                    showToast(res.message);
+                    loadVendorsSRM();
+                    loadDropdownData();
+                } else {
+                    showToast(res.message, true);
+                }
+            });
+        }
+    }
 }
 
 
