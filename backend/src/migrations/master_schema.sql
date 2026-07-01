@@ -451,6 +451,7 @@ CREATE TABLE `penjualan_so_detail` (
   `subtotal` decimal(15,2) NOT NULL DEFAULT '0.00',
   `status_item` enum('TERSEDIA','DEFISIT') NOT NULL DEFAULT 'TERSEDIA',
   `hpp_satuan_tercatat` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `assigned_serial_numbers` json DEFAULT NULL COMMENT 'Disimpan saat alokasi QC',
   `id_wo_terkait` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_so_header` (`id_so_header`),

@@ -44,6 +44,7 @@ async function up() {
         subtotal DECIMAL(15,2) NOT NULL DEFAULT 0,
         status_item ENUM('TERSEDIA', 'DEFISIT') NOT NULL DEFAULT 'TERSEDIA',
         hpp_satuan_tercatat DECIMAL(15,2) NOT NULL DEFAULT 0,
+        assigned_serial_numbers JSON DEFAULT NULL,
         id_wo_terkait INT DEFAULT NULL,
         FOREIGN KEY (id_so_header) REFERENCES penjualan_so_header(id) ON DELETE CASCADE,
         FOREIGN KEY (id_inventory_barang_jadi) REFERENCES inventory_stok(id)
